@@ -1,0 +1,15 @@
+
+
+
+
+
+
+
+
++fsspec jupyter UI
+-Repo: https://github.com/fsspec/jupyter-fsspec
+-Moto for mocking AWS
+	-https://github.com/getmoto/moto
+
+
+

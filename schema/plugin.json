@@ -1,0 +1,8 @@
+{
+  "jupyter.lab.shortcuts": [],
+  "title": "jupyterFsspec",
+  "description": "jupyterFsspec settings.",
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
