@@ -10,6 +10,7 @@ node_modules/
 jupyter_fsspec/labextension
 # Version file is handled by hatchling
 jupyter_fsspec/_version.py
+temp
 
 # Integration tests
 ui-tests/test-results/
