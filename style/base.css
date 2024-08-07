@@ -3,3 +3,60 @@
 
     https://jupyterlab.readthedocs.io/en/stable/developer/css.html
 */
+
+.jfsspec-root {
+  box-sizing: border-box;
+
+  width: 100%;
+  height: 100%;
+
+  font-family: sans-serif;
+  font-weight: bold;
+}
+
+.jfsspec-primarydivider {
+  box-sizing: border-box;
+
+  width: 100%;
+  height: 100%;
+
+  padding: 1rem;
+
+  /* background-color: purple; */
+}
+
+.jfsspec-upperarea {
+    box-sizing: border-box;
+
+    width: 100%;
+    height: 40%;
+
+    /* background-color: greenyellow; */
+}
+
+.jfsspec-hseparator {
+  box-sizing: border-box;
+
+  width: 100%;
+  height: 1px;
+
+  background-color: black;
+}
+
+.jfsspec-lowerarea {
+  box-sizing: border-box;
+
+  width: 100%;
+  height: 60%;
+
+  /* background-color: orange; */
+}
+
+.jfsspec-resultarea {
+  width: 100%;
+  height: 100%;
+
+  border-radius: 2px;
+
+  background-color: #ddd;
+}
