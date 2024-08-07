@@ -49,10 +49,14 @@
   width: 100%;
   height: 60%;
 
+  margin-top: 1rem;
+
   /* background-color: orange; */
 }
 
 .jfsspec-resultarea {
+  box-sizing: border-box;
+
   width: 100%;
   height: 100%;
 

@@ -26,7 +26,7 @@ class FsspecWidget extends Widget {
     // uiToolkit.appendChild(primaryDivider);
 
     let upperArea = document.createElement('div');
-    upperArea.innerText = 'Hello, sample!'
+    upperArea.innerText = 'Local filesystem'
     upperArea.classList.add('jfsspec-upperarea')
 
     let hsep = document.createElement('div');
