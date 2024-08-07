@@ -1,0 +1,8 @@
+{
+    "ServerApp": {
+      "jpserver_extensions": {
+        "jupyter_fsspec": true
+      }
+    }
+  }
+  
