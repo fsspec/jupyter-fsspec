@@ -3,3 +3,9 @@
 
     https://jupyterlab.readthedocs.io/en/stable/developer/css.html
 */
+.jp-fsspec-widget {
+    height: 100%;
+    overflow-y: auto;
+    padding: 10px;
+    box-sizing: border-box;
+}
