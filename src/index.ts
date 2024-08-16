@@ -4,10 +4,9 @@ import {
 } from '@jupyterlab/application';
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
-import { ICommandPalette, MainAreaWidget } from '@jupyterlab/apputils';
+import { ICommandPalette } from '@jupyterlab/apputils';
 
-import { requestAPI } from './handler';
-import { MyButtonWidget } from './MyButtonWidget';
+import { FileManagerWidget } from './FileManager';
 
 import { Checkbox } from '@jupyter/web-components';
 
@@ -91,21 +90,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
     commands.addCommand(commandToolkit, {
       label: 'Open fsspec Toolkit Widget',
       execute: () => {
-        const content = new MyButtonWidget();
-        const widget = new MainAreaWidget<MyButtonWidget>({ content });
+        const widget = new FileManagerWidget();
         widget.id = 'jupyter_fsspec-toolkit-widget';
         widget.title.label = 'fsspec Toolkit Widget';
-        app.shell.add(widget, 'main');
-
-        requestAPI<any>('hello')
-          .then(data => {
-            console.log(data);
-          })
-          .catch(reason => {
-            console.error(
-              `The jupyterlab_examples_server server extension appears to be missing.\n${reason}`
-            );
-          });
+        app.shell.add(widget, 'right');
       }
     });
 
