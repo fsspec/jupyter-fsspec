@@ -3,18 +3,49 @@ import {
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
 
+// import React from 'react';
+
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ICommandPalette } from '@jupyterlab/apputils';
 
-import { FileManagerWidget } from './FileManager';
+// import { Checkbox } from '@jupyter/web-components';
 
-import { Checkbox } from '@jupyter/web-components';
+// import { requestAPI } from './handler/handler';
+import { FileManagerWidget } from './FileManager';
 
 // import { Signal } from '@lumino/signaling';
 
 import {
   Widget
 } from '@lumino/widgets';
+
+declare global {
+  interface Window {
+    fsspecModel: FsspecModel;
+  }
+}
+
+class FsspecModel {
+  // Frontend model for user's fsspec filesystems
+  activeFilesystem = '';
+  filesystemList: any;
+
+  constructor() {
+
+  }
+
+  getStoredFilesystems() {
+    // Fetch list of filesystems stored in user's config file
+  }
+
+  listActiveFilesystem() {
+    // Return list of files for active FS
+  }
+
+  listFilesystem(name: String) {
+    // Provide a FS name to list
+  }
+}
 
 class FsspecWidget extends Widget {
 
@@ -32,6 +63,9 @@ class FsspecWidget extends Widget {
     upperArea.innerText = 'Local filesystem'
     upperArea.classList.add('jfsspec-upperarea')
 
+    // let fileMgr: any = React.createElement('FileManagerComponent');
+    // upperArea.appendChild(fileMgr);
+
     let hsep = document.createElement('div');
     hsep.classList.add('jfsspec-hseparator');
 
@@ -46,9 +80,9 @@ class FsspecWidget extends Widget {
     primaryDivider.appendChild(hsep);
     primaryDivider.appendChild(lowerArea);
 
-    let cbox = new Checkbox();
-    cbox.style.marginLeft = '1rem';
-    upperArea.appendChild(cbox);
+    // let cbox = new Checkbox();
+    // cbox.style.marginLeft = '1rem';
+    // upperArea.appendChild(cbox);
 
     this.node.appendChild((primaryDivider));
   }
@@ -69,6 +103,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
     settingRegistry: ISettingRegistry | null
   ) => {
     console.log('JupyterLab extension jupyterFsspec is activated!');
+
+    let fsspecModel = new FsspecModel();
+    window.fsspecModel = fsspecModel;
 
     let fsspec_widget = new FsspecWidget();
     fsspec_widget.id = 'jupyterFsspec:widget'

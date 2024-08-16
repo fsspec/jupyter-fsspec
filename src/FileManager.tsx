@@ -3,7 +3,7 @@ import { ReactWidget } from '@jupyterlab/apputils';
 import { TreeComponent } from './Tree';
 import { SelectOptionComponent } from './SourceSelector';
 
-const FileManagerComponent = (): JSX.Element => {
+export const FileManagerComponent = (): JSX.Element => {
   return (
     <div>
       <SelectOptionComponent />
