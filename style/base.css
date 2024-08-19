@@ -71,7 +71,7 @@
 
   border-radius: 2px;
 
-  background-color: #ddd;
+  /* background-color: #ddd; */
 }
 
 .jp-fsspec-widget {
@@ -95,6 +95,12 @@
   /* background-color: #ddd; */
 }
 
+.jfss-selectedFsLabel {
+  width: 100%;
+
+  margin: .75rem .75rem 0 0;
+}
+
 .jfss-fsitem {
   box-sizing: border-box;
 
@@ -103,7 +109,7 @@
 
   margin-top: .5rem;
   margin-right: .5rem;
-  padding-top: .2rem;
+  padding: .25rem .25rem 0 0;
   border-radius: 2px;
 
   overflow: hidden;
