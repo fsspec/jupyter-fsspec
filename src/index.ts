@@ -48,43 +48,70 @@ class FsspecModel {
 }
 
 class FsspecWidget extends Widget {
+  upperArea: any;
 
   constructor() {
     super();
+    this.title.label = 'FSSpec'
 
-    this.node.classList.add('jfsspec-root');
+    this.node.classList.add('jfss-root');
 
-    // let uiToolkit = new DesignSystemProvider();
     let primaryDivider = document.createElement('div');
-    primaryDivider.classList.add('jfsspec-primarydivider');
-    // uiToolkit.appendChild(primaryDivider);
+    primaryDivider.classList.add('jfss-primarydivider');
 
-    let upperArea = document.createElement('div');
-    upperArea.innerText = 'Local filesystem'
-    upperArea.classList.add('jfsspec-upperarea')
-
-    // let fileMgr: any = React.createElement('FileManagerComponent');
-    // upperArea.appendChild(fileMgr);
+    this.upperArea = document.createElement('div');
+    this.upperArea.innerText = 'Jupyter FSSpec'
+    this.upperArea.classList.add('jfss-upperarea')
 
     let hsep = document.createElement('div');
-    hsep.classList.add('jfsspec-hseparator');
+    hsep.classList.add('jfss-hseparator');
 
     let lowerArea = document.createElement('div');
-    lowerArea.classList.add('jfsspec-lowerarea')
+    lowerArea.classList.add('jfss-lowerarea')
 
     let resultArea = document.createElement('div');
-    resultArea.classList.add('jfsspec-resultarea')
+    resultArea.classList.add('jfss-resultarea')
     lowerArea.appendChild(resultArea);
 
-    primaryDivider.appendChild(upperArea);
+    primaryDivider.appendChild(this.upperArea);
     primaryDivider.appendChild(hsep);
     primaryDivider.appendChild(lowerArea);
 
-    // let cbox = new Checkbox();
-    // cbox.style.marginLeft = '1rem';
-    // upperArea.appendChild(cbox);
-
     this.node.appendChild((primaryDivider));
+    this.addFilesystemItem('Hard Drive', 'Local');
+    this.addFilesystemItem('Bar', 'S3');
+    this.addFilesystemItem('Biz', 'S3');
+    this.addFilesystemItem('Wik', 'S3');
+    this.addFilesystemItem('Rak', 'S3');
+    this.addFilesystemItem('Rum', 'S3');
+  }
+
+  addFilesystemItem(name: string, fstype: string) {
+    let fsItem = document.createElement('div');
+    fsItem.classList.add('jfss-fsitem-root');
+
+    let nameField = document.createElement('div');
+    nameField.classList.add('jfss-fsitem');
+    nameField.innerText = name;
+    nameField.addEventListener('mouseenter', this.handleFsysHover);
+    nameField.addEventListener('mouseleave', this.handleFsysHover);
+    fsItem.appendChild(nameField);
+
+    let typeField = document.createElement('div');
+    typeField.classList.add('jfss-fsitem');
+    typeField.innerText = fstype;
+    fsItem.appendChild(typeField);
+
+    this.upperArea.appendChild(fsItem);
+  }
+
+  handleFsysHover(event: any) {
+    if (event.type == 'mouseenter') {
+      event.target.style.backgroundColor = '#bbb';
+    }
+    else {
+      event.target.style.backgroundColor = '#ddd';
+    }
   }
 }
 
