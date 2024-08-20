@@ -1,13 +1,16 @@
 import React from 'react';
 import { ReactWidget } from '@jupyterlab/apputils';
-import { TreeComponent } from './Tree';
-import { SelectOptionComponent } from './SourceSelector';
+// import { TreeComponent } from './Tree';
+// import { SelectOptionComponent } from './SourceSelector';
+// import { DebugPanel } from './DebugPanel';
 
 export const FileManagerComponent = (): JSX.Element => {
   return (
     <div>
-      <SelectOptionComponent />
-      <TreeComponent />
+      {/* <SelectOptionComponent />
+      <TreeComponent /> */}
+      {/* <DebugPanel /> */}
+      hi
     </div>
   );
 };
