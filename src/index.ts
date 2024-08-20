@@ -5,6 +5,8 @@ import {
 
 // import React from 'react';
 
+// import { Signal } from '@lumino/signaling';
+
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ICommandPalette } from '@jupyterlab/apputils';
 
@@ -12,8 +14,7 @@ import { ICommandPalette } from '@jupyterlab/apputils';
 
 // import { requestAPI } from './handler/handler';
 import { FileManagerWidget } from './FileManager';
-
-// import { Signal } from '@lumino/signaling';
+import { FilesystemItem } from './FilesystemItem';
 
 import {
   Widget
@@ -49,60 +50,6 @@ class FsspecModel {
   }
 }
 
-class FilesystemItem {
-  element: HTMLElement;
-  filesysName: string;
-  filesysType: string;
-  clickSlots: any;
-  nameField: any;
-  typeField: any;
-
-  constructor(fsname: string, fstype: string, userClickSlots: any) {
-    this.filesysName = fsname;
-    this.filesysType = fstype;
-
-    this.clickSlots = [];
-    for (const slot of userClickSlots) {
-      this.clickSlots.push(slot);
-    }
-
-    let fsItem = document.createElement('div');
-    fsItem.classList.add('jfss-fsitem-root');
-    this.element = fsItem;
-
-    this.nameField = document.createElement('div');
-    this.nameField.classList.add('jfss-fsitem');
-    this.nameField.innerText = fsname;
-    this.nameField.addEventListener('mouseenter', this.handleFsysHover.bind(this));
-    this.nameField.addEventListener('mouseleave', this.handleFsysHover.bind(this));
-    fsItem.appendChild(this.nameField);
-
-    this.typeField = document.createElement('div');
-    this.typeField.classList.add('jfss-fsitem');
-    this.typeField.innerText = fstype;
-    fsItem.appendChild(this.typeField);
-
-    fsItem.addEventListener('click', this.handleClick.bind(this));
-  }
-
-  handleFsysHover(event: any) {
-    if (event.type == 'mouseenter') {
-      this.nameField.style.backgroundColor = '#bbb';
-      this.typeField.style.backgroundColor = '#bbb';
-    }
-    else {
-      this.nameField.style.backgroundColor = '#ddd';
-      this.typeField.style.backgroundColor = '#ddd';
-    }
-  }
-
-  handleClick(_event: any) {
-    for (const slot of this.clickSlots) {
-      slot(this.filesysName, this.filesysType);
-    }
-  }
-}
-
 class FsspecWidget extends Widget {
   upperArea: any;
   model: any;
@@ -122,8 +69,12 @@ class FsspecWidget extends Widget {
     primaryDivider.classList.add('jfss-primarydivider');
 
     this.upperArea = document.createElement('div');
-    this.upperArea.innerText = 'Jupyter FSSpec'
     this.upperArea.classList.add('jfss-upperarea')
+
+    let mainLabel = document.createElement('div');
+    mainLabel.classList.add('jfss-mainlabel');
+    mainLabel.innerText = 'Jupyter FSSpec'
+    this.upperArea.appendChild(mainLabel);
 
     let hsep = document.createElement('div');
     hsep.classList.add('jfss-hseparator');
@@ -167,7 +118,6 @@ class FsspecWidget extends Widget {
   }
 
   handleFilesystemClicked(fsname: string, fstype: string) {
-    window.alert(fsname + fstype);
     this.populateTree(fsname);
   }
 
