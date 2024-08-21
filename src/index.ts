@@ -56,6 +56,7 @@ class FsspecWidget extends Widget {
   fsList: any;
   selectedFsLabel: any;
   treeView: any;
+  stubToggle = false;
 
   constructor() {
     super();
@@ -104,11 +105,7 @@ class FsspecWidget extends Widget {
 
   stubFilesystems() {
     this.addFilesystemItem('Hard Drive', 'Local');
-    this.addFilesystemItem('Bar', 'S3',);
-    this.addFilesystemItem('Biz', 'S3');
-    this.addFilesystemItem('Wik', 'S3');
-    this.addFilesystemItem('Rak', 'S3');
-    this.addFilesystemItem('Rum', 'S3');
+    this.addFilesystemItem('Cloud Lab Metrics', 'S3',);
   }
 
   addFilesystemItem(fsname: string, fstype: string) {
@@ -128,13 +125,41 @@ class FsspecWidget extends Widget {
       this.treeView.removeChild(this.treeView.lastChild)
     }
 
-    let item = new TreeItem();
-    item.innerText = 'Item ' + new Date().toString();
-    this.treeView.appendChild(item);
+    this.stubToggle = !this.stubToggle;
+    if (fsname == 'Cloud Lab Metrics') {
+      let item = new TreeItem();
+      item.innerText = 'my_files';
+      this.treeView.appendChild(item);
 
-    let xx = new TreeItem();
-    xx.innerText = 'Item ' + new Date().toString();
-    item.appendChild(xx);
+      let xx = new TreeItem();
+      xx.innerText = 'data_2024_01_19.csv';
+      item.appendChild(xx);
+
+      let yy = new TreeItem();
+      yy.innerText = 'data_2024_01_19.csv';
+      item.appendChild(yy);
+    }
+    else {
+      let item = new TreeItem();
+      item.innerText = 'support';
+      this.treeView.appendChild(item);
+
+      let xx = new TreeItem();
+      xx.innerText = 'notes.txt';
+      item.appendChild(xx);
+
+      let yy = new TreeItem();
+      yy.innerText = 'data';
+      item.appendChild(yy);
+
+      let zz = new TreeItem();
+      zz.innerText = 'capture1.hdf5';
+      yy.appendChild(zz);
+
+      let zz2 = new TreeItem();
+      zz2.innerText = 'capture1.hdf5';
+      yy.appendChild(zz2);
+    }
   }
 }
 
