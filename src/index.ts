@@ -41,7 +41,7 @@ class FsspecWidget extends Widget {
     primaryDivider.classList.add('jfss-primarydivider');
 
     this.upperArea = document.createElement('div');
-    this.upperArea.classList.add('jfss-upperarea')
+    this.upperArea.classList.add('jfss-upperarea');
 
     let mainLabel = document.createElement('div');
     mainLabel.classList.add('jfss-mainlabel');
@@ -52,14 +52,15 @@ class FsspecWidget extends Widget {
     hsep.classList.add('jfss-hseparator');
 
     let lowerArea = document.createElement('div');
-    lowerArea.classList.add('jfss-lowerarea')
+    lowerArea.classList.add('jfss-lowerarea');
 
     let resultArea = document.createElement('div');
-    resultArea.classList.add('jfss-resultarea')
+    resultArea.classList.add('jfss-resultarea');
     lowerArea.appendChild(resultArea);
 
     this.selectedFsLabel = document.createElement('div');
     this.selectedFsLabel.classList.add('jfss-selectedFsLabel');
+    this.selectedFsLabel.classList.add('jfss-mainlabel');
     this.selectedFsLabel.innerText = 'Select a filesystem to display';
     resultArea.appendChild(this.selectedFsLabel);
 
@@ -92,15 +93,17 @@ class FsspecWidget extends Widget {
   populateTree(fsname: string) {
     this.selectedFsLabel.innerText = `Files for: ${fsname}`;
 
-    for (const _ of this.treeView.children) {
-      this.treeView.removeChild(this.treeView.lastChild)
-    }
+    this.treeView.replaceChildren();
 
     this.stubToggle = !this.stubToggle;
     if (fsname == 'Cloud Lab Metrics') {
       let item = new TreeItem();
       item.innerText = 'my_files';
       this.treeView.appendChild(item);
+
+      let item2 = new TreeItem();
+      item2.innerText = 'manifest.txt';
+      this.treeView.appendChild(item2);
 
       let xx = new TreeItem();
       xx.innerText = 'data_2024_01_19.csv';
