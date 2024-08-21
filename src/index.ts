@@ -3,50 +3,21 @@ import {
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
 
-// import React from 'react';
-
-// import { Signal } from '@lumino/signaling';
-
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ICommandPalette } from '@jupyterlab/apputils';
 
-// import { Checkbox } from '@jupyter/web-components';
-
-// import { requestAPI } from './handler/handler';
 import { FileManagerWidget } from './FileManager';
+
+import { FsspecModel } from './handler/fileOperations';
 import { FilesystemItem } from './FilesystemItem';
 
-import {
-  Widget
-} from '@lumino/widgets';
+import { Widget } from '@lumino/widgets';
 
 import { TreeItem, TreeView } from '@jupyter/web-components';
 
 declare global {
   interface Window {
     fsspecModel: FsspecModel;
-  }
-}
-
-class FsspecModel {
-  // Frontend model for user's fsspec filesystems
-  activeFilesystem = '';
-  filesystemList: any;
-
-  constructor() {
-
-  }
-
-  getStoredFilesystems() {
-    // Fetch list of filesystems stored in user's config file
-  }
-
-  listActiveFilesystem() {
-    // Return list of files for active FS
-  }
-
-  listFilesystem(name: String) {
-    // Provide a FS name to list
   }
 }
 
