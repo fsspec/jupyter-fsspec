@@ -66,6 +66,8 @@
 
   margin-top: 1rem;
 
+  overflow: auto;
+
   /* background-color: orange; */
 }
 
