@@ -22,11 +22,10 @@ export class FsspecModel {
     try {
       this.userFilesystems = await this.getStoredFilesystems();
       console.log('filesystem list is: ', JSON.stringify(this.userFilesystems));
-      /* Optional to set first filesystem as active.
-      if (this.userFilesystems.length > 0) {
-        this.activeFilesystem = this.userFilesystems[0].name;
+      // Optional to set first filesystem as active.
+      if (Object.keys(this.userFilesystems).length > 0) {
+        this.activeFilesystem = Object.keys(this.userFilesystems)[0];
       }
-      */
     } catch (error) {
       console.error('Failed to initialized FsspecModel: ', error);
     }
