@@ -46,12 +46,12 @@ export class FsspecModel {
     // Fetch list of filesystems stored in user's config file
     let filesystems: any = {}
     try {
-      const fetchedFilesystems = await requestAPI<any>('fsspec-config');
+      const fetchedFilesystems = await requestAPI<any>('config');
       console.log('Fetch FSs');
       console.log(fetchedFilesystems);
 
       // Map names to filesys metadata
-      for (const filesysInfo of fetchedFilesystems.source) {
+      for (const filesysInfo of fetchedFilesystems.filesystems) {
         if ('name' in filesysInfo) {
           filesystems[filesysInfo.name] = filesysInfo;
           
@@ -62,6 +62,7 @@ export class FsspecModel {
     } catch (error) {
       console.error('Failed to fetch filesystems: ', error);
     }
+    console.log(`getStoredFilesystems Returns: \n${JSON.stringify(filesystems)}`);
     return filesystems;
   }
 
@@ -72,7 +73,7 @@ export class FsspecModel {
       throw new Error('No active filesystem set.');
     }
     try {
-      return await this.listDirectory(this.activeFilesystem);
+      return await this.listDirectory(this.userFilesystems[this.activeFilesystem].key);
     } catch (error) {
       console.error('Failed to list currently active file system: ', error);
       return null;
@@ -98,15 +99,15 @@ export class FsspecModel {
     }
   }
 
-  async listDirectory(name: string, path: string = ''): Promise<any> {
-    const query = new URLSearchParams({ name, path, action: 'list' });
+  async listDirectory(key: string, item_path: string = ''): Promise<any> {
+    const query = new URLSearchParams({ key, item_path });
 
     try {
       return await requestAPI<any>(`fsspec?${query.toString()}`, {
         method: 'GET'
       });
     } catch (error) {
-      console.error(`Failed to list filesystem ${name}: `, error);
+      console.error(`Failed to list filesystem ${key}: `, error);
       return null;
     }
   }

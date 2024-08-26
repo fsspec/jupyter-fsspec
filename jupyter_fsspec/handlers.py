@@ -1,226 +1,222 @@
-import json
-import os
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
-from jupyter_core.paths import jupyter_config_dir
 import tornado
-from tornado.escape import json_decode
-import fsspec
-import mimetypes
-import base64
-import yaml
+import json
 
-class ConfigManager:
-    _config = None
+from .file_manager import FileSystemManager
 
-    @staticmethod
-    def load_config():
-        if ConfigManager._config is None:
-            base_dir = jupyter_config_dir()
-            config_path = os.path.join(base_dir, 'jupyter-fsspec.yaml')
-            try:
-                with open(config_path, 'r') as file:
-                    ConfigManager._config = yaml.safe_load(file)
-            except Exception as e:
-                raise RuntimeError(f"Failed to load config file: {e}")
-        return ConfigManager._config
+fs_manager = FileSystemManager('jupyter-fsspec.yaml')
 
-    @staticmethod
-    def get_config():
-        if ConfigManager._config is None:
-            ConfigManager.load_config()
-        return ConfigManager._config
+class FsspecConfigHandler(APIHandler):
+    """
 
-class ConfigHandler(APIHandler):
-    @tornado.web.authenticated
-    async def get(self):
-        try:
-            config_data = ConfigManager.get_config()
-            self.finish(config_data)
-        except Exception as e:
-            self.set_status(500)
-            self.finish({'Error': str(e)})
-
-class FileHandler:
-    def __init__(self, fs_url: str):
-        self.fs = fsspec.filesystem(fs_url)
-
-    def read_file(self, path: str, mode: str = 'rb'):
-        with self.fs.open(path, mode) as file:
-            return file.read()
-
-    def write_file(self, path: str, content: bytes, mode: str = 'wb'):
-        with self.fs.open(path, mode) as file:
-            file.write(content)
-
-    def delete_file(self, path: str):
-        return self.fs.delete(path, recursive=False)
-    
-    # Add PUT/PATCH
-
-    def list_files(self, path: str):
-        return self.fs.ls(path)
-
-    def is_dir(self, path: str):
-        return self.fs.isdir(path)
-    
-    def is_file(self, path: str):
-        return self.fs.isfile(path)
-
-    # Advanced File Operation
-    def copy_file(self, src_path: str, dest_path: str, recursive: bool = False):
-        self.fs.copy(src_path, dest_path, recursive)
-
-    def move_file(self, src_path: str, dest_path: str, recursive: bool = False):
-        self.fs.mv(src_path, dest_path, recursive)
-
-    def get_info(self, path: str, recursive: bool = False):
-        return self.fs.info(path)
-
-# Check existing Fsspec remote source key/secret api handling
-class S3FileHandler(FileHandler):
-    def __init__(self):
-        super().__init__('s3')
-
-    # Override methods specific to S3
-    def list_files(self, path: str):
-        return self.glob(f'{path}/**')
-
-# TODO: Dynamic Registration of new backend handlers
-class FileHandlerFactory:
-    _handlers_cache = {}
-
-    @staticmethod
-    def get_handler(source_name: str):
-        config = ConfigManager.get_config()
-        source_config = next((source for source in config.get('source', []) if source['name'] == source_name), {})
-        backend = source_config.get('type')
-        print(f"backend is: {backend}")
-        path = source_config['path']
-        print(f"path is: {path}")
-        cache_key = f"{backend}-{source_config.get('name')}"
-        print(f"cache_key is: {cache_key}")
-        if cache_key in FileHandlerFactory._handlers_cache:
-            return FileHandlerFactory._handlers_cache[cache_key]
-    
-        handler = None
-        print('in FileHandlerFactorys get_handler method')
-        if backend == 's3':
-            # TODO: Determine method for key and secret reading
-            '''
-            access_key = os.getenv(source_config['access_key_env'])
-            secret_key = os.getenv(source_config['secret_key_env'])
-            handler = S3FileHandler(access_key, secret_key)
-            '''
-            handler = S3FileHandler(backend)
-        elif backend == 'local':
-            handler = FileHandler(backend)
-
-        FileHandlerFactory._handlers_cache[cache_key] = handler
-        return handler
-
-class FsspecHandler(APIHandler):
+    Args:
+        APIHandler (_type_): _description_
+    """
     @tornado.web.authenticated
     def get(self):
-        fsSource_name = self.get_argument('name')
-        print(f"fsSource_name is: {fsSource_name}")
-        item_path = self.get_argument('path')
-        print(f"item_path is: {item_path}")
-        config = ConfigManager.get_config()
-        print(f"config is: {config}")
-        fsSource_config = next((source for source in config.get('source', []) if source['name'] == fsSource_name), {})
-        print(f"fsSource_config is: {fsSource_config}")
-        fsSource_path = fsSource_config['path']
-        print(f"fsSource_path is: {fsSource_path}")
-        handler = FileHandlerFactory.get_handler(fsSource_name)
-        print(f"handler is: {handler}")
+        """_summary_
 
-        if item_path != '':
-            path = item_path
-        else:
-            path = fsSource_path
+        Parameters
+        ----------
+            None
 
-        print(f"decided path is: {path}")
-        if handler.is_dir(path):
-            print('its a directory')
-            files = handler.list_files(path)
-            print(f"files are: {files}")
-            # TODO: update this 
-            tree_info = []
-            for entry in files:
-                entry_info = handler.get_info(entry)
-                tree_info.append(entry_info)
-            # TODO: just make it a fs.ls(detail=True) call to get the same information as info() gives!
-            self.set_header("Content-Type", "application/json")
-            self.finish(json.dumps({"files": tree_info}))
-        elif handler.is_file(path):
-            # TODO: Modify to only send file metadata unless file contents requested.
-            print(f'its a file at path: {path}')
-            content = handler.read_file(path)
-            print(f"content is: {content}")
-            mime_type, _ = mimetypes.guess_type(path)
-            print(f"mime_type is: {mime_type}")
-            metadata = handler.get_info(path)
-            print(f"file metadata: {metadata}")
+        Returns
+        ----------
+        Object:
+            filesystems: []
+        """
+        try:
+            file_systems = [];
+            for fs in fs_manager.filesystems:
+                fs_info = fs_manager.filesystems[fs]
+                instance = {"key": fs, 'name': fs_info['name'], 'type': fs_info['type'], 'path': fs_info['path'] }
+                file_systems.append(instance)
 
-            if (mime_type and mime_type.startswith('text')):
-                content_str = content.decode('utf-8')
-            else:
-                content_str = base64.b64encode(content).decode('utf-8')
+            self.set_status(200)
+            self.write({'filesystems': file_systems})
+            self.finish()
+        except Exception as e:
+            self.set_status(500)
+            self.write({"status": "error", "message": f"Error loading config: {str(e)}"})
+            self.finish()
 
-            response_data = {
-                'content': content_str,
-                'metadata': metadata,
-                'mime_type': mime_type
-            }
+class FileSystemHandler(APIHandler):
+    @tornado.web.authenticated
+    def get(self):
+        """_summary_
 
-            self.set_header("Content-Type", "application/json")
-            self.finish(json.dumps(response_data))
-        else:
-            print('its an error')
-            self.set_status(404)
-            self.write({'error': 'Path does not exist or is not a file/directory'})
-        
-        # TODO: clean up => update this finish call in appropriate section(s)
-        #content = self.fs.ls(path)
-        #self.finish(json.dumps({"files": files}))
+        Parameters
+        ----------
+            Query Parameters: 
+                key: [String]
+                item_path: [String]
 
+        Returns
+        ----------
+        Object with two keys 
+
+        Raises
+        ----------
+            ValueError: _description_
+            ValueError: _description_
+        """
+        try:
+            key = self.get_argument('key')
+            item_path = self.get_argument('item_path')
+
+            if not key:
+                raise ValueError("Missing required parameter `key`")
+            # if not item_path:
+                # raise ValueError("Missing required parameter `item_path`")
+                
+            fs = fs_manager.get_filesystem(key)
+
+            if not item_path:
+                item_path = fs_manager.filesystems[key]["path"]
+
+            if fs is None:
+                raise ValueError(f"No filesystem found for key: {key}")
+
+            result = fs_manager.read(key, item_path)
+            self.set_status(result["status_code"])
+            self.write({"status": result["status"], "files": result["body"]})
+            self.finish()
+        except Exception as e:
+            print("Error requesting read: ", e)
+            self.set_status(500)
+            self.write({"status": "Error", "message": f"Error occurred: {str(e)}"})
+            self.finish()
+
+    #TODO: add actions: write, move, copy (separate functions)
+    # move action: key, item_path, dest_path -> backend function deals with it being folder/file differences 
+    # copy action: key, item_path, dest_path -> backend function deals with it being folder/file differences
     @tornado.web.authenticated
     def post(self):
-        source_name = self.get_argument('name')
-        action = self.get_argument('action')
-        config = ConfigManager.get_config()
-        source_config = next((source for source in config.get('source', []) if source['name'] == source_name), {})
-        path = source_config['path']
-        handler = FileHandlerFactory.get_handler(path)
+        """_summary_
 
-        if action == 'write':
-            content = self.get_argument('content')
-            handler.write_file(path, content.encode('utf-8'))
-            self.write({'status': 'success'})
-        elif action == 'copy':
-            dest_path = self.get_argument('content')
-            handler.copy_file(path, dest_path, recursive=False)
-            self.write({'status': 'success'})
-        elif action == 'move':
-            dest_path = self.get_argument('content')
-            handler.move_file(path, dest_path, recursive=False)
-            self.write({'status': 'success'})
+        Parameters
+        ----------
 
-    # TODO: def delete
+        Returns
+        ----------
+
+        Raises
+        ----------
+            ValueError: _description_
+            ValueError: _description_
+        """
+        try:
+            action = self.get_argument('action')
+            print(f"action is: {action}")
+            request_data = json.loads(self.request.body.decode('utf-8'))
+
+            key = request_data.get('key')
+            item_path = request_data.get('item_path')
+
+            if not (key) or not (item_path):
+                raise ValueError("Missing required parameter `key` or `item_path`")
+
+            content = request_data.get('content').encode('utf-8')
+            fs = fs_manager.get_filesystem(key)
+            if fs is None:
+                raise ValueError(f"No filesystem found for key: {key}")
+            if action == 'move':
+                print(f"move")
+            elif action == 'copy':
+                print('copy')
+            else: # assume write
+                result = fs_manager.write(key, item_path, content)
+
+            self.set_status(result["status_code"])
+            self.write({"status": result["status"]})
+            self.finish()
+        except Exception as e:
+            print(f"Error requesting post: ", e)
+            self.set_status(500)
+            self.write({"status": "Error", "message": f"Error occurred: {str(e)}"})
+            self.finish()
+
+    @tornado.web.authenticated
+    def put(self):
+        """_summary_
+
+        Parameters
+        ----------
+
+        Returns
+        ----------
+
+        Raises
+        ----------
+            ValueError: _description_
+            ValueError: _description_
+        """
+        try:
+            request_data = json.loads(self.request.body.decode('utf-8'))
+
+            key = request_data.get('key')
+            item_path = request_data.get('item_path')
+
+            if not (key) or not (item_path):
+                raise ValueError("Missing required parameter `key` or `item_path`")
+
+            content = request_data.get('content')
+
+            fs = fs_manager.get_filesystem(key)
+            if fs is None:
+                raise ValueError(f"No filesystem found for key: {key}")
+
+            result = fs_manager.update(key, item_path, content)
+
+            self.set_status(result["status_code"])
+            self.write({"status": result["status"]})
+            self.finish()
+        except Exception as e:
+            self.set_status(500)
+            self.write({"status": "Error", "message": f"Error occurred: {str(e)}"})
+            self.finish()
+
     @tornado.web.authenticated
     def delete(self):
-        # data = json_decode(self.request.body)
-        source_name = self.get_argument('name')
-        # action = self.get_argument('action')
-        config = ConfigManager.get_config()
-        source_config = next((source for source in config.get('source', []) if source['name'] == source_name), {})
-        path = source_config['path']
+        """_summary_
 
-        handler = FileHandlerFactory.get_handler(path)
-        handler.delete_file(path, recursive=False)
-        self.write({'status': 'success'})
+        Parameters
+        ----------
 
+        Returns
+        ----------
+
+        Raises
+        ----------
+            ValueError: _description_
+            ValueError: _description_
+        """
+        try:
+            request_data = json.loads(self.request.body.decode('utf-8'))
+
+            key = request_data.get('key')
+            item_path = request_data.get('item_path')
+
+            if not (key) or not (item_path):
+                raise ValueError("Missing required parameter `key` or `item_path`")
+
+            fs = fs_manager.get_filesystem(key)
+            if fs is None:
+                raise ValueError(f"No filesystem found for key: {key}")
+
+            result = fs_manager.delete(key, item_path)
+            self.set_status(result["status_code"])
+            self.write({"status": result["status"]})
+            self.finish()
+        except ValueError as e:
+            self.set_status(400)
+            self.write({"error": f"{str(e)}"})
+            self.finish()
+        except Exception as e:
+            self.set_status(500)
+            self.write({"status": "Error", "message": f"Error occurred: {str(e)}"})
+            self.finish()
 
 #====================================================================================
 # Update the handler in setup
@@ -229,7 +225,7 @@ def setup_handlers(web_app):
     host_pattern = ".*$"
 
     base_url = web_app.settings["base_url"]
-    route_fsspec_config = url_path_join(base_url, "jupyter_fsspec", "fsspec-config")
+    route_fsspec_config = url_path_join(base_url, "jupyter_fsspec", "config")
     route_fsspec = url_path_join(base_url, "jupyter_fsspec", "fsspec")
-    handlers = [(route_fsspec, FsspecHandler), (route_fsspec_config, ConfigHandler)]
+    handlers = [(route_fsspec_config, FsspecConfigHandler), (route_fsspec, FileSystemHandler)]
     web_app.add_handlers(host_pattern, handlers)

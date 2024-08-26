@@ -23,5 +23,6 @@
     "src/*",
     "src/handler/handler.ts",
     "src/handler/fileOperations.ts",
+    "src/handler/fileParsing.ts"
   ]
 }
