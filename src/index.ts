@@ -24,15 +24,15 @@ declare global {
 class FsspecWidget extends Widget {
   upperArea: any;
   model: any;
-  fsList: any;
+  // fsList: any;
   selectedFsLabel: any;
   treeView: any;
+  filesysContainer: any;
   // stubToggle = false;
 
-  constructor() {
+  constructor(model: any) {
     super();
-    this.model = window.fsspecModel;
-    this.fsList = {};
+    this.model = model;
 
     this.title.label = 'FSSpec'
     this.node.classList.add('jfss-root');
@@ -47,6 +47,10 @@ class FsspecWidget extends Widget {
     mainLabel.classList.add('jfss-mainlabel');
     mainLabel.innerText = 'Jupyter FSSpec'
     this.upperArea.appendChild(mainLabel);
+
+    this.filesysContainer = document.createElement('div');
+    this.filesysContainer.classList.add('jfss-userfilesystems');
+    this.upperArea.appendChild(this.filesysContainer);
 
     let hsep = document.createElement('div');
     hsep.classList.add('jfss-hseparator');
@@ -72,18 +76,24 @@ class FsspecWidget extends Widget {
     primaryDivider.appendChild(lowerArea);
 
     this.node.appendChild((primaryDivider));
-    this.stubFilesystems();
+    this.populateFilesystems();
   }
 
-  stubFilesystems() {
-    this.addFilesystemItem('Hard Drive', 'Local');
-    this.addFilesystemItem('Cloud Lab Metrics', 'S3',);
+  populateFilesystems() {
+    console.log('POP FSs 1');
+    console.log(this.model);
+    for (const [name, fsInfo] of Object.entries(this.model.userFilesystems)) {
+      this.addFilesystemItem(name, (fsInfo as any).type)
+    }
+
+    // this.addFilesystemItem('Hard Drive', 'Local');
+    // this.addFilesystemItem('Cloud Lab Metrics', 'S3',);
   }
 
   addFilesystemItem(fsname: string, fstype: string) {
     let fsItem = new FilesystemItem(fsname, fstype, [this.handleFilesystemClicked.bind(this)]);
-    this.fsList[fsname] = fsItem;
-    this.upperArea.appendChild(fsItem.element);
+    // this.fsList[fsname] = fsItem;
+    this.filesysContainer.appendChild(fsItem.element);
   }
 
   handleFilesystemClicked(fsname: string, fstype: string) {
@@ -306,7 +316,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
   autoStart: true,
   requires: [ICommandPalette],
   optional: [ISettingRegistry],
-  activate: (
+  activate: async (
     app: JupyterFrontEnd,
     palette: ICommandPalette,
     settingRegistry: ISettingRegistry | null
@@ -314,9 +324,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
     console.log('JupyterLab extension jupyterFsspec is activated!');
 
     let fsspecModel = new FsspecModel();
+    await fsspecModel.initialize();
     window.fsspecModel = fsspecModel;
 
-    let fsspec_widget = new FsspecWidget();
+    let fsspec_widget = new FsspecWidget(fsspecModel);
     fsspec_widget.id = 'jupyterFsspec:widget'
     app.shell.add(fsspec_widget, 'right');
 

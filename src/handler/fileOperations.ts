@@ -12,19 +12,19 @@ interface IFilesystemConfig {
 
 export class FsspecModel {
   activeFilesystem: string = '';
-  filesystemList: any;
+  userFilesystems: any = {};
 
   constructor() {
-    this.initialize();
+    // this.initialize();
   }
 
-  private async initialize() {
+  async initialize() {
     try {
-      this.filesystemList = await this.getStoredFilesystems();
-      console.log('filesystem list is: ', this.filesystemList);
+      this.userFilesystems = await this.getStoredFilesystems();
+      console.log('filesystem list is: ', JSON.stringify(this.userFilesystems));
       /* Optional to set first filesystem as active.
-      if (this.filesystemList.length > 0) {
-        this.activeFilesystem = this.filesystemList[0].name;
+      if (this.userFilesystems.length > 0) {
+        this.activeFilesystem = this.userFilesystems[0].name;
       }
       */
     } catch (error) {
@@ -45,13 +45,25 @@ export class FsspecModel {
 
   async getStoredFilesystems(): Promise<any> {
     // Fetch list of filesystems stored in user's config file
+    let filesystems: any = {}
     try {
-      const filesystems = await requestAPI<any>('fsspec-config');
-      return filesystems || [];
+      const fetchedFilesystems = await requestAPI<any>('fsspec-config');
+      console.log('Fetch FSs');
+      console.log(fetchedFilesystems);
+
+      // Map names to filesys metadata
+      for (const filesysInfo of fetchedFilesystems.source) {
+        if ('name' in filesysInfo) {
+          filesystems[filesysInfo.name] = filesysInfo;
+          
+        } else {
+          console.error(`Filesystem from config is missing a name: ${filesysInfo}`);
+        }
+      }
     } catch (error) {
-      console.error('Failed to fetch filysystems: ', error);
-      return null;
+      console.error('Failed to fetch filesystems: ', error);
     }
+    return filesystems;
   }
 
   async listActiveFilesystem(): Promise<any> {
