@@ -4,14 +4,16 @@ class FilesystemItem {
     element: HTMLElement;
     filesysName: string;
     filesysType: string;
+    fsInfo: any;
     clickSlots: any;
     nameField: any;
     typeField: any;
 
-    constructor(fsname: string, fstype: string, userClickSlots: any) {
-      this.filesysName = fsname;
-      this.filesysType = fstype;
-  
+    constructor(fsInfo: any, userClickSlots: any) {
+      this.filesysName = fsInfo.name;
+      this.filesysType = fsInfo.type;
+      this.fsInfo = fsInfo;
+
       this.clickSlots = [];
       for (const slot of userClickSlots) {
         this.clickSlots.push(slot);
@@ -23,14 +25,14 @@ class FilesystemItem {
 
       this.nameField = document.createElement('div');
       this.nameField.classList.add('jfss-fsitem');
-      this.nameField.innerText = fsname;
+      this.nameField.innerText = this.filesysName;
       this.nameField.addEventListener('mouseenter', this.handleFsysHover.bind(this));
       this.nameField.addEventListener('mouseleave', this.handleFsysHover.bind(this));
       fsItem.appendChild(this.nameField);
 
       this.typeField = document.createElement('div');
       this.typeField.classList.add('jfss-fsitem');
-      this.typeField.innerText = fstype;
+      this.typeField.innerText = this.filesysType;
       fsItem.appendChild(this.typeField);
 
       fsItem.addEventListener('click', this.handleClick.bind(this));
@@ -49,7 +51,7 @@ class FilesystemItem {
 
     handleClick(_event: any) {
       for (const slot of this.clickSlots) {
-        slot(this.filesysName, this.filesysType);
+        slot(this.fsInfo);
       }
     }
   }

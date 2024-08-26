@@ -82,23 +82,25 @@ class FsspecWidget extends Widget {
   populateFilesystems() {
     console.log('POP FSs 1');
     console.log(this.model);
-    for (const [name, fsInfo] of Object.entries(this.model.userFilesystems)) {
-      this.addFilesystemItem(name, (fsInfo as any).type)
+
+    for (const key of Object.keys(this.model.userFilesystems)) {
+      let fsInfo = this.model.userFilesystems[key];
+      this.addFilesystemItem(fsInfo);
     }
 
     // this.addFilesystemItem('Hard Drive', 'Local');
     // this.addFilesystemItem('Cloud Lab Metrics', 'S3',);
   }
 
-  addFilesystemItem(fsname: string, fstype: string) {
-    let fsItem = new FilesystemItem(fsname, fstype, [this.handleFilesystemClicked.bind(this)]);
+  addFilesystemItem(fsInfo: any) {
+    let fsItem = new FilesystemItem(fsInfo, [this.handleFilesystemClicked.bind(this)]);
     // this.fsList[fsname] = fsItem;
     this.filesysContainer.appendChild(fsItem.element);
   }
 
-  async handleFilesystemClicked(fsname: string, fstype: string) {
-    this.model.setActiveFilesystem(fsname);
-    await this.populateTree(fsname);
+  async handleFilesystemClicked(fsInfo: any) {
+    this.model.setActiveFilesystem(fsInfo.name);
+    await this.populateTree(fsInfo.name);
   }
 
   async populateTree(fsname: string) {

@@ -67,18 +67,20 @@ class FileSystemHandler(APIHandler):
 
             if not key:
                 raise ValueError("Missing required parameter `key`")
-            if not item_path:
-                raise ValueError("Missing required parameter `item_path`")
-
-
+            # if not item_path:
+                # raise ValueError("Missing required parameter `item_path`")
+                
             fs = fs_manager.get_filesystem(key)
+
+            if not item_path:
+                item_path = fs_manager.filesystems[key]["path"]
 
             if fs is None:
                 raise ValueError(f"No filesystem found for key: {key}")
 
             result = fs_manager.read(key, item_path)
             self.set_status(result["status_code"])
-            self.write({"status": result["status"], "body": result["body"]})
+            self.write({"status": result["status"], "files": result["body"]})
             self.finish()
         except Exception as e:
             print("Error requesting read: ", e)
