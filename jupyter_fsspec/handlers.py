@@ -8,28 +8,68 @@ from .file_manager import FileSystemManager
 fs_manager = FileSystemManager('jupyter-fsspec.yaml')
 
 class FsspecConfigHandler(APIHandler):
+    """
+
+    Args:
+        APIHandler (_type_): _description_
+    """
     @tornado.web.authenticated
     def get(self):
+        """_summary_
+
+        Parameters
+        ----------
+            None
+
+        Returns
+        ----------
+        Object:
+            filesystems: []
+        """
         try:
             file_systems = [];
             for fs in fs_manager.filesystems:
                 fs_info = fs_manager.filesystems[fs]
                 instance = {"key": fs, 'name': fs_info['name'], 'type': fs_info['type'], 'path': fs_info['path'] }
                 file_systems.append(instance)
+
             self.set_status(200)
-            self.write({'status': 'success', 'filesystems': file_systems})
+            self.write({'filesystems': file_systems})
             self.finish()
         except Exception as e:
             self.set_status(500)
-            self.write({"status": "Error", "message": f"Error loading config: {str(e)}"})
+            self.write({"status": "error", "message": f"Error loading config: {str(e)}"})
             self.finish()
 
 class FileSystemHandler(APIHandler):
     @tornado.web.authenticated
     def get(self):
+        """_summary_
+
+        Parameters
+        ----------
+            Query Parameters: 
+                key: [String]
+                item_path: [String]
+
+        Returns
+        ----------
+        Object with two keys 
+
+        Raises
+        ----------
+            ValueError: _description_
+            ValueError: _description_
+        """
         try:
             key = self.get_argument('key')
             item_path = self.get_argument('item_path')
+
+            if not key:
+                raise ValueError("Missing required parameter `key`")
+            if not item_path:
+                raise ValueError("Missing required parameter `item_path`")
+
 
             fs = fs_manager.get_filesystem(key)
 
@@ -46,16 +86,118 @@ class FileSystemHandler(APIHandler):
             self.write({"status": "Error", "message": f"Error occurred: {str(e)}"})
             self.finish()
 
+    #TODO: add actions: write, move, copy (separate functions)
+    # move action: key, item_path, dest_path -> backend function deals with it being folder/file differences 
+    # copy action: key, item_path, dest_path -> backend function deals with it being folder/file differences
     @tornado.web.authenticated
-    def delete(self):
+    def post(self):
+        """_summary_
+
+        Parameters
+        ----------
+
+        Returns
+        ----------
+
+        Raises
+        ----------
+            ValueError: _description_
+            ValueError: _description_
+        """
+        try:
+            action = self.get_argument('action')
+            print(f"action is: {action}")
+            request_data = json.loads(self.request.body.decode('utf-8'))
+
+            key = request_data.get('key')
+            item_path = request_data.get('item_path')
+
+            if not (key) or not (item_path):
+                raise ValueError("Missing required parameter `key` or `item_path`")
+
+            content = request_data.get('content').encode('utf-8')
+            fs = fs_manager.get_filesystem(key)
+            if fs is None:
+                raise ValueError(f"No filesystem found for key: {key}")
+            if action == 'move':
+                print(f"move")
+            elif action == 'copy':
+                print('copy')
+            else: # assume write
+                result = fs_manager.write(key, item_path, content)
+
+            self.set_status(result["status_code"])
+            self.write({"status": result["status"]})
+            self.finish()
+        except Exception as e:
+            print(f"Error requesting post: ", e)
+            self.set_status(500)
+            self.write({"status": "Error", "message": f"Error occurred: {str(e)}"})
+            self.finish()
+
+    @tornado.web.authenticated
+    def put(self):
+        """_summary_
+
+        Parameters
+        ----------
+
+        Returns
+        ----------
+
+        Raises
+        ----------
+            ValueError: _description_
+            ValueError: _description_
+        """
         try:
             request_data = json.loads(self.request.body.decode('utf-8'))
 
             key = request_data.get('key')
             item_path = request_data.get('item_path')
 
-            if not (key):
-                raise ValueError("Missing required parameters")
+            if not (key) or not (item_path):
+                raise ValueError("Missing required parameter `key` or `item_path`")
+
+            content = request_data.get('content')
+
+            fs = fs_manager.get_filesystem(key)
+            if fs is None:
+                raise ValueError(f"No filesystem found for key: {key}")
+
+            result = fs_manager.update(key, item_path, content)
+
+            self.set_status(result["status_code"])
+            self.write({"status": result["status"]})
+            self.finish()
+        except Exception as e:
+            self.set_status(500)
+            self.write({"status": "Error", "message": f"Error occurred: {str(e)}"})
+            self.finish()
+
+    @tornado.web.authenticated
+    def delete(self):
+        """_summary_
+
+        Parameters
+        ----------
+
+        Returns
+        ----------
+
+        Raises
+        ----------
+            ValueError: _description_
+            ValueError: _description_
+        """
+        try:
+            request_data = json.loads(self.request.body.decode('utf-8'))
+
+            key = request_data.get('key')
+            item_path = request_data.get('item_path')
+
+            if not (key) or not (item_path):
+                raise ValueError("Missing required parameter `key` or `item_path`")
 
             fs = fs_manager.get_filesystem(key)
             if fs is None:
@@ -63,11 +205,11 @@ class FileSystemHandler(APIHandler):
 
             result = fs_manager.delete(key, item_path)
             self.set_status(result["status_code"])
-            self.write({"Status": result["status"]})
+            self.write({"status": result["status"]})
             self.finish()
         except ValueError as e:
             self.set_status(400)
-            self.write({"status": "Error", "message": f"{str(e)}"})
+            self.write({"error": f"{str(e)}"})
             self.finish()
         except Exception as e:
             self.set_status(500)
