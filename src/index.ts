@@ -1,3 +1,5 @@
+import * as path from "path";
+
 import {
   JupyterFrontEnd,
   JupyterFrontEndPlugin
@@ -10,6 +12,7 @@ import { FileManagerWidget } from './FileManager';
 
 import { FsspecModel } from './handler/fileOperations';
 import { FilesystemItem } from './FilesystemItem';
+// import { FssTreeItem } from './FssTreeItem';
 
 import { Widget } from '@lumino/widgets';
 
@@ -112,7 +115,7 @@ class FsspecWidget extends Widget {
     let pathInfos = await this.model.listActiveFilesystem();
     console.log('PATHINFOS');
     console.log(pathInfos);
-    let dirTree: any = this.buildTree(pathInfos.files);  // TODO missing files key
+    let dirTree: any = this.buildTree(pathInfos.files, this.model.userFilesystems[fsname].path);  // TODO missing files key
     console.log(JSON.stringify(dirTree));
     let buildTargets: any = {'/': [this.treeView, dirTree.children]};
     // Traverse iteratively
@@ -145,14 +148,14 @@ class FsspecWidget extends Widget {
     }
   }
 
-  buildTree(pathInfoList: any) {
+  buildTree(pathInfoList: any, rootPath: string) {
     // Take a list of path infos, return a nested dir tree dict
     let dirTree = {
       'path': '/',
       'children': {},
     };
     for (let pdata of pathInfoList) {
-      let name = pdata.name;
+      let name = path.relative(rootPath, pdata.name);
 
       // TODO: path sep normalization
       // Go segment by segment, building the nested path tree
@@ -172,7 +175,7 @@ class FsspecWidget extends Widget {
         else {
           let children = {};
           let metadata = {};
-          if (i == segments.lastIndexOf()) {
+          if (i == Math.max(0, segments.length - 1)) {
             metadata = pdata;
           }
           parentLocation[segment] = {
