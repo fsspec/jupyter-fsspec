@@ -56,6 +56,12 @@
   margin-bottom: .5rem;
 }
 
+.jfss-tree-item-container {
+  box-sizing: border-box;
+
+  display: flex;
+}
+
 .jfss-hseparator {
   box-sizing: border-box;
 
@@ -113,7 +119,7 @@
 .jfss-selectedFsLabel {
   width: 100%;
 
-  margin: .75rem .75rem 0 0;
+  margin: .75rem .75rem .75rem 0;
 }
 
 .jfss-fsitem {
