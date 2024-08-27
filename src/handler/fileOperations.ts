@@ -73,7 +73,10 @@ export class FsspecModel {
       throw new Error('No active filesystem set.');
     }
     try {
-      return await this.listDirectory(this.userFilesystems[this.activeFilesystem].key);
+      return await this.walkDirectory(
+        this.userFilesystems[this.activeFilesystem].key,
+        'find'
+      );
     } catch (error) {
       console.error('Failed to list currently active file system: ', error);
       return null;
@@ -95,6 +98,25 @@ export class FsspecModel {
       });
     } catch (error) {
       console.error(`Failed to fetch file content at ${path}: `, error);
+      return null;
+    }
+  }
+
+  async walkDirectory(
+    key: string,
+    type: string = '',
+    item_path: string = ''
+  ): Promise<any> {
+    let query = new URLSearchParams({ key, item_path });
+    if (type !== '') {
+      query = new URLSearchParams({ key, item_path, type });
+    }
+    try {
+      return await requestAPI<any>(`fsspec?${query.toString()}`, {
+        method: 'GET'
+      });
+    } catch (error) {
+      console.error(`Failed to list filesystem ${key}: `, error);
       return null;
     }
   }

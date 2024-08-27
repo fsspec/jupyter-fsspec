@@ -74,14 +74,19 @@ class FileSystemManager:
             return {"status_code": 200, "status": f"Success: Wrote {item_path}."}
 
 
-    def read(self, key, item_path: str): # readPath
+    def read(self, key, item_path: str, find: bool = False): # readPath
         fs_obj = self.get_filesystem(key)
         fs = fs_obj['instance']
 
         if not fs.exists(item_path):
             return {"status_code": 404, "status": f"Failed: Path {item_path} does not exist."}
         
-        if fs.isdir(item_path):
+        if fs.isdir(item_path) and find:
+            content = []
+            dir_ls = fs.find(item_path, maxdepth=None, withdirs=True, detail=False)
+            for path in dir_ls:
+                content.append(fs.info(path))
+        elif fs.isdir(item_path):
             content = []
             dir_ls = fs.ls(item_path)
             for path in dir_ls:
