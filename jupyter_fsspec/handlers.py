@@ -78,7 +78,11 @@ class FileSystemHandler(APIHandler):
             if fs is None:
                 raise ValueError(f"No filesystem found for key: {key}")
 
-            result = fs_manager.read(key, item_path)
+            if self.get_argument('type'):
+                result = fs_manager.read(key, item_path, find=True)
+            else:
+                result = fs_manager.read(key, item_path)
+
             self.set_status(result["status_code"])
             self.write({"status": result["status"], "files": result["body"]})
             self.finish()
