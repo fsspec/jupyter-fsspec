@@ -152,7 +152,7 @@ class FileSystemManager:
             fs.copy(item_path, dest_path, recursive=True)
         else:
             fs.copy(item_path, dest_path, recursive=False)
-        return {"status_code": 200, "status": f"Success: Moved {item_path} to path: {dest_path}."}
+        return {"status_code": 200, "status": f"Success: Copied {item_path} to path: {dest_path}."}
 
     # ===================================================
     # File/Folder Management Operations
