@@ -90,6 +90,32 @@ export class FsspecModel {
     }
   }
 
+  async getRangeContent(
+    key: string,
+    item_path: string,
+    type: string = 'range',
+    start: number,
+    end: number
+  ): Promise<any> {
+    try {
+      const query = new URLSearchParams({
+        key,
+        item_path,
+        type
+      });
+      const response = await requestAPI<any>(`fsspec?${query.toString()}`, {
+        method: 'GET',
+        headers: {
+          Range: `${start}-${end}`
+        }
+      });
+      console.log('response is: ', response);
+    } catch (error) {
+      console.error('Failed to fetch filysystems: ', error);
+      return null;
+    }
+  }
+
   async delete(key: string, item_path: string): Promise<any> {
     try {
       const reqBody = JSON.stringify({
