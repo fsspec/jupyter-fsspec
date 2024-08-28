@@ -4,6 +4,7 @@ import tornado
 import json
 
 from .file_manager import FileSystemManager
+from .utils import parse_range
 
 fs_manager = FileSystemManager('jupyter-fsspec.yaml')
 
@@ -42,7 +43,8 @@ class FileSystemHandler(APIHandler):
 
         :param [key]: [Query arg string corresponding to the appropriate filesystem instance]
         :param [item_path]: [Query arg string path to file or directory to be retrieved], defaults to [root path of the active filesystem]
-        :param [type]: [Query arg identifying the type of directory search], defaults to [empty string for one level deep directory contents and single file contents]
+        :param [type]: [Query arg identifying the type of directory search or file content retrieval
+        if type is "find" recursive files/directories listed; if type is "range", returns specified byte range content], defaults to [empty string for one level deep directory contents and single file entire contents]
 
         :raises [ValueError]: [Missing required key parameter]
         :raises [ValueError]: [No filesystem identified for provided key]
@@ -53,6 +55,7 @@ class FileSystemHandler(APIHandler):
         try:
             key = self.get_argument('key')
             item_path = self.get_argument('item_path')
+            type = self.get_argument('type')
 
             if not key:
                 raise ValueError("Missing required parameter `key`")
@@ -62,13 +65,25 @@ class FileSystemHandler(APIHandler):
             fs = fs_manager.get_filesystem(key)
 
             if not item_path:
-                item_path = fs_manager.filesystems[key]["path"]
+                if type is not 'range':
+                    item_path = fs_manager.filesystems[key]["path"]
+                else:
+                    raise ValueError("Missing required parameter `item_path`")
 
             if fs is None:
                 raise ValueError(f"No filesystem found for key: {key}")
 
-            if self.get_argument('type') == 'find':
+            if type == 'find':
                 result = fs_manager.read(key, item_path, find=True)
+            elif type == 'range': # add check for Range specific header
+                range_header = self.request.headers.get('Range')
+                start, end = parse_range(range_header)
+
+                result = fs_manager.open(key, item_path, start, end)
+                self.set_status(result["status_code"])
+                self.set_header('Content-Range', f'bytes {start}-{end}')
+                self.finish(result["data"])
+                return
             else:
                 result = fs_manager.read(key, item_path)
 
