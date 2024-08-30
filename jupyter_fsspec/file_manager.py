@@ -13,8 +13,9 @@ class FileSystemManager:
             with open(config_path, 'r') as file:
                 self.config = yaml.safe_load(file)
         except Exception as e:
-            raise RuntimeError(f"Failed to load config file: {e}")
-        
+            print(f"Error loading configuration file: {e}")
+            return None
+
         self.filesystems = {}
         self._initialize_filesystems()
 
@@ -66,12 +67,12 @@ class FileSystemManager:
             if fs.exists(new_dir_path):
                 return {"status_code": 409, "status": f"Failed: Path {item_path} already exists."}
             fs.mkdir(new_dir_path, create_parents=True)
-            return {"status_code": 200, "status": f"Success: Wrote {new_dir_path}."}
+            return {"status_code": 200, "response": {"status": "success", "description": f"Wrote {new_dir_path}."}}
         else:
             # TODO: Process content for different mime types correctly
             with fs.open(item_path, 'wb') as file:
                 file.write(content);
-            return {"status_code": 200, "status": f"Success: Wrote {item_path}."}
+            return {"status_code": 200, "response": {"status": "success", "description": f"Wrote {item_path}"}}
 
 
     def read(self, key, item_path: str, find: bool = False): # readPath
@@ -79,7 +80,7 @@ class FileSystemManager:
         fs = fs_obj['instance']
 
         if not fs.exists(item_path):
-            return {"status_code": 404, "status": f"Failed: Path {item_path} does not exist."}
+            return {"status_code": 404, "response": {"status": "failed", "error": "PATH_NOT_FOUND", "description": f"Path {item_path} does not exist."}}
         
         if fs.isdir(item_path) and find:
             content = []
@@ -96,7 +97,14 @@ class FileSystemManager:
                 content = file.read()
             content = content.decode('utf-8')
             # TODO: Process content for different mime types for request body eg. application/json
-        return {"status_code": 200, "status": f"Success: Read {item_path}.", "body": content}
+        return {"status_code": 200, "response": {"status": "success", "description": f"Read {item_path}", "content": content}}
+
+    # TODO:
+    def accessMemoryFS(self, key, item_path):
+        fs_obj = self.get_filesystem(key)
+        fs = fs_obj['instance']
+        content = 'Temporary Content: memory fs accessed'
+        return {"status_code": 200, "response": {"status": "success", "description": f"Read {item_path}", "content": content}}
 
 
     def update(self, key, item_path, content): #updateFile
@@ -104,12 +112,12 @@ class FileSystemManager:
         fs = fs_obj['instance']
         
         if fs.isdir(item_path):
-            return {"status_code": 400, "status": f"Failed: Path {item_path} is not a valid argument."}
+            return {"status_code": 400, "response": {"status": "failed", "error": "INVALID_PATH", "description": f"Directory Path {item_path} is not a valid argument."}}
         else:
             bcontent = content.encode('utf-8')
             with fs.open(item_path, 'wb') as file:
                 file.write(bcontent);
-        return {"status_code": 200, "status": f"Success: Updated {item_path}."}
+        return {"status_code": 200, "response": {"status": "success", "description": f"Updated {item_path}."}}
 
 
     def delete(self, key, item_path): # deletePath
@@ -117,46 +125,48 @@ class FileSystemManager:
         fs = fs_obj['instance']
 
         if not fs.exists(item_path):
-            return {"status_code": 404, "status": f"Failed: Path {item_path} does not exist."}
+            return {"status_code": 404, "response": {"status": "failed", "error": "PATH_NOT_FOUND", "description": f"Path {item_path} does not exist."}}
 
         if fs.isdir(item_path):
             fs.delete(item_path, recursive=True) #TODO: await fs._rm()
         else:
             fs.delete(item_path, recursive=False)
-        return {"status_code": 200, "status": f"Success: Deleted {item_path}."}
-
+        return {"status_code": 200, "response": {"status": "success", "description": f"Deleted {item_path}."}}
 
     def move(self, key, item_path, dest_path): # movePath
         fs_obj = self.get_filesystem(key)
         fs = fs_obj['instance']
 
         if not fs.exists(item_path):
-            return {"status_code": 404, "status": f"Failed: Path {item_path} does not exist."}
-        
+            return {"status_code": 404, "response": {"status": "failed", "error": "PATH_NOT_FOUND", "description": f"Path {item_path} does not exist."}}
+
         if fs.isdir(item_path):
             print(f"directory") 
             fs.mv(item_path, dest_path, recursive=True)
         else:
             print(f"file")
             fs.mv(item_path, dest_path, recursive=False)
-        return {"status_code": 200, "status": f"Success: Moved {item_path} to path: {dest_path}."}
+        return {"status_code": 200, "response": {"status": "success", "description": f"Moved {item_path} to path: {dest_path}."}}
     
     def copy(self, key, item_path, dest_path): # copyPath
         fs_obj = self.get_filesystem(key)
         fs = fs_obj['instance']
 
         if not fs.exists(item_path):
-            return {"status_code": 404, "status": f"Failed: Path {item_path} does not exist."}
-        
+            return {"status_code": 404, "response": {"status": "failed", "error": "PATH_NOT_FOUND", "description": f"Path {item_path} does not exist."}}
+
         if fs.isdir(item_path):
             fs.copy(item_path, dest_path, recursive=True)
         else:
             fs.copy(item_path, dest_path, recursive=False)
-        return {"status_code": 200, "status": f"Success: Copied {item_path} to path: {dest_path}."}
+        return {"status_code": 200, "response": {"status": "success", "description": f"Copied {item_path} to path: {dest_path}."}}
 
     def open(self, key, item_path, start, end):
         fs_obj = self.get_filesystem(key)
         fs = fs_obj['instance']
+
+        if not fs.exists(item_path):
+            return {"status_code": 404, "response": {"status": "failed", "error": "PATH_NOT_FOUND", "description": f"Path {item_path} does not exist."}}
 
         with fs.open(item_path, 'rb') as f:
             f.seek(start)
@@ -164,7 +174,8 @@ class FileSystemManager:
                 data = f.read()  # eof
             else:
                 data = f.read(int(end) - int(start) + 1)
-        return {"status_code": 206, "status": "Partial content success", "data": data.decode('utf-8')}
+        content = data.decode('utf-8')
+        return {"status_code": 206, "response": {"status": "success", "description": f"Partial content read from: {item_path}", "content": content}}
 
     # ===================================================
     # File/Folder Management Operations
