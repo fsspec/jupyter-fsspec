@@ -12,11 +12,11 @@ import { FileManagerWidget } from './FileManager';
 
 import { FsspecModel } from './handler/fileOperations';
 import { FilesystemItem } from './FilesystemItem';
-// import { FssTreeItem } from './FssTreeItem';
+import { FssTreeItem } from './FssTreeItem';
 
 import { Widget } from '@lumino/widgets';
 
-import { TreeItem, TreeView } from '@jupyter/web-components';
+import { TreeView } from '@jupyter/web-components';
 
 declare global {
   interface Window {
@@ -83,8 +83,8 @@ class FsspecWidget extends Widget {
   }
 
   populateFilesystems() {
-    console.log('POP FSs 1');
-    console.log(this.model);
+    // console.log('POP FSs 1');
+    // console.log(this.model);
 
     for (const key of Object.keys(this.model.userFilesystems)) {
       let fsInfo = this.model.userFilesystems[key];
@@ -113,10 +113,10 @@ class FsspecWidget extends Widget {
 
     // Fetch available files, populate tree
     let pathInfos = await this.model.listActiveFilesystem();
-    console.log('PATHINFOS');
-    console.log(pathInfos);
+    // console.log('PATHINFOS');
+    // console.log(pathInfos);
     let dirTree: any = this.buildTree(pathInfos.files, this.model.userFilesystems[fsname].path);  // TODO missing files key
-    console.log(JSON.stringify(dirTree));
+    // console.log(JSON.stringify(dirTree));
     let buildTargets: any = {'/': [this.treeView, dirTree.children]};
     // Traverse iteratively
     while (Object.keys(buildTargets).length > 0) {
@@ -132,9 +132,14 @@ class FsspecWidget extends Widget {
         // console.log(buildTargets[absPath]);
 
         for (let [pathSegment, pathInfo] of Object.entries(childPaths)) {
-          let item = new TreeItem();
-          item.innerText = pathSegment;
-          elemParent.appendChild(item);
+          let item = new FssTreeItem();
+          item.setText(pathSegment);
+          elemParent.appendChild(item.root);
+
+          if (Object.keys((pathInfo as any).children).length > 0 ||
+              ('type' in (pathInfo as any).metadata && (pathInfo as any).metadata.type == 'directory')) {
+            item.showDirSymbol(true);
+          }
 
           if (Object.keys((pathInfo as any).children).length > 0) {
             buildTargets[(pathInfo as any).path] = [item, (pathInfo as any).children];
