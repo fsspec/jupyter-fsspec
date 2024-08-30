@@ -158,6 +158,22 @@
   background-color: var(--jp-layout-color4);
 }
 
+.jfss-tree-context-menu {
+  background-color: purple;
+
+  width: 300;
+  height: 200;
+}
+
+.jfss-tree-context-item {
+  position: absolute;
+
+  width: 12rem;
+  height: 2.5rem;
+
+  background-color: greenyellow;
+}
+
 .jfss-filesys-item {
   width: 200px;
   height: 100px;

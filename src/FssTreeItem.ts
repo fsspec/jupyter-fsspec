@@ -1,6 +1,7 @@
 // Element for displaying a single fsspec tree entry
 
 import { TreeItem } from '@jupyter/web-components';
+import { FssContextMenu } from './treeContext';
 
 export class FssTreeItem {
     root: HTMLElement;
@@ -33,7 +34,7 @@ export class FssTreeItem {
         container.appendChild(nameLbl);
         this.nameLbl = nameLbl;
 
-        root.addEventListener('click', this.handleClick.bind(this));
+        root.addEventListener('contextmenu', this.handleContext.bind(this));
     }
 
     appendChild(elem: any) {
@@ -52,7 +53,9 @@ export class FssTreeItem {
         }
     }
 
-    handleClick() {
-        // TODO
+    handleContext() {
+        console.log('Fss Context');
+        let context = new FssContextMenu();
+        this.root.appendChild(context.root);
     }
 }
