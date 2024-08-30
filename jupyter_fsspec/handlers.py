@@ -4,6 +4,7 @@ import tornado
 import json
 
 from .file_manager import FileSystemManager
+from .utils import parse_range
 
 fs_manager = FileSystemManager('jupyter-fsspec.yaml')
 
@@ -15,16 +16,10 @@ class FsspecConfigHandler(APIHandler):
     """
     @tornado.web.authenticated
     def get(self):
-        """_summary_
+        """Retrieve filesystems information from configuration file.
 
-        Parameters
-        ----------
-            None
-
-        Returns
-        ----------
-        Object:
-            filesystems: []
+        :return: dict with filesystems key and list of filesystem information objects
+        :rtype: dict
         """
         try:
             file_systems = [];
@@ -44,26 +39,23 @@ class FsspecConfigHandler(APIHandler):
 class FileSystemHandler(APIHandler):
     @tornado.web.authenticated
     def get(self):
-        """_summary_
+        """Retrieve list of files for directories or contents for files.
 
-        Parameters
-        ----------
-            Query Parameters: 
-                key: [String]
-                item_path: [String]
+        :param [key]: [Query arg string corresponding to the appropriate filesystem instance]
+        :param [item_path]: [Query arg string path to file or directory to be retrieved], defaults to [root path of the active filesystem]
+        :param [type]: [Query arg identifying the type of directory search or file content retrieval
+        if type is "find" recursive files/directories listed; if type is "range", returns specified byte range content], defaults to [empty string for one level deep directory contents and single file entire contents]
 
-        Returns
-        ----------
-        Object with two keys 
+        :raises [ValueError]: [Missing required key parameter]
+        :raises [ValueError]: [No filesystem identified for provided key]
 
-        Raises
-        ----------
-            ValueError: _description_
-            ValueError: _description_
+        :return: dict with either list of files or file information under the `files` key-value pair and `status` key for reuest info  
+        :rtype: dict
         """
         try:
             key = self.get_argument('key')
             item_path = self.get_argument('item_path')
+            type = self.get_argument('type')
 
             if not key:
                 raise ValueError("Missing required parameter `key`")
@@ -73,13 +65,25 @@ class FileSystemHandler(APIHandler):
             fs = fs_manager.get_filesystem(key)
 
             if not item_path:
-                item_path = fs_manager.filesystems[key]["path"]
+                if type is not 'range':
+                    item_path = fs_manager.filesystems[key]["path"]
+                else:
+                    raise ValueError("Missing required parameter `item_path`")
 
             if fs is None:
                 raise ValueError(f"No filesystem found for key: {key}")
 
-            if self.get_argument('type'):
+            if type == 'find':
                 result = fs_manager.read(key, item_path, find=True)
+            elif type == 'range': # add check for Range specific header
+                range_header = self.request.headers.get('Range')
+                start, end = parse_range(range_header)
+
+                result = fs_manager.open(key, item_path, start, end)
+                self.set_status(result["status_code"])
+                self.set_header('Content-Range', f'bytes {start}-{end}')
+                self.finish(result["data"])
+                return
             else:
                 result = fs_manager.read(key, item_path)
 
@@ -93,22 +97,21 @@ class FileSystemHandler(APIHandler):
             self.finish()
 
     #TODO: add actions: write, move, copy (separate functions)
-    # move action: key, item_path, dest_path -> backend function deals with it being folder/file differences 
-    # copy action: key, item_path, dest_path -> backend function deals with it being folder/file differences
     @tornado.web.authenticated
     def post(self):
-        """_summary_
+        """Create directories/files or perform other directory/file operations like move and copy
 
-        Parameters
-        ----------
+        :param [key]: [request body property string used to retrieve the appropriate filesystem instance]
+        :param [item_path]: [request body property string path to file or directory to be retrieved], defaults to [root path of the active filesystem]
+        :param [content]: [request body property either file content, directory name, or destination path for advanced move and copy functions]
+        :param [action]: [query parameter ], defaults to ["write" string value for creating a directory or a file]
 
-        Returns
-        ----------
+        :raises [ValueError]: [Missing either of required parameters key or item_path]
+        :raises [ValueError]: [No filesystem identified for provided key]
+        :raises [ValueError]: [Required parameter does not match operation.]
 
-        Raises
-        ----------
-            ValueError: _description_
-            ValueError: _description_
+        :return: dict with request status indicator
+        :rtype: dict
         """
         try:
             action = self.get_argument('action')
@@ -122,11 +125,21 @@ class FileSystemHandler(APIHandler):
                 raise ValueError("Missing required parameter `key` or `item_path`")
 
             content = request_data.get('content').encode('utf-8')
+
             fs = fs_manager.get_filesystem(key)
             if fs is None:
                 raise ValueError(f"No filesystem found for key: {key}")
+
             if action == 'move':
                 print(f"move")
+                src_path = item_path
+                dest_path = content.decode('utf-8')
+                print(f"dest_path is: {dest_path}")
+                if not fs_manager.exists(key, dest_path):
+                    raise ValueError('Required parameter `content` is not a valid destination path for move action.')
+                else:
+                    fs_manager.move(key, src_path, content)
+                    result = {"status_code": 200, "status": "success!"}
             elif action == 'copy':
                 print('copy')
             else: # assume write
@@ -143,18 +156,17 @@ class FileSystemHandler(APIHandler):
 
     @tornado.web.authenticated
     def put(self):
-        """_summary_
+        """Update 
 
-        Parameters
-        ----------
+        :param [key]: [request body property string used to retrieve the appropriate filesystem instance]
+        :param [item_path]: [request body property string path to file to be retrieved]
+        :param [content]: [request body property with file content]
 
-        Returns
-        ----------
+        :raises [ValueError]: [Missing either of required parameters key or item_path]
+        :raises [ValueError]: [No filesystem identified for provided key]
 
-        Raises
-        ----------
-            ValueError: _description_
-            ValueError: _description_
+        :return: dict with request status indicator
+        :rtype: dict
         """
         try:
             request_data = json.loads(self.request.body.decode('utf-8'))
@@ -183,18 +195,16 @@ class FileSystemHandler(APIHandler):
 
     @tornado.web.authenticated
     def delete(self):
-        """_summary_
+        """Delete the resource at the input path.
 
-        Parameters
-        ----------
+        :param [key]: [request body property string used to retrieve the appropriate filesystem instance]
+        :param [item_path]: [request body property string path to file or directory to be retrieved]
 
-        Returns
-        ----------
+        :raises [ValueError]: [Missing either of required parameters key or item_path]
+        :raises [ValueError]: [No filesystem identified for provided key]
 
-        Raises
-        ----------
-            ValueError: _description_
-            ValueError: _description_
+        :return: dict with request status indicator
+        :rtype: dict
         """
         try:
             request_data = json.loads(self.request.body.decode('utf-8'))

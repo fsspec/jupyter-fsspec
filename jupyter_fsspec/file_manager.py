@@ -152,7 +152,19 @@ class FileSystemManager:
             fs.copy(item_path, dest_path, recursive=True)
         else:
             fs.copy(item_path, dest_path, recursive=False)
-        return {"status_code": 200, "status": f"Success: Moved {item_path} to path: {dest_path}."}
+        return {"status_code": 200, "status": f"Success: Copied {item_path} to path: {dest_path}."}
+
+    def open(self, key, item_path, start, end):
+        fs_obj = self.get_filesystem(key)
+        fs = fs_obj['instance']
+
+        with fs.open(item_path, 'rb') as f:
+            f.seek(start)
+            if end is None:
+                data = f.read()  # eof
+            else:
+                data = f.read(int(end) - int(start) + 1)
+        return {"status_code": 206, "status": "Partial content success", "data": data.decode('utf-8')}
 
     # ===================================================
     # File/Folder Management Operations

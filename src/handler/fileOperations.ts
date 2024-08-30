@@ -44,7 +44,7 @@ export class FsspecModel {
 
   async getStoredFilesystems(): Promise<any> {
     // Fetch list of filesystems stored in user's config file
-    let filesystems: any = {}
+    const filesystems: any = {};
     try {
       const fetchedFilesystems = await requestAPI<any>('config');
       console.log('Fetch FSs');
@@ -54,16 +54,238 @@ export class FsspecModel {
       for (const filesysInfo of fetchedFilesystems.filesystems) {
         if ('name' in filesysInfo) {
           filesystems[filesysInfo.name] = filesysInfo;
-          
         } else {
-          console.error(`Filesystem from config is missing a name: ${filesysInfo}`);
+          console.error(
+            `Filesystem from config is missing a name: ${filesysInfo}`
+          );
         }
       }
     } catch (error) {
       console.error('Failed to fetch filesystems: ', error);
     }
-    console.log(`getStoredFilesystems Returns: \n${JSON.stringify(filesystems)}`);
+    console.log(
+      `getStoredFilesystems Returns: \n${JSON.stringify(filesystems)}`
+    );
     return filesystems;
+  }
+
+  async getContent(
+    key: string,
+    item_path: string,
+    type: string = ''
+  ): Promise<any> {
+    try {
+      const query = new URLSearchParams({
+        key,
+        item_path,
+        type
+      });
+      const response = await requestAPI<any>(`fsspec?${query.toString()}`, {
+        method: 'GET'
+      });
+      console.log('response is: ', response);
+    } catch (error) {
+      console.error('Failed to fetch filysystems: ', error);
+      return null;
+    }
+  }
+
+  async getRangeContent(
+    key: string,
+    item_path: string,
+    type: string = 'range',
+    start: number,
+    end: number
+  ): Promise<any> {
+    try {
+      const query = new URLSearchParams({
+        key,
+        item_path,
+        type
+      });
+      const response = await requestAPI<any>(`fsspec?${query.toString()}`, {
+        method: 'GET',
+        headers: {
+          Range: `${start}-${end}`
+        }
+      });
+      console.log('response is: ', response);
+    } catch (error) {
+      console.error('Failed to fetch filysystems: ', error);
+      return null;
+    }
+  }
+
+  async delete(key: string, item_path: string): Promise<any> {
+    try {
+      const reqBody = JSON.stringify({
+        key,
+        item_path
+      });
+      const response = await requestAPI<any>('fsspec', {
+        method: 'DELETE',
+        body: reqBody,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('response is: ', response);
+    } catch (error) {
+      console.error('Failed to delete: ', error);
+      return null;
+    }
+  }
+
+  async deleteDir(key: string, item_path: string): Promise<any> {
+    try {
+      const reqBody = JSON.stringify({
+        key: key,
+        item_path
+      });
+      const response = await requestAPI<any>('fsspec', {
+        method: 'DELETE',
+        body: reqBody,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('response is: ', response);
+    } catch (error) {
+      console.error('Failed to delete: ', error);
+      return null;
+    }
+  }
+
+  async post(key: string, item_path: string, content: string): Promise<any> {
+    try {
+      console.log('post');
+      const reqBody = JSON.stringify({
+        key,
+        item_path,
+        content
+      });
+      const response = await requestAPI<any>('fsspec', {
+        method: 'POST',
+        body: reqBody,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('response is: ', response);
+    } catch (error) {
+      console.error('Failed to post: ', error);
+      return null;
+    }
+  }
+
+  async postDir(
+    key: string,
+    item_path: string,
+    content: string,
+    action: string = 'write'
+  ): Promise<any> {
+    try {
+      console.log('postDir');
+      const query = new URLSearchParams({
+        action: action
+      });
+      const reqBody = JSON.stringify({
+        key: key,
+        item_path,
+        content
+      });
+      const response = await requestAPI<any>(`fsspec?${query.toString()}`, {
+        method: 'POST',
+        body: reqBody,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('response is: ', response);
+    } catch (error) {
+      console.error('Failed to post: ', error);
+      return null;
+    }
+  }
+
+  // async update(
+  //   key: any = 'local%7CSourceDisk%7C.',
+  //   item_path = '',
+  //   content = ''
+  // ): Promise<any> {
+  //   try {
+  //     console.log('postDir');
+  //     const reqBody = JSON.stringify({
+  //       key: key,
+  //       item_path:
+  //         '/Users/rosioreyes/Desktop/notebooks/eg_notebooks/sample_dir',
+  //       content: 'fsspec_generated_folder'
+  //     });
+  //     const response = await requestAPI<any>('fsspec', {
+  //       method: 'PUT',
+  //       body: reqBody,
+  //       headers: {
+  //         'Content-Type': 'application/json'
+  //       }
+  //     });
+  //     console.log('response is: ', response);
+  //   } catch (error) {
+  //     console.error('Failed to post: ', error);
+  //     return null;
+  //   }
+  // }
+
+  /* TODO: modify, overwrites file entirely*/
+  async update(key: string, item_path: string, content: string): Promise<any> {
+    try {
+      console.log('postDir');
+      const reqBody = JSON.stringify({
+        key,
+        item_path,
+        content
+      });
+      const response = await requestAPI<any>('fsspec', {
+        method: 'PUT',
+        body: reqBody,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('response is: ', response);
+    } catch (error) {
+      console.error('Failed to post: ', error);
+      return null;
+    }
+  }
+
+  async move(
+    key: any = 'local%7CSourceDisk%7C.',
+    item_path: string,
+    content: string
+  ): Promise<any> {
+    try {
+      console.log('postDir');
+      const query = new URLSearchParams({
+        action: 'move'
+      });
+
+      const reqBody = JSON.stringify({
+        key,
+        item_path,
+        content
+      });
+      const response = await requestAPI<any>(`fsspec?${query.toString()}`, {
+        method: 'POST',
+        body: reqBody,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('response is: ', response);
+    } catch (error) {
+      console.error('Failed to post: ', error);
+      return null;
+    }
   }
 
   async listActiveFilesystem(): Promise<any> {
@@ -104,7 +326,7 @@ export class FsspecModel {
 
   async walkDirectory(
     key: string,
-    type: string = '',
+    type: string = 'find',
     item_path: string = ''
   ): Promise<any> {
     let query = new URLSearchParams({ key, item_path });
