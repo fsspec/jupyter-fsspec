@@ -29,11 +29,12 @@ class FsspecConfigHandler(APIHandler):
                 file_systems.append(instance)
 
             self.set_status(200)
-            self.write({'filesystems': file_systems})
+            self.write({'status': 'success', 'description': 'Retrieved available filesystems from configuration file.', 'content': file_systems})
             self.finish()
         except Exception as e:
-            self.set_status(500)
-            self.write({"status": "error", "message": f"Error loading config: {str(e)}"})
+            # TODO: update error messaging here to appropriately handle other types of exceptions.
+            self.set_status(404)
+            self.write({"response": {"status": "failed", "error": "FILE_NOT_FOUND", "description": f"Error loading config: {str(e)}"}})
             self.finish()
 
 class FileSystemHandler(APIHandler):
@@ -49,7 +50,7 @@ class FileSystemHandler(APIHandler):
         :raises [ValueError]: [Missing required key parameter]
         :raises [ValueError]: [No filesystem identified for provided key]
 
-        :return: dict with either list of files or file information under the `files` key-value pair and `status` key for reuest info  
+        :return: dict with either list of files or file information under the `files` key-value pair and `status` key for request info  
         :rtype: dict
         """
         try:
@@ -63,9 +64,18 @@ class FileSystemHandler(APIHandler):
                 # raise ValueError("Missing required parameter `item_path`")
                 
             fs = fs_manager.get_filesystem(key)
+            fs_type = fs['type']
+
+            # TODO:
+            if fs_type == 'memory':
+                print (f"accessed memory filesystem")
+                result = fs_manager.accessMemoryFS(key, item_path)
+                self.set_status(result['status_code'])
+                self.finish(result['response'])
+                return
 
             if not item_path:
-                if type is not 'range':
+                if type != 'range':
                     item_path = fs_manager.filesystems[key]["path"]
                 else:
                     raise ValueError("Missing required parameter `item_path`")
@@ -82,18 +92,19 @@ class FileSystemHandler(APIHandler):
                 result = fs_manager.open(key, item_path, start, end)
                 self.set_status(result["status_code"])
                 self.set_header('Content-Range', f'bytes {start}-{end}')
-                self.finish(result["data"])
+                self.finish(result['response'])
                 return
             else:
                 result = fs_manager.read(key, item_path)
 
             self.set_status(result["status_code"])
-            self.write({"status": result["status"], "files": result["body"]})
+            self.write(result['response'])
             self.finish()
+            return
         except Exception as e:
             print("Error requesting read: ", e)
             self.set_status(500)
-            self.write({"status": "Error", "message": f"Error occurred: {str(e)}"})
+            self.write({"status": "failed", "error": "ERROR_REQUESTING_READ", "description": f"Error occurred: {str(e)}"})
             self.finish()
 
     #TODO: add actions: write, move, copy (separate functions)
@@ -146,12 +157,12 @@ class FileSystemHandler(APIHandler):
                 result = fs_manager.write(key, item_path, content)
 
             self.set_status(result["status_code"])
-            self.write({"status": result["status"]})
+            self.write(result['response'])
             self.finish()
         except Exception as e:
             print(f"Error requesting post: ", e)
             self.set_status(500)
-            self.write({"status": "Error", "message": f"Error occurred: {str(e)}"})
+            self.write({"status": "failed", "error": "ERROR_REQUESTING_POST", "description": f"Error occurred: {str(e)}"})
             self.finish()
 
     @tornado.web.authenticated
@@ -186,11 +197,11 @@ class FileSystemHandler(APIHandler):
             result = fs_manager.update(key, item_path, content)
 
             self.set_status(result["status_code"])
-            self.write({"status": result["status"]})
+            self.write(result['response'])
             self.finish()
         except Exception as e:
             self.set_status(500)
-            self.write({"status": "Error", "message": f"Error occurred: {str(e)}"})
+            self.write({"status": "failed", "error": "ERROR_REQUESTING_PUT", "description": f"Error occurred: {str(e)}"})
             self.finish()
 
     @tornado.web.authenticated
@@ -221,15 +232,15 @@ class FileSystemHandler(APIHandler):
 
             result = fs_manager.delete(key, item_path)
             self.set_status(result["status_code"])
-            self.write({"status": result["status"]})
+            self.write(result['response'])
             self.finish()
         except ValueError as e:
             self.set_status(400)
-            self.write({"error": f"{str(e)}"})
+            self.write({"status": "failed", "error": "MISSING_PARAMETER", "description": f"{str(e)}"})
             self.finish()
         except Exception as e:
             self.set_status(500)
-            self.write({"status": "Error", "message": f"Error occurred: {str(e)}"})
+            self.write({"status": "failed", "error": "ERROR_REQUESTING_DELETE" , "description": f"Error occurred: {str(e)}"})
             self.finish()
 
 #====================================================================================
