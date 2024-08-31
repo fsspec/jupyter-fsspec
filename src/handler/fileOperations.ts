@@ -46,12 +46,13 @@ export class FsspecModel {
     // Fetch list of filesystems stored in user's config file
     const filesystems: any = {};
     try {
-      const fetchedFilesystems = await requestAPI<any>('config');
+      const response = await requestAPI<any>('config');
       console.log('Fetch FSs');
+      const fetchedFilesystems = response['content'];
       console.log(fetchedFilesystems);
 
       // Map names to filesys metadata
-      for (const filesysInfo of fetchedFilesystems.filesystems) {
+      for (const filesysInfo of fetchedFilesystems) {
         if ('name' in filesysInfo) {
           filesystems[filesysInfo.name] = filesysInfo;
         } else {

@@ -112,10 +112,11 @@ class FsspecWidget extends Widget {
     this.treeView.replaceChildren();
 
     // Fetch available files, populate tree
-    let pathInfos = await this.model.listActiveFilesystem();
+    const response = await this.model.listActiveFilesystem();
+    const pathInfos = response['content'];
     // console.log('PATHINFOS');
     // console.log(pathInfos);
-    let dirTree: any = this.buildTree(pathInfos.files, this.model.userFilesystems[fsname].path);  // TODO missing files key
+    let dirTree: any = this.buildTree(pathInfos, this.model.userFilesystems[fsname].path);  // TODO missing files key
     // console.log(JSON.stringify(dirTree));
     let buildTargets: any = {'/': [this.treeView, dirTree.children]};
     // Traverse iteratively
