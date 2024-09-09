@@ -11,6 +11,7 @@ export class FssContextMenu {
 
         let menuItem = document.createElement('div');
         menuItem.classList.add('jfss-tree-context-item');
+        menuItem.innerText = 'Click me!';
         root.appendChild(menuItem);
 
         root.addEventListener('click', this.handleClick.bind(this));
