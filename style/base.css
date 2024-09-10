@@ -68,7 +68,7 @@
   width: 100%;
   height: .1rem;
 
-  background-color: var(--jp-layout-color4);
+  background-color: var(--jp-border-color3);
 }
 
 .jfss-lowerarea {
@@ -156,6 +156,36 @@
 
   color: var(--jp-ui-inverse-font-color0);
   background-color: var(--jp-layout-color4);
+}
+
+.jfss-tree-context-menu {
+  position: absolute;
+
+  /* padding: .5rem; */
+
+  border-width: var(--jp-border-width);
+  border-color: var(--jp-border-color3);
+  border-style: solid;
+
+  /* background-color: orange; */
+  /* background-color: var(--jp-layout-color0); */
+  /* width: 10rem;
+  height: 200px; */
+
+  /* background-color: purple; */
+}
+
+.jfss-tree-context-item {
+  width: 10rem;
+  height: 1.5rem;
+
+  padding: .25rem;
+
+  border-width: 0 0 var(--jp-border-width) 0;
+  border-color: var(--jp-border-color3);
+  border-style: solid;
+
+  background-color: var(--jp-layout-color1);
 }
 
 .jfss-filesys-item {
