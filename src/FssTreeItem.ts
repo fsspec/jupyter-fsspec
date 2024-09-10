@@ -4,7 +4,7 @@ import { TreeItem } from '@jupyter/web-components';
 import { FssContextMenu } from './treeContext';
 
 export class FssTreeItem {
-    root: HTMLElement;
+    root: any;
     // icon: HTMLElement;
     nameLbl: HTMLElement;
     dirSymbol: HTMLElement;
@@ -43,6 +43,10 @@ export class FssTreeItem {
         this.root.appendChild(elem);
     }
 
+    setMetadata(value: string) {
+        this.root.dataset.fss = value;
+    }
+
     setText(value: string) {
         this.nameLbl.innerText = value;
     }
@@ -56,7 +60,7 @@ export class FssTreeItem {
     }
 
     handleContext(event: any) {
-        console.log('Fss Context');
+        // console.log('Fss Context');
         // Prevent ancestors from adding extra context boxes
         event.stopPropagation();
 
@@ -68,20 +72,18 @@ export class FssTreeItem {
 
         // Make/add the context menu
         let context = new FssContextMenu();
+        context.root.dataset.fss = this.root.dataset.fss;
         let body = document.getElementsByTagName('body')[0];
         body.appendChild(context.root);
 
         // Position it under the mouse (top left corner normally,
         // or bottom right if that corner is out-of-viewport)
-        let eventX = event.clientX;
-        let eventY = event.clientY;
         let parentRect = body.getBoundingClientRect();
         let contextRect = context.root.getBoundingClientRect();
-        let xCoord = eventX - parentRect.x;
-        let yCoord = eventY - parentRect.y;
+        let xCoord = event.clientX - parentRect.x;
+        let yCoord = event.clientY - parentRect.y;
         let spacing = 12;
         if (xCoord + contextRect.width > window.innerWidth || yCoord + contextRect.height > window.innerHeight) {
-            console.log('Context EXCEEDS');
             // Context menu is cut off when positioned under mouse at top left corner,
             // use the bottom right corner instead
             xCoord -= contextRect.width;
@@ -90,7 +92,6 @@ export class FssTreeItem {
             xCoord += spacing;
             yCoord += spacing;
         } else {
-            console.log('Context FITS');
             // Shift the menu so the mouse is inside it, not at the corner/edge
             xCoord -= spacing;
             yCoord -= spacing;

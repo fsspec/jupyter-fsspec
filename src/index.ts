@@ -134,6 +134,7 @@ class FsspecWidget extends Widget {
 
         for (let [pathSegment, pathInfo] of Object.entries(childPaths)) {
           let item = new FssTreeItem();
+          item.setMetadata((pathInfo as any).path);
           item.setText(pathSegment);
           elemParent.appendChild(item.root);
 
@@ -185,7 +186,7 @@ class FsspecWidget extends Widget {
             metadata = pdata;
           }
           parentLocation[segment] = {
-            'path': '/' + subpath.join('/'),
+            'path': pdata.name,
             'children': children,
             'metadata': metadata,
           };

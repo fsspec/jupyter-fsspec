@@ -161,14 +161,14 @@
 .jfss-tree-context-menu {
   position: absolute;
 
-  /* padding: .5rem; */
+  padding: .25rem;
 
   border-width: var(--jp-border-width);
   border-color: var(--jp-border-color3);
   border-style: solid;
 
   /* background-color: orange; */
-  /* background-color: var(--jp-layout-color0); */
+  background-color: var(--jp-layout-color0);
   /* width: 10rem;
   height: 200px; */
 
@@ -176,8 +176,11 @@
 }
 
 .jfss-tree-context-item {
+  display: flex;
+  align-items: center;
+
   width: 10rem;
-  height: 1.5rem;
+  height: 1.2rem;
 
   padding: .25rem;
 
