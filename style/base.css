@@ -155,7 +155,7 @@
   border-radius: .1rem;
 
   color: var(--jp-ui-inverse-font-color0);
-  background-color: var(--jp-layout-color4);
+  /* background-color: var(--jp-layout-color4); */
 }
 
 .jfss-tree-context-menu {
