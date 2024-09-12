@@ -1,6 +1,8 @@
 // Element for displaying a single fsspec tree entry
 
 import { TreeItem } from '@jupyter/web-components';
+import { fileIcon, folderIcon } from '@jupyterlab/ui-components';
+
 import { FssContextMenu } from './treeContext';
 
 export class FssTreeItem {
@@ -21,7 +23,7 @@ export class FssTreeItem {
 
         let dirSymbol = document.createElement('div');
         dirSymbol.classList.add('jfss-dir-symbol');
-        dirSymbol.innerText = 'D';
+        // dirSymbol.innerText = 'D';
         container.appendChild(dirSymbol);
         dirSymbol.style.visibility = 'hidden';
         this.dirSymbol = dirSymbol;
@@ -51,11 +53,23 @@ export class FssTreeItem {
         this.nameLbl.innerText = value;
     }
 
-    showDirSymbol(state: boolean) {
-        if (state) {
-            this.dirSymbol.style.visibility = 'visible';
-        } else {
-            this.dirSymbol.style.visibility = 'hidden';
+    // showDirSymbol(state: boolean) {
+    //     if (state) {
+    //         this.dirSymbol.style.visibility = 'visible';
+    //     } else {
+    //         this.dirSymbol.style.visibility = 'hidden';
+    //     }
+    // }
+
+    setSymbol(symbol: 'dir' | 'file') {
+        this.dirSymbol.replaceChildren();
+        this.dirSymbol.style.visibility = 'visible';
+
+        if (symbol == 'dir') {
+            folderIcon.element({container: this.dirSymbol});
+        }
+        if (symbol == 'file') {
+            fileIcon.element({container: this.dirSymbol});
         }
     }
 
