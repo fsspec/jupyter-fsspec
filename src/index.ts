@@ -112,7 +112,7 @@ class FsspecWidget extends Widget {
     this.treeView.replaceChildren();
 
     // Fetch available files, populate tree
-    const response = await this.model.listActiveFilesystem();
+    const response = await this.model.listDirectory(this.model.userFilesystems[this.model.activeFilesystem].key);
     const pathInfos = response['content'];
     // console.log('PATHINFOS');
     // console.log(pathInfos);

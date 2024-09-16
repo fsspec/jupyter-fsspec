@@ -347,8 +347,8 @@ export class FsspecModel {
     }
   }
 
-  async listDirectory(key: string, item_path: string = ''): Promise<any> {
-    const query = new URLSearchParams({ key, item_path });
+  async listDirectory(key: string, item_path: string = '', type: string = ''): Promise<any> {
+    const query = new URLSearchParams({ key, item_path, type});
 
     try {
       return await requestAPI<any>(`fsspec?${query.toString()}`, {
