@@ -84,21 +84,14 @@ class FsspecWidget extends Widget {
   }
 
   populateFilesystems() {
-    // console.log('POP FSs 1');
-    // console.log(this.model);
-
     for (const key of Object.keys(this.model.userFilesystems)) {
       let fsInfo = this.model.userFilesystems[key];
       this.addFilesystemItem(fsInfo);
     }
-
-    // this.addFilesystemItem('Hard Drive', 'Local');
-    // this.addFilesystemItem('Cloud Lab Metrics', 'S3',);
   }
 
   addFilesystemItem(fsInfo: any) {
     let fsItem = new FilesystemItem(fsInfo, [this.handleFilesystemClicked.bind(this)]);
-    // this.fsList[fsname] = fsItem;
     this.filesysContainer.appendChild(fsItem.element);
   }
 
@@ -108,34 +101,35 @@ class FsspecWidget extends Widget {
   }
 
   getNodeForPath(source_path: string) {
-    console.log(`GETNODE ${source_path}`)
+    // Traverse the dir tree and get the node for the supplied path
     let nodeForPath: any = null;
+    // Dir tree nodes store a path relative to the fs root directly on the node (with
+    // an absolute path stored elsewhere, in the metadata attribute). Children of nodes
+    // are keyed by path segment from their parent (so at the node for a folder "my_data",
+    // a child path "my_data/salinity.csv" has a key "salinity.csv" in the node's children
+    // leading to that node).
+    // 
+    // Here, we get the supplied path relative to fs root, then split it into path segments,
+    // and start traversing the dir tree using those segments to find the next child node
+    // (so if "/my_cool/root_directory" is the fs root, "/my_cool/root_directory/data_files/userfile.dat"
+    // will start looking for the "data_files" child node first.
     let relPathFromFsRoot = path.relative(this.model.getActiveFilesystemInfo().path, source_path);
-    console.log(`RPATH ${relPathFromFsRoot}`)
 
     // Traverse nodes using the source path's segments
     let currentNode = this.dirTree;
     for (const segment of relPathFromFsRoot.split('/').filter((c: any) => c.length > 0)) {
       if (segment in currentNode['children']) {
-        console.log(`SEG FOUND // ${segment} in ${currentNode.metadata.path}`);
         currentNode = currentNode['children'][segment]
       } else {
-        console.log(`SEG NOT FOUND // ${segment} in ${Object.keys(currentNode.children)}`);
         break;
       }
     }
 
-    console.log(`HAX ${JSON.stringify(currentNode)}`);
-
     // Check if the desired node was found, set result if so
     if (currentNode.metadata.name == source_path) {
-      console.log('MATCH');
       nodeForPath = currentNode;
-      console.log(`PTH ${relPathFromFsRoot} == ${currentNode.path}`);
-      console.log(currentNode);
     }
 
-    console.log(`XNODE children :: ${nodeForPath}`)
     return nodeForPath;
   }
 
