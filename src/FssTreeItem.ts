@@ -11,10 +11,13 @@ export class FssTreeItem {
     nameLbl: HTMLElement;
     dirSymbol: HTMLElement;
     container: HTMLElement;
+    clickSlots: any;
+    isDir = false;
 
-    constructor() {
+    constructor(clickSlots: any) {
         let root = new TreeItem();
         this.root = root;
+        this.clickSlots = clickSlots;
 
         let container = document.createElement('div');
         container.classList.add('jfss-tree-item-container');
@@ -39,6 +42,7 @@ export class FssTreeItem {
         this.nameLbl = nameLbl;
 
         root.addEventListener('contextmenu', this.handleContext.bind(this));
+        root.addEventListener('click', this.handleClick.bind(this), true);
     }
 
     appendChild(elem: any) {
@@ -67,10 +71,27 @@ export class FssTreeItem {
 
         if (symbol == 'dir') {
             folderIcon.element({container: this.dirSymbol});
+            this.isDir = true;
         }
         if (symbol == 'file') {
             fileIcon.element({container: this.dirSymbol});
         }
+    }
+
+    handleClick(event: any) {
+        console.log('I LIKE PI');
+
+        if (this.isDir) {
+            for (let slot of this.clickSlots) {
+                slot(this.root.dataset.fss);
+            }
+        }
+
+        // if (!event.hasOwnProperty('fsspec')) {
+        //     let newEvent = Object.assign({fsspec: true}, event);
+        //     newEvent.target = this.root;
+        //     this.root.dispatchEvent(new MouseEvent('click', newEvent));
+        // }
     }
 
     handleContext(event: any) {
@@ -82,6 +103,8 @@ export class FssTreeItem {
         // as per usual JupyterLab conventions)
         if (!event.shiftKey) {
             event.preventDefault();
+        } else {
+            return;
         }
 
         // Make/add the context menu

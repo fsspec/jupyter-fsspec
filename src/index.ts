@@ -32,6 +32,7 @@ class FsspecWidget extends Widget {
   treeView: any;
   filesysContainer: any;
   // stubToggle = false;
+  dirTree: any = {};
 
   constructor(model: any) {
     super();
@@ -106,17 +107,68 @@ class FsspecWidget extends Widget {
     await this.populateTree(fsInfo.name);
   }
 
+  getNodeForPath(source_path: string) {
+    console.log(`GETNODE ${source_path}`)
+    let nodeForPath: any = null;
+    let relPathFromFsRoot = path.relative(this.model.getActiveFilesystemInfo().path, source_path);
+    console.log(`RPATH ${relPathFromFsRoot}`)
+
+    // Traverse nodes using the source path's segments
+    let currentNode = this.dirTree;
+    for (const segment of relPathFromFsRoot.split('/').filter((c: any) => c.length > 0)) {
+      if (segment in currentNode['children']) {
+        console.log(`SEG FOUND // ${segment} in ${currentNode.metadata.path}`);
+        currentNode = currentNode['children'][segment]
+      } else {
+        console.log(`SEG NOT FOUND // ${segment} in ${Object.keys(currentNode.children)}`);
+        break;
+      }
+    }
+
+    console.log(`HAX ${JSON.stringify(currentNode)}`);
+
+    // Check if the desired node was found, set result if so
+    if (currentNode.metadata.name == source_path) {
+      console.log('MATCH');
+      nodeForPath = currentNode;
+      console.log(`PTH ${relPathFromFsRoot} == ${currentNode.path}`);
+      console.log(currentNode);
+    }
+
+    console.log(`XNODE children :: ${nodeForPath}`)
+    return nodeForPath;
+  }
+
+  async lazyLoad(source_path: string) {
+    console.log(`Calling lazy load for ${path}`);
+
+    // TODO validate response
+    const response = await this.model.listDirectory(this.model.userFilesystems[this.model.activeFilesystem].key, source_path);
+    console.log(JSON.stringify(response));
+
+    let nodeForPath = this.getNodeForPath(source_path);
+    nodeForPath;
+
+    if (!nodeForPath.fetch) {
+      this.updateTree(nodeForPath, response['content'], this.model.getActiveFilesystemInfo().path);
+      nodeForPath.fetch = true;  // TODO check this
+      console.log(`HAXY ${JSON.stringify(nodeForPath)}`);
+    }
+  }
+
   async populateTree(fsname: string) {
     // Update current filesystem disp label and empty tree view
     this.selectedFsLabel.innerText = `Files for: ${fsname}`;
     this.treeView.replaceChildren();
 
     // Fetch available files, populate tree
+    // const response = await this.model.listActiveFilesystem();
     const response = await this.model.listDirectory(this.model.userFilesystems[this.model.activeFilesystem].key);
     const pathInfos = response['content'];
     // console.log('PATHINFOS');
     // console.log(pathInfos);
     let dirTree: any = this.buildTree(pathInfos, this.model.userFilesystems[fsname].path);  // TODO missing files key
+    this.dirTree = dirTree;
     // console.log(JSON.stringify(dirTree));
     let buildTargets: any = {'/': [this.treeView, dirTree.children]};
     // Traverse iteratively
@@ -133,7 +185,7 @@ class FsspecWidget extends Widget {
         // console.log(buildTargets[absPath]);
 
         for (let [pathSegment, pathInfo] of Object.entries(childPaths)) {
-          let item = new FssTreeItem();
+          let item = new FssTreeItem([this.lazyLoad.bind(this)]);
           item.setMetadata((pathInfo as any).path);
           item.setText(pathSegment);
           elemParent.appendChild(item.root);
@@ -157,12 +209,10 @@ class FsspecWidget extends Widget {
     }
   }
 
-  buildTree(pathInfoList: any, rootPath: string) {
-    // Take a list of path infos, return a nested dir tree dict
-    let dirTree = {
-      'path': '/',
-      'children': {},
-    };
+  updateTree(tree: any, pathInfoList: any, rootPath: string) {
+    // Update a given tree or subtree by building/populating
+    // a nested tree structure based on the provided pathInfos
+    let dirTree = tree;
     for (let pdata of pathInfoList) {
       let name = path.relative(rootPath, pdata.name);
 
@@ -191,11 +241,26 @@ class FsspecWidget extends Widget {
             'path': pdata.name,
             'children': children,
             'metadata': metadata,
+            'fetch': false
           };
           parentLocation = parentLocation[segment]['children']
         }
       }
     }
+    return dirTree;
+  }
+
+  buildTree(pathInfoList: any, rootPath: string) {
+    // Start building a new directory tree structure from scratch,
+    // update/populate it using a list of pathInfos ([path + metadata] items)
+    let dirTree = {
+      'path': '/',
+      'children': {},
+      'fetch': true,
+      'metadata': {path: rootPath}
+    };
+    this.updateTree(dirTree, pathInfoList, rootPath);
+
     return dirTree;
   }
 

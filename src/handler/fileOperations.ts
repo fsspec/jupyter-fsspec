@@ -42,6 +42,10 @@ export class FsspecModel {
     return this.activeFilesystem;
   }
 
+  getActiveFilesystemInfo(): string {
+    return this.userFilesystems[this.activeFilesystem];
+  }
+
   async getStoredFilesystems(): Promise<any> {
     // Fetch list of filesystems stored in user's config file
     const filesystems: any = {};
