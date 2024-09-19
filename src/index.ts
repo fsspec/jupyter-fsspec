@@ -192,9 +192,9 @@ class FsspecWidget extends Widget {
 
           if (Object.keys((pathInfo as any).children).length > 0 ||
               ('type' in (pathInfo as any).metadata && (pathInfo as any).metadata.type == 'directory')) {
-            item.setSymbol('dir');
+            item.setType('dir');
           } else {
-            item.setSymbol('file');
+            item.setType('file');
           }
 
           if (Object.keys((pathInfo as any).children).length > 0) {
