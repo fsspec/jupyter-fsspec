@@ -97,7 +97,7 @@ class FsspecWidget extends Widget {
 
   async handleFilesystemClicked(fsInfo: any) {
     this.model.setActiveFilesystem(fsInfo.name);
-    await this.populateTree(fsInfo.name);
+    await this.fetchAndDisplayFileInfo(fsInfo.name);
   }
 
   getNodeForPath(source_path: string) {
@@ -134,36 +134,37 @@ class FsspecWidget extends Widget {
   }
 
   async lazyLoad(source_path: string) {
+    // Fetch files for a given folder and update the dir tree with the results
     console.log(`Calling lazy load for ${path}`);
-
-    // TODO validate response
     const response = await this.model.listDirectory(this.model.userFilesystems[this.model.activeFilesystem].key, source_path);
+    if (!('status' in response) || !(response.status == 'success') || !('content' in response)) {
+      // TODO refactor validation
+      console.log(`Error fetching files for path ${source_path}`);  // TODO jupyter info print
+      return;
+    }
     console.log(JSON.stringify(response));
 
+    // Get the dir tree node for this path (updates go into this subtree)
     let nodeForPath = this.getNodeForPath(source_path);
-    nodeForPath;
-
-    if (!nodeForPath.fetch) {
+    if (!nodeForPath.fetch) {  // Only fetch if this hasn't been fetched before
+      // Update the dir tree/data
       this.updateTree(nodeForPath, response['content'], this.model.getActiveFilesystemInfo().path);
-      nodeForPath.fetch = true;  // TODO check this
+      nodeForPath.fetch = true;
       console.log(`HAXY ${JSON.stringify(nodeForPath)}`);
     }
+
+    // Update the TreeView in the UI
+    await this.updateFileBrowserView();
   }
 
-  async populateTree(fsname: string) {
-    // Update current filesystem disp label and empty tree view
-    this.selectedFsLabel.innerText = `Files for: ${fsname}`;
+  async updateFileBrowserView() {
+    // Re-populate the tree view using the current fs data/dir tree
+
+    // Empty the TreeView first
     this.treeView.replaceChildren();
 
-    // Fetch available files, populate tree
-    // const response = await this.model.listActiveFilesystem();
-    const response = await this.model.listDirectory(this.model.userFilesystems[this.model.activeFilesystem].key);
-    const pathInfos = response['content'];
-    // console.log('PATHINFOS');
-    // console.log(pathInfos);
-    let dirTree: any = this.buildTree(pathInfos, this.model.userFilesystems[fsname].path);  // TODO missing files key
-    this.dirTree = dirTree;
-    // console.log(JSON.stringify(dirTree));
+    // Starting with the root of the dir tree, populate the TreeView with children
+    let dirTree: any = this.dirTree;
     let buildTargets: any = {'/': [this.treeView, dirTree.children]};
     // Traverse iteratively
     while (Object.keys(buildTargets).length > 0) {
@@ -201,6 +202,24 @@ class FsspecWidget extends Widget {
         delete buildTargets[item];
       }
     }
+  }
+
+  async fetchAndDisplayFileInfo(fsname: string) {
+    // Fetch files for this filesystem
+    const response = await this.model.listDirectory(this.model.userFilesystems[this.model.activeFilesystem].key);
+    if (!('status' in response) || !(response.status == 'success') || !('content' in response)) {
+      // TODO refactor validation
+      console.log(`Error fetching files for filesystem ${fsname}`);  // TODO jupyter info print
+      return;
+    }
+    const pathInfos = response['content'];
+
+    // Update current filesystem display label
+    this.selectedFsLabel.innerText = `Files for: ${fsname}`;
+
+    // Build a directory tree and update the display
+    this.dirTree = this.buildTree(pathInfos, this.model.userFilesystems[fsname].path);
+    this.updateFileBrowserView();
   }
 
   updateTree(tree: any, pathInfoList: any, rootPath: string) {
