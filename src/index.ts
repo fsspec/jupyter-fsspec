@@ -30,6 +30,7 @@ class FsspecWidget extends Widget {
   // fsList: any;
   selectedFsLabel: any;
   treeView: any;
+  elementHeap: any;
   filesysContainer: any;
   // stubToggle = false;
   dirTree: any = {};
@@ -135,7 +136,7 @@ class FsspecWidget extends Widget {
 
   async lazyLoad(source_path: string) {
     // Fetch files for a given folder and update the dir tree with the results
-    console.log(`Calling lazy load for ${path}`);
+    console.log(`Calling lazy load for ${source_path}`);
     const response = await this.model.listDirectory(this.model.userFilesystems[this.model.activeFilesystem].key, source_path);
     if (!('status' in response) || !(response.status == 'success') || !('content' in response)) {
       // TODO refactor validation
@@ -146,26 +147,46 @@ class FsspecWidget extends Widget {
 
     // Get the dir tree node for this path (updates go into this subtree)
     let nodeForPath = this.getNodeForPath(source_path);
+    console.log(`LZtree b4 ${JSON.stringify}`);
+    if (!nodeForPath) {
+      console.log(`Error: Bad path for ${source_path}`);
+      return;
+    }
     if (!nodeForPath.fetch) {  // Only fetch if this hasn't been fetched before
       // Update the dir tree/data
       this.updateTree(nodeForPath, response['content'], this.model.getActiveFilesystemInfo().path);
       nodeForPath.fetch = true;
-      console.log(`HAXY ${JSON.stringify(nodeForPath)}`);
+      console.log(`LZtree aft ${JSON.stringify(nodeForPath)}`);
+    }
+    else {
+      // Already fetched this child path, ignore and return
+      return;
     }
 
     // Update the TreeView in the UI
-    await this.updateFileBrowserView();
+    await this.updateFileBrowserView(nodeForPath);
   }
 
-  async updateFileBrowserView() {
-    // Re-populate the tree view using the current fs data/dir tree
-
-    // Empty the TreeView first
-    this.treeView.replaceChildren();
-
-    // Starting with the root of the dir tree, populate the TreeView with children
+  async updateFileBrowserView(startNode: any=null) {
+    // Update/sync the tree view with the file data for this filesys
     let dirTree: any = this.dirTree;
     let buildTargets: any = {'/': [this.treeView, dirTree.children]};
+
+    console.log(`B4 updat\n${startNode?.ui.children}`);
+
+    // Set up either a partial update (from a given start node), or
+    // a complete tear down and repopulate from scratch (for new data)
+    if (startNode) {
+      dirTree = startNode;
+      let startPath = startNode.path;
+      buildTargets = {};
+      buildTargets[startPath] = [startNode.ui, startNode.children];
+
+      console.log(`SPATH ${startPath} // ${startNode.children}`);
+    } else {
+      this.treeView.replaceChildren();
+    }
+
     // Traverse iteratively
     while (Object.keys(buildTargets).length > 0) {
       // Start with root, add children
@@ -183,6 +204,7 @@ class FsspecWidget extends Widget {
           let item = new FssTreeItem([this.lazyLoad.bind(this)]);
           item.setMetadata((pathInfo as any).path);
           item.setText(pathSegment);
+          (pathInfo as any).ui = item;
           elemParent.appendChild(item.root);
 
           if (Object.keys((pathInfo as any).children).length > 0 ||
@@ -202,6 +224,7 @@ class FsspecWidget extends Widget {
         delete buildTargets[item];
       }
     }
+    console.log(`AF updat\n${startNode?.ui.children}`);
   }
 
   async fetchAndDisplayFileInfo(fsname: string) {
@@ -254,7 +277,8 @@ class FsspecWidget extends Widget {
             'path': pdata.name,
             'children': children,
             'metadata': metadata,
-            'fetch': false
+            'fetch': false,
+            'ui': null,
           };
           parentLocation = parentLocation[segment]['children']
         }
@@ -270,7 +294,8 @@ class FsspecWidget extends Widget {
       'path': '/',
       'children': {},
       'fetch': true,
-      'metadata': {path: rootPath}
+      'metadata': {path: rootPath},
+      'ui': null,
     };
     this.updateTree(dirTree, pathInfoList, rootPath);
 
