@@ -24,13 +24,24 @@ declare global {
   }
 }
 
+
+class UniqueId {
+  static _id_val = -1;
+
+  static get_id() {
+    UniqueId._id_val += 1;
+    return UniqueId._id_val;
+  }
+}
+
+
 class FsspecWidget extends Widget {
   upperArea: any;
   model: any;
   // fsList: any;
   selectedFsLabel: any;
   treeView: any;
-  elementHeap: any;
+  elementHeap: any = {};
   filesysContainer: any;
   // stubToggle = false;
   dirTree: any = {};
@@ -154,7 +165,7 @@ class FsspecWidget extends Widget {
     }
     if (!nodeForPath.fetch) {  // Only fetch if this hasn't been fetched before
       // Update the dir tree/data
-      this.updateTree(nodeForPath, response['content'], this.model.getActiveFilesystemInfo().path);
+      this.updateTree(nodeForPath, response['content'], source_path);
       nodeForPath.fetch = true;
       console.log(`LZtree aft ${JSON.stringify(nodeForPath)}`);
     }
@@ -167,12 +178,18 @@ class FsspecWidget extends Widget {
     await this.updateFileBrowserView(nodeForPath);
   }
 
+  getElementForNode(ident: any) {
+    return this.elementHeap[ident.toString()];
+  }
+
   async updateFileBrowserView(startNode: any=null) {
     // Update/sync the tree view with the file data for this filesys
     let dirTree: any = this.dirTree;
     let buildTargets: any = {'/': [this.treeView, dirTree.children]};
 
-    console.log(`B4 updat\n${startNode?.ui.children}`);
+    if (startNode) {
+      console.log(`B4 updat\n${this.getElementForNode(startNode.id).root.children}`);
+    }
 
     // Set up either a partial update (from a given start node), or
     // a complete tear down and repopulate from scratch (for new data)
@@ -180,7 +197,7 @@ class FsspecWidget extends Widget {
       dirTree = startNode;
       let startPath = startNode.path;
       buildTargets = {};
-      buildTargets[startPath] = [startNode.ui, startNode.children];
+      buildTargets[startPath] = [this.getElementForNode(startNode.id), startNode.children];
 
       console.log(`SPATH ${startPath} // ${startNode.children}`);
     } else {
@@ -204,8 +221,13 @@ class FsspecWidget extends Widget {
           let item = new FssTreeItem([this.lazyLoad.bind(this)]);
           item.setMetadata((pathInfo as any).path);
           item.setText(pathSegment);
-          (pathInfo as any).ui = item;
+          // (pathInfo as any).ui = item;
           elemParent.appendChild(item.root);
+
+          // Store ID and element in the element heap
+          let item_id = UniqueId.get_id();
+          (pathInfo as any).id = item_id;
+          this.elementHeap[item_id.toString()] = item;
 
           if (Object.keys((pathInfo as any).children).length > 0 ||
               ('type' in (pathInfo as any).metadata && (pathInfo as any).metadata.type == 'directory')) {
@@ -224,7 +246,9 @@ class FsspecWidget extends Widget {
         delete buildTargets[item];
       }
     }
-    console.log(`AF updat\n${startNode?.ui.children}`);
+    if (startNode) {
+      console.log(`AF updat\n${this.getElementForNode(startNode.id).root.children}`);
+    }
   }
 
   async fetchAndDisplayFileInfo(fsname: string) {
@@ -278,7 +302,7 @@ class FsspecWidget extends Widget {
             'children': children,
             'metadata': metadata,
             'fetch': false,
-            'ui': null,
+            'id': null,
           };
           parentLocation = parentLocation[segment]['children']
         }
@@ -287,15 +311,21 @@ class FsspecWidget extends Widget {
     return dirTree;
   }
 
+  clearFileData() {
+    this.dirTree = {};
+    this.elementHeap = {};
+  }
+
   buildTree(pathInfoList: any, rootPath: string) {
     // Start building a new directory tree structure from scratch,
     // update/populate it using a list of pathInfos ([path + metadata] items)
+    this.clearFileData();
     let dirTree = {
       'path': '/',
       'children': {},
       'fetch': true,
       'metadata': {path: rootPath},
-      'ui': null,
+      'id': null,
     };
     this.updateTree(dirTree, pathInfoList, rootPath);
 
