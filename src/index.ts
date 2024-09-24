@@ -18,12 +18,13 @@ import { Widget } from '@lumino/widgets';
 
 import { TreeView } from '@jupyter/web-components';
 
+import { Logger } from "./logger"
+
 declare global {
   interface Window {
     fsspecModel: FsspecModel;
   }
 }
-
 
 class UniqueId {
   static _id_val = -1;
@@ -33,7 +34,6 @@ class UniqueId {
     return UniqueId._id_val;
   }
 }
-
 
 class FsspecWidget extends Widget {
   upperArea: any;
@@ -147,30 +147,31 @@ class FsspecWidget extends Widget {
 
   async lazyLoad(source_path: string) {
     // Fetch files for a given folder and update the dir tree with the results
-    console.log(`Calling lazy load for ${source_path}`);
+    Logger.info(`Calling lazy load for ${source_path}`);
     const response = await this.model.listDirectory(this.model.userFilesystems[this.model.activeFilesystem].key, source_path);
     if (!('status' in response) || !(response.status == 'success') || !('content' in response)) {
       // TODO refactor validation
-      console.log(`Error fetching files for path ${source_path}`);  // TODO jupyter info print
+      Logger.error(`Error fetching files for path ${source_path}`);  // TODO jupyter info print
       return;
     }
-    console.log(JSON.stringify(response));
+    Logger.debug(`Response: (${JSON.stringify(response)})`);
 
     // Get the dir tree node for this path (updates go into this subtree)
     let nodeForPath = this.getNodeForPath(source_path);
-    console.log(`LZtree b4 ${JSON.stringify}`);
+    Logger.debug(`Found node: ${JSON.stringify(nodeForPath)}`);
     if (!nodeForPath) {
-      console.log(`Error: Bad path for ${source_path}`);
+      Logger.error(`Error: Bad path for ${source_path}`);
       return;
     }
     if (!nodeForPath.fetch) {  // Only fetch if this hasn't been fetched before
       // Update the dir tree/data
       this.updateTree(nodeForPath, response['content'], source_path);
       nodeForPath.fetch = true;
-      console.log(`LZtree aft ${JSON.stringify(nodeForPath)}`);
+      Logger.debug(`After fetch: ${JSON.stringify(nodeForPath)}`);
     }
     else {
       // Already fetched this child path, ignore and return
+      Logger.info('Skipping lazy load, already fetched for ${source_path}');
       return;
     }
 
@@ -184,12 +185,9 @@ class FsspecWidget extends Widget {
 
   async updateFileBrowserView(startNode: any=null) {
     // Update/sync the tree view with the file data for this filesys
+    Logger.info('Updating file browser view');
     let dirTree: any = this.dirTree;
     let buildTargets: any = {'/': [this.treeView, dirTree.children]};
-
-    if (startNode) {
-      console.log(`B4 updat\n${this.getElementForNode(startNode.id).root.children}`);
-    }
 
     // Set up either a partial update (from a given start node), or
     // a complete tear down and repopulate from scratch (for new data)
@@ -199,7 +197,6 @@ class FsspecWidget extends Widget {
       buildTargets = {};
       buildTargets[startPath] = [this.getElementForNode(startNode.id), startNode.children];
 
-      console.log(`SPATH ${startPath} // ${startNode.children}`);
     } else {
       this.treeView.replaceChildren();
     }
@@ -245,9 +242,6 @@ class FsspecWidget extends Widget {
       for (const item of deleteQueue) {
         delete buildTargets[item];
       }
-    }
-    if (startNode) {
-      console.log(`AF updat\n${this.getElementForNode(startNode.id).root.children}`);
     }
   }
 
@@ -356,6 +350,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     settingRegistry: ISettingRegistry | null
   ) => {
     console.log('JupyterLab extension jupyterFsspec is activated!');
+    Logger.setLevel(Logger.DEBUG)
 
     let fsspecModel = new FsspecModel();
     await fsspecModel.initialize();
