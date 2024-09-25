@@ -15,7 +15,6 @@ export class FsspecModel {
   userFilesystems: any = {};
 
   constructor() {
-    // this.initialize();
   }
 
   async initialize() {
@@ -27,7 +26,7 @@ export class FsspecModel {
         this.activeFilesystem = Object.keys(this.userFilesystems)[0];
       }
     } catch (error) {
-      console.error('Failed to initialized FsspecModel: ', error);
+      console.error('Failed to initialize FsspecModel: ', error);
     }
   }
 
@@ -40,6 +39,10 @@ export class FsspecModel {
 
   getActiveFilesystem(): string {
     return this.activeFilesystem;
+  }
+
+  getActiveFilesystemInfo(): string {
+    return this.userFilesystems[this.activeFilesystem];
   }
 
   async getStoredFilesystems(): Promise<any> {

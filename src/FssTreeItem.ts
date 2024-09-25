@@ -11,34 +11,37 @@ export class FssTreeItem {
     nameLbl: HTMLElement;
     dirSymbol: HTMLElement;
     container: HTMLElement;
+    clickSlots: any;
+    isDir = false;
 
-    constructor() {
+    constructor(clickSlots: any) {
+        // The TreeItem component is the root and handles
+        // tree structure functionality in the UI
         let root = new TreeItem();
         this.root = root;
+        this.clickSlots = clickSlots;
 
+        // The main container holds custom fsspec UI/functionality
         let container = document.createElement('div');
         container.classList.add('jfss-tree-item-container');
         root.appendChild(container);
         this.container = container
 
+        // Reserve space in the layout for the file/folder icon
         let dirSymbol = document.createElement('div');
         dirSymbol.classList.add('jfss-dir-symbol');
-        // dirSymbol.innerText = 'D';
         container.appendChild(dirSymbol);
         dirSymbol.style.visibility = 'hidden';
         this.dirSymbol = dirSymbol;
 
-        // let icon = document.createElement('img');
-        // icon.innerText = 'D+'
-        // icon.setAttribute('src', 'style/file_icon_dummy.png');
-        // container.appendChild(icon);
-        // this.icon = icon;
-
+        // Show the name of this file/folder (a single path segment)
         let nameLbl = document.createElement('div');
         container.appendChild(nameLbl);
         this.nameLbl = nameLbl;
 
+        // Add click and right click handlers to the tree component
         root.addEventListener('contextmenu', this.handleContext.bind(this));
+        root.addEventListener('click', this.handleClick.bind(this), true);
     }
 
     appendChild(elem: any) {
@@ -53,28 +56,29 @@ export class FssTreeItem {
         this.nameLbl.innerText = value;
     }
 
-    // showDirSymbol(state: boolean) {
-    //     if (state) {
-    //         this.dirSymbol.style.visibility = 'visible';
-    //     } else {
-    //         this.dirSymbol.style.visibility = 'hidden';
-    //     }
-    // }
-
-    setSymbol(symbol: 'dir' | 'file') {
+    setType(symbol: 'dir' | 'file') {
         this.dirSymbol.replaceChildren();
         this.dirSymbol.style.visibility = 'visible';
 
         if (symbol == 'dir') {
             folderIcon.element({container: this.dirSymbol});
+            this.isDir = true;
         }
         if (symbol == 'file') {
             fileIcon.element({container: this.dirSymbol});
+            this.isDir = false;
+        }
+    }
+
+    handleClick(event: any) {
+        if (this.isDir) {
+            for (let slot of this.clickSlots) {
+                slot(this.root.dataset.fss);
+            }
         }
     }
 
     handleContext(event: any) {
-        // console.log('Fss Context');
         // Prevent ancestors from adding extra context boxes
         event.stopPropagation();
 
@@ -82,6 +86,8 @@ export class FssTreeItem {
         // as per usual JupyterLab conventions)
         if (!event.shiftKey) {
             event.preventDefault();
+        } else {
+            return;
         }
 
         // Make/add the context menu
