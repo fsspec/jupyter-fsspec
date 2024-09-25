@@ -38,12 +38,10 @@ class UniqueId {
 class FsspecWidget extends Widget {
   upperArea: any;
   model: any;
-  // fsList: any;
   selectedFsLabel: any;
   treeView: any;
   elementHeap: any = {};
   filesysContainer: any;
-  // stubToggle = false;
   dirTree: any = {};
 
   constructor(model: any) {
