@@ -1,4 +1,5 @@
 import { requestAPI } from './handler';
+import { Logger } from "../logger"
 
 /*
 interface IFilesystemConfig {
@@ -10,24 +11,56 @@ interface IFilesystemConfig {
 }
   */
 
+declare global {
+  interface Window {
+    fsspecModel: FsspecModel;
+  }
+}
+
 export class FsspecModel {
   activeFilesystem: string = '';
   userFilesystems: any = {};
 
-  constructor() {
+  async initialize(automatic: boolean=true, retry=3) {
+    if (automatic) {
+      // Perform automatic setup: Fetch filesystems from config and store
+      // this model on the window as global application state
+      this.storeApplicationState();
+
+      // Attempt to read and store user config values
+      this.userFilesystems = {};
+      try {
+        for (let i = 0; i < retry; i++) {
+
+          Logger.info('[FSSpec] Attempting to read config file...');
+          let result = await this.getStoredFilesystems();
+          if (result?.status == 'success') {
+            // TODO report config entry errors
+            Logger.info(`[FSSpec] Successfully retrieved config:${JSON.stringify(result)}`);
+            this.userFilesystems = result.filesystems;
+
+            // Set active filesystem to first
+            if (Object.keys(result).length > 0) {
+              this.activeFilesystem = Object.keys(this.userFilesystems)[0];
+            }
+            break;
+          } else {
+            // TODO handle no config file
+            Logger.error('[FSSpec] Error fetching filesystems from user config');
+            if (i + 1 < retry) {
+              Logger.info('[FSSpec]   retrying...');
+            }
+          }
+        }
+      } catch (error) {
+        Logger.error(`[FSSpec] Error: Unknown error initializing fsspec model:\n${error}`);
+      }
+    }
   }
 
-  async initialize() {
-    try {
-      this.userFilesystems = await this.getStoredFilesystems();
-      console.log('filesystem list is: ', JSON.stringify(this.userFilesystems));
-      // Optional to set first filesystem as active.
-      if (Object.keys(this.userFilesystems).length > 0) {
-        this.activeFilesystem = Object.keys(this.userFilesystems)[0];
-      }
-    } catch (error) {
-      console.error('Failed to initialize FsspecModel: ', error);
-    }
+  // Store model on the window as global app state
+  storeApplicationState() {
+    window.fsspecModel = this;
   }
 
   // ====================================================================
@@ -47,30 +80,44 @@ export class FsspecModel {
 
   async getStoredFilesystems(): Promise<any> {
     // Fetch list of filesystems stored in user's config file
-    const filesystems: any = {};
+    let filesystems: any = {};
+    let result = {
+      'filesystems': filesystems,
+      'status': 'success',
+    };
     try {
       const response = await requestAPI<any>('config');
-      console.log('Fetch FSs');
-      const fetchedFilesystems = response['content'];
-      console.log(fetchedFilesystems);
-
-      // Map names to filesys metadata
-      for (const filesysInfo of fetchedFilesystems) {
-        if ('name' in filesysInfo) {
-          filesystems[filesysInfo.name] = filesysInfo;
-        } else {
-          console.error(
-            `Filesystem from config is missing a name: ${filesysInfo}`
-          );
+      Logger.debug(`[FSSpec] Request config:\n${JSON.stringify(response)}`);
+      if (response?.status == 'success' && response?.content) {
+        for (const filesysInfo of response.content) {
+          if (filesysInfo?.name) {
+            Logger.debug(`[FSSpec] Found filesystem: ${JSON.stringify(filesysInfo)}`)
+            filesystems[filesysInfo.name] = filesysInfo;
+          } else {
+            // TODO better handling for partial errors
+            Logger.error( `[FSSpec] Error, filesystem from config is missing a name: ${filesysInfo}`);
+          }
         }
+      } else {
+        Logger.error(`[FSSpec] Error fetching config from server...`);
       }
+      // // const fetchedFilesystems = response['content'];
+      // // console.log(fetchedFilesystems);
+      // // Map names to filesys metadata
+      // for (const filesysInfo of fetchedFilesystems) {
+      //   if ('name' in filesysInfo) {
+      //     filesystems[filesysInfo.name] = filesysInfo;
+      //   } else {
+      //     console.error(
+      //       `Filesystem from config is missing a name: ${filesysInfo}`
+      //     );
+      //   }
+      // }
     } catch (error) {
-      console.error('Failed to fetch filesystems: ', error);
+      Logger.error(`[FSSpec] Error: Unknown error fetching config:\n${error}`);
     }
-    console.log(
-      `getStoredFilesystems Returns: \n${JSON.stringify(filesystems)}`
-    );
-    return filesystems;
+
+    return result;
   }
 
   async getContent(
@@ -351,16 +398,19 @@ export class FsspecModel {
   }
 
   async listDirectory(key: string, item_path: string = '', type: string = ''): Promise<any> {
-    const query = new URLSearchParams({ key, item_path, type});
+    const query = new URLSearchParams({ key, item_path, type }).toString();
+    let result = null;
 
+    Logger.debug(`[FSSpec] Fetching files -> ${query}`);
     try {
-      return await requestAPI<any>(`fsspec?${query.toString()}`, {
+      result = await requestAPI<any>(`fsspec?${query}`, {
         method: 'GET'
       });
     } catch (error) {
-      console.error(`Failed to list filesystem ${key}: `, error);
-      return null;
+      Logger.error(`[FSSpec] Failed to list filesystem ${error}: `);
     }
+
+    return result;
   }
 
   async updateFile(
