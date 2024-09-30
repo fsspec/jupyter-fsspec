@@ -94,6 +94,7 @@ class FsspecWidget extends Widget {
   }
 
   populateFilesystems() {
+    Logger.debug(`[FSSpec] Populate filesystems: \n${JSON.stringify(this.model.userFilesystems)}`);
     for (const key of Object.keys(this.model.userFilesystems)) {
       let fsInfo = this.model.userFilesystems[key];
       this.addFilesystemItem(fsInfo);
@@ -147,7 +148,7 @@ class FsspecWidget extends Widget {
     // Fetch files for a given folder and update the dir tree with the results
     Logger.info(`Calling lazy load for ${source_path}`);
     const response = await this.model.listDirectory(this.model.userFilesystems[this.model.activeFilesystem].key, source_path);
-    if (!('status' in response) || !(response.status == 'success') || !('content' in response)) {
+    if (response?.status != 'success' || !response?.content) {
       // TODO refactor validation
       Logger.error(`Error fetching files for path ${source_path}`);  // TODO jupyter info print
       return;
@@ -350,24 +351,25 @@ const plugin: JupyterFrontEndPlugin<void> = {
     console.log('JupyterLab extension jupyterFsspec is activated!');
     Logger.setLevel(Logger.DEBUG)
 
+    // Auto initialize the model
     let fsspecModel = new FsspecModel();
     await fsspecModel.initialize();
-    window.fsspecModel = fsspecModel;
-
+    // Use the model to initialize the widget and add to the UI
     let fsspec_widget = new FsspecWidget(fsspecModel);
     fsspec_widget.id = 'jupyterFsspec:widget'
     app.shell.add(fsspec_widget, 'right');
 
-    if (settingRegistry) {
-      settingRegistry
-        .load(plugin.id)
-        .then(settings => {
-          console.log('jupyterFsspec settings loaded:', settings.composite);
-        })
-        .catch(reason => {
-          console.error('Failed to load settings for jupyterFsspec.', reason);
-        });
-    }
+    // // TODO finish this
+    // if (settingRegistry) {
+    //   settingRegistry
+    //     .load(plugin.id)
+    //     .then(settings => {
+    //       Logger.info(`[FSSpec] Settings loaded: ${settings.composite}`);
+    //     })
+    //     .catch(reason => {
+    //       Logger.error(`[FSSpec] Failed to load settings for jupyterFsspec: ${reason}`);
+    //     });
+    // }
 
     const { commands } = app;
     const commandToolkit = 'jupyter_fsspec:open-toolkit';
