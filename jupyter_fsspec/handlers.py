@@ -243,6 +243,26 @@ class FileSystemHandler(APIHandler):
             self.write({"status": "failed", "error": "ERROR_REQUESTING_DELETE" , "description": f"Error occurred: {str(e)}"})
             self.finish()
 
+
+class TestHandler(APIHandler):
+
+    @tornado.web.authenticated
+    async def get(self):
+        import fsspec
+        body = self.get_json_body()
+        print(body)
+        cls = fsspec.get_filesystem_class("http")
+        if cls.async_impl:
+            fs = fsspec.filesystem("http", asynchronous=True)
+        else:
+            fs = fsspec.filesystem("file")
+        self.set_status(200)
+        if fs.async_impl:
+            self.write(await fs._cat("https://anaconda.com"))
+        else:
+            self.write(fs.cat(body["path"]))
+        await self.finish()
+
 #====================================================================================
 # Update the handler in setup
 #====================================================================================
@@ -252,5 +272,8 @@ def setup_handlers(web_app):
     base_url = web_app.settings["base_url"]
     route_fsspec_config = url_path_join(base_url, "jupyter_fsspec", "config")
     route_fsspec = url_path_join(base_url, "jupyter_fsspec", "fsspec")
-    handlers = [(route_fsspec_config, FsspecConfigHandler), (route_fsspec, FileSystemHandler)]
+    route_test_files = url_path_join(base_url, "jupyter_fsspec", "test")
+    print("Entering fsspec handler, ",  web_app.settings["base_url"])
+    handlers = [(route_fsspec_config, FsspecConfigHandler), (route_fsspec, FileSystemHandler),
+                (route_test_files, TestHandler)]
     web_app.add_handlers(host_pattern, handlers)
