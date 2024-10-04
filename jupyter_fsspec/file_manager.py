@@ -22,15 +22,14 @@ class FileSystemManager:
     def _encode_key(self, fs_config):
         fs_path = fs_config['path'].strip('/')
 
-        combined = f"{fs_config['type']}|{fs_config['name']}|{fs_path}"
+        combined = f"{fs_config['type']}|{fs_path}"
         encoded_key = urllib.parse.quote(combined, safe='')
         return encoded_key
 
-    #TODO: verify
     def _decode_key(self, encoded_key):
         combined = urllib.parse.unquote(encoded_key)
-        fs_type, fs_name, fs_path = combined.split('|', 2)
-        return fs_type, fs_name, fs_path
+        fs_type, fs_path = combined.split('|', 1)
+        return fs_type, fs_path
 
     def _initialize_filesystems(self):
         for fs_config in self.config['sources']:
@@ -43,6 +42,8 @@ class FileSystemManager:
 
             # Init filesystem
             fs = fsspec.filesystem(fs_type, **options)
+            if fs_type == 'memory':
+                fs.mkdir(fs_path)
 
             # Store the filesystem instance
             self.filesystems[key] = {"instance": fs, "name": fs_name, "type": fs_type, "path": fs_path}

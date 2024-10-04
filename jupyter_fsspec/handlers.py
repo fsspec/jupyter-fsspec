@@ -8,6 +8,38 @@ from .utils import parse_range
 
 fs_manager = FileSystemManager('jupyter-fsspec.yaml')
 
+class BaseFileSystemHandler(APIHandler):
+    fs_manager = fs_manager
+
+    def validate_fs(self, request_type):
+        """Retrieve the filesystem instance and path of the item
+
+        :raises [ValueError]: [Missing required key parameter]
+        :raises [ValueError]: [No filesystem identified for provided key]
+        :raises [ValueError]: [No filesystem identified for provided key]
+
+        :return: filesystem instance and item_path 
+        :rtype: fsspec filesystem instance and string 
+        """
+        key = self.get_argument('key', None)
+        item_path = self.get_argument('item_path', None)
+
+        if not key:
+                raise ValueError("Missing required parameter `key`")
+
+        fs = fs_manager.get_filesystem(key)
+
+        if not item_path:
+            if type != 'range' and request_type == 'get':
+                item_path = fs_manager.filesystems[key]["path"]
+            else:
+                raise ValueError("Missing required parameter `item_path`")
+
+        if fs is None:
+            raise ValueError(f"No filesystem found for key: {key}")
+        
+        return fs, item_path
+
 class FsspecConfigHandler(APIHandler):
     """
 
@@ -66,7 +98,6 @@ class FileSystemHandler(APIHandler):
             fs = fs_manager.get_filesystem(key)
             fs_type = fs['type']
 
-            # TODO:
             if fs_type == 'memory':
                 print (f"accessed memory filesystem")
                 result = fs_manager.accessMemoryFS(key, item_path)
@@ -107,7 +138,6 @@ class FileSystemHandler(APIHandler):
             self.write({"status": "failed", "error": "ERROR_REQUESTING_READ", "description": f"Error occurred: {str(e)}"})
             self.finish()
 
-    #TODO: add actions: write, move, copy (separate functions)
     @tornado.web.authenticated
     def post(self):
         """Create directories/files or perform other directory/file operations like move and copy
@@ -243,6 +273,165 @@ class FileSystemHandler(APIHandler):
             self.write({"status": "failed", "error": "ERROR_REQUESTING_DELETE" , "description": f"Error occurred: {str(e)}"})
             self.finish()
 
+class FileReadHandler(BaseFileSystemHandler):
+    # GET
+    # /files
+    def get(self):
+        """Retrieve list of files for directories or contents for files.
+
+        :param [key]: [Query arg string corresponding to the appropriate filesystem instance]
+        :param [item_path]: [Query arg string path to file or directory to be retrieved], defaults to [root path of the active filesystem]
+        :param [type]: [Optional query arg identifying the type of directory search or file content retrieval
+        if type is "find" recursive files/directories listed; 
+        if type is "range", returns specified byte range content;
+        defaults to "default" for one level deep directory contents and single file entire contents]
+
+        :return: dict with a status, description and content/error
+            content being a list of files, file information  
+        :rtype: dict
+        """
+        # GET /jupyter_fsspec/files?key=my-key&item_path=/some_directory/of_interest
+        # GET /jupyter_fsspec/files?key=my-key&item_path=/some_directory/file.txt
+        # GET /jupyter_fsspec/files?key=my-key&item_path=/some_directory/file.txt&type=range
+            # content header specifying the byte range
+        try:
+            key = self.get_argument('key')
+            item_path = self.get_argument('item_path')
+            type = self.get_argument('type', default='default')
+
+ 
+            fs, item_path = self.validate_fs('get')
+
+            if type == 'find':
+                result = fs_manager.read(key, item_path, find=True)
+            elif type == 'range': # add check for Range specific header
+                range_header = self.request.headers.get('Range')
+                start, end = parse_range(range_header)
+
+                result = fs_manager.open(key, item_path, start, end)
+                self.set_status(result["status_code"])
+                self.set_header('Content-Range', f'bytes {start}-{end}')
+                self.finish(result['response'])
+                return
+            else:
+                result = fs_manager.read(key, item_path)
+
+            self.set_status(result["status_code"])
+            self.write(result['response'])
+            self.finish()
+            return
+        except Exception as e:
+            print("Error requesting read: ", e)
+            self.set_status(500)
+            self.send_response({"status": "failed", "error": "ERROR_REQUESTING_READ", "description": f"Error occurred: {str(e)}"})
+
+class FileWriteHandler(APIHandler):
+    # POST /jupyter_fsspec/files?key=my-key&item_path=/some_directory/file.txt
+        # JSON Payload
+            # content
+    def post(self):
+        """Create directories/files or perform other directory/file operations like move and copy
+
+        :param [key]: [Query arg string used to retrieve the appropriate filesystem instance]
+        :param [item_path]: [Query arg string path to file or directory to be retrieved]
+        :param [content]: [Request body property file content, or directory name]
+
+        :return: dict with a status, description and (optionally) error
+        :rtype: dict
+        """
+        key = self.get_argument('key')
+        item_path = self.get_argument('item_path')
+        request_data = json.loads(self.request.body.decode('utf-8'))
+        content = request_data.get('content')
+
+        fs, item_path = self.validate_fs('post')
+
+        result = fs_manager.write(key, item_path, content)
+
+        self.set_status(result["status_code"])
+        self.write(result['response'])
+        self.finish()
+
+    # PUT /jupyter_fsspec/files?key=my-key&item_path=/some_directory/file.txt
+        # JSON Payload
+            # content
+    def put(self):
+        """Update content in file.
+
+        :param [key]: [Query arg string used to retrieve the appropriate filesystem instance]
+        :param [item_path]: [Query arg string path to file or directory to be retrieved]
+        :param [content]: [Request body property file content]
+
+        :return: dict with a status, description and (optionally) error
+        :rtype: dict
+        """
+        key = self.get_argument('key')
+        item_path = self.get_argument('item_path')
+        request_data = json.loads(self.request.body.decode('utf-8'))
+        content = request_data.get('content')
+
+        fs, item_path = self.validate_fs('put')
+
+        result = fs_manager.write(key, item_path, content)
+
+        self.set_status(result["status_code"])
+        self.write(result['response'])
+        self.finish()
+
+class FileDeleteHandler(APIHandler):
+    # DELETE /jupyter_fsspec/files?key=my-key&item_path=/some_directory/file.txt
+    def delete(self):
+        """Delete the resource at the input path.
+
+        :param [key]: [Query arg string used to retrieve the appropriate filesystem instance]
+        :param [item_path]: [Query arg string path to file or directory to be retrieved]
+
+        :return: dict with a status, description and (optionally) error
+        :rtype: dict
+        """
+        key = self.get_argument('key')
+        item_path = self.get_argument('item_path')
+
+        fs, item_path = self.validate_fs('delete')
+
+        result = fs_manager.delete(key, item_path)
+
+        self.set_status(result["status_code"])
+        self.write(result['response'])
+        self.finish()
+
+class FileActionHandler(APIHandler):
+    # POST /jupyter_fsspec/files/action?key=my-key&item_path=/some_directory/file.txt
+    def post(self):
+        """Move or copy the resource at the input path to destination path.
+
+        :param [key]: [Query arg string used to retrieve the appropriate filesystem instance]
+        :param [item_path]: [Query arg string path to file or directory to be retrieved]
+        :param [action]: [Request body string move or copy]
+        :param [content]: [Request body property file or directory path]
+
+        :return: dict with a status, description and (optionally) error
+        :rtype: dict
+        """
+        key = self.get_argument('key')
+        item_path = self.get_argument('item_path')
+        request_data = json.loads(self.request.body.decode('utf-8'))
+        action = request_data.get('action')
+        destination = request_data.get('content')
+
+        fs, item_path = self.validate_fs('post')
+
+        if action == 'move':
+            result = fs_manager.move(key, item_path, destination)
+        elif action == 'copy':
+            result = fs_manager.copy(key, item_path, destination)
+        else:
+            result = {"status_code": 400, "response": {"status": "failed", "error": "INVALID_ACTION", "description": f"Unsupported action: {action}"}}
+
+        self.set_status(result["status_code"])
+        self.write(result['response'])
+        self.finish()
+
 #====================================================================================
 # Update the handler in setup
 #====================================================================================
@@ -253,4 +442,17 @@ def setup_handlers(web_app):
     route_fsspec_config = url_path_join(base_url, "jupyter_fsspec", "config")
     route_fsspec = url_path_join(base_url, "jupyter_fsspec", "fsspec")
     handlers = [(route_fsspec_config, FsspecConfigHandler), (route_fsspec, FileSystemHandler)]
+    
+    route_files = url_path_join(base_url, "jupyter_fsspec", "files")
+    route_files_actions = url_path_join(base_url, "jupyter_fsspec", "files", "action")
+
+    handlers_refactored = [
+        (route_fsspec_config, FsspecConfigHandler),
+        (route_files, FileReadHandler),
+        (route_files, FileWriteHandler),
+        (route_files, FileDeleteHandler),
+        (route_files_actions, FileActionHandler)
+    ]
+
+    web_app.add_handlers(host_pattern, handlers_refactored)
     web_app.add_handlers(host_pattern, handlers)
