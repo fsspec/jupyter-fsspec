@@ -187,6 +187,25 @@ export class FsspecModel {
     }
   }
 
+  async delete_refactored(key: string, item_path: string): Promise<any> {
+    try {
+      const query = new URLSearchParams({
+        key,
+        item_path
+      });
+      const response = await requestAPI<any>(`files?${query.toString()}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('response is: ', response);
+    } catch (error) {
+      console.error('Failed to delete: ', error);
+      return null;
+    }
+  }
+
   async deleteDir(key: string, item_path: string): Promise<any> {
     try {
       const reqBody = JSON.stringify({
@@ -404,6 +423,22 @@ export class FsspecModel {
     Logger.debug(`[FSSpec] Fetching files -> ${query}`);
     try {
       result = await requestAPI<any>(`fsspec?${query}`, {
+        method: 'GET'
+      });
+    } catch (error) {
+      Logger.error(`[FSSpec] Failed to list filesystem ${error}: `);
+    }
+
+    return result;
+  }
+
+  async listDirectory_refactored(key: string, item_path: string = '', type: string = 'default'): Promise<any> {
+    const query = new URLSearchParams({ key, item_path, type }).toString();
+    let result = null;
+
+    Logger.debug(`[FSSpec] Fetching files -> ${query}`);
+    try {
+      result = await requestAPI<any>(`files?${query}`, {
         method: 'GET'
       });
     } catch (error) {
