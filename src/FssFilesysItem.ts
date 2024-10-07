@@ -1,7 +1,7 @@
 // Element for displaying a single fsspec filesystem
 
 class FssFilesysItem {
-    element: HTMLElement;
+    root: HTMLElement;
     filesysName: string;
     filesysType: string;
     fsInfo: any;
@@ -21,18 +21,18 @@ class FssFilesysItem {
 
       let fsItem = document.createElement('div');
       fsItem.classList.add('jfss-fsitem-root');
-      this.element = fsItem;
+      fsItem.addEventListener('mouseenter', this.handleFsysHover.bind(this));
+      fsItem.addEventListener('mouseleave', this.handleFsysHover.bind(this));
+      this.root = fsItem;
 
       this.nameField = document.createElement('div');
-      this.nameField.classList.add('jfss-fsitem');
+      this.nameField.classList.add('jfss-fsitem-name');
       this.nameField.innerText = this.filesysName;
-      this.nameField.addEventListener('mouseenter', this.handleFsysHover.bind(this));
-      this.nameField.addEventListener('mouseleave', this.handleFsysHover.bind(this));
       fsItem.appendChild(this.nameField);
 
       this.typeField = document.createElement('div');
-      this.typeField.classList.add('jfss-fsitem');
-      this.typeField.innerText = this.filesysType;
+      this.typeField.classList.add('jfss-fsitem-type');
+      this.typeField.innerText = 'Type: ' + this.filesysType;
       fsItem.appendChild(this.typeField);
 
       fsItem.addEventListener('click', this.handleClick.bind(this));
@@ -40,12 +40,12 @@ class FssFilesysItem {
 
     handleFsysHover(event: any) {
       if (event.type == 'mouseenter') {
-        this.nameField.style.backgroundColor = '#bbb';
-        this.typeField.style.backgroundColor = '#bbb';
+        this.root.style.backgroundColor = 'var(--jp-layout-color3)';
+        this.root.style.backgroundColor = 'var(--jp-layout-color3)';
       }
       else {
-        this.nameField.style.backgroundColor = '#ddd';
-        this.typeField.style.backgroundColor = '#ddd';
+        this.root.style.backgroundColor = 'var(--jp-layout-color2)';
+        this.root.style.backgroundColor = 'var(--jp-layout-color2)';
       }
     }
 

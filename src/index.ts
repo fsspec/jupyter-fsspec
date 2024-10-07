@@ -62,6 +62,29 @@ class FsspecWidget extends Widget {
     mainLabel.innerText = 'Jupyter FSSpec'
     this.upperArea.appendChild(mainLabel);
 
+    // let hsep2 = document.createElement('div');
+    // hsep2.classList.add('jfss-hseparator');
+    // this.upperArea.appendChild(hsep2);
+
+    let sourcesControls = document.createElement('div');
+    sourcesControls.classList.add('jfss-sourcescontrols');
+    this.upperArea.appendChild(sourcesControls);
+
+    let sourcesLabel = document.createElement('div');
+    sourcesLabel.classList.add('jfss-sourceslabel');
+    sourcesLabel.innerText = 'File sources:'
+    sourcesControls.appendChild(sourcesLabel);
+
+    let sourcesDivider = document.createElement('div');
+    sourcesLabel.classList.add('jfss-sourcesdivider');
+    sourcesControls.appendChild(sourcesDivider);
+
+    let refreshConfig = document.createElement('div');
+    refreshConfig.classList.add('jfss-refreshconfig');
+    refreshConfig.innerText = '\u{21bb}'
+    refreshConfig.addEventListener('click', this.fetchConfig.bind(this))
+    sourcesControls.appendChild(refreshConfig);
+
     this.filesysContainer = document.createElement('div');
     this.filesysContainer.classList.add('jfss-userfilesystems');
     this.upperArea.appendChild(this.filesysContainer);
@@ -72,15 +95,14 @@ class FsspecWidget extends Widget {
     let lowerArea = document.createElement('div');
     lowerArea.classList.add('jfss-lowerarea');
 
+    this.selectedFsLabel = document.createElement('div');
+    this.selectedFsLabel.classList.add('jfss-selectedFsLabel');
+    this.selectedFsLabel.innerText = 'Select a filesystem to display';
+    lowerArea.appendChild(this.selectedFsLabel);
+
     let resultArea = document.createElement('div');
     resultArea.classList.add('jfss-resultarea');
     lowerArea.appendChild(resultArea);
-
-    this.selectedFsLabel = document.createElement('div');
-    this.selectedFsLabel.classList.add('jfss-selectedFsLabel');
-    this.selectedFsLabel.classList.add('jfss-mainlabel');
-    this.selectedFsLabel.innerText = 'Select a filesystem to display';
-    resultArea.appendChild(this.selectedFsLabel);
 
     this.treeView = new TreeView();
     resultArea.appendChild(this.treeView);
@@ -93,8 +115,18 @@ class FsspecWidget extends Widget {
     this.populateFilesystems();
   }
 
+  async fetchConfig() {
+    await this.model.refreshConfig();
+    Logger.debug(`[FSSpec] Refresh config:\n${JSON.stringify(this.model.userFilesystems)}`);
+    this.populateFilesystems();
+  }
+
   populateFilesystems() {
     Logger.debug(`[FSSpec] Populate filesystems: \n${JSON.stringify(this.model.userFilesystems)}`);
+
+    this.filesysContainer.replaceChildren();
+    this.treeView.replaceChildren();
+    this.elementHeap = {};
     for (const key of Object.keys(this.model.userFilesystems)) {
       let fsInfo = this.model.userFilesystems[key];
       this.addFilesystemItem(fsInfo);
@@ -103,7 +135,7 @@ class FsspecWidget extends Widget {
 
   addFilesystemItem(fsInfo: any) {
     let fsItem = new FssFilesysItem(fsInfo, [this.handleFilesystemClicked.bind(this)]);
-    this.filesysContainer.appendChild(fsItem.element);
+    this.filesysContainer.appendChild(fsItem.root);
   }
 
   async handleFilesystemClicked(fsInfo: any) {

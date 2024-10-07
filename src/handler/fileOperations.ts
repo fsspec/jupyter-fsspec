@@ -20,8 +20,10 @@ declare global {
 export class FsspecModel {
   activeFilesystem: string = '';
   userFilesystems: any = {};
+  retry = 0;
 
   async initialize(automatic: boolean=true, retry=3) {
+    this.retry = retry;
     if (automatic) {
       // Perform automatic setup: Fetch filesystems from config and store
       // this model on the window as global application state
@@ -76,6 +78,37 @@ export class FsspecModel {
 
   getActiveFilesystemInfo(): string {
     return this.userFilesystems[this.activeFilesystem];
+  }
+
+  async refreshConfig() {
+    // TODO fix/refactor
+    this.userFilesystems = {};
+      try {
+        for (let i = 0; i < this.retry; i++) {
+
+          Logger.info('[FSSpec] Attempting to read config file...');
+          let result = await this.getStoredFilesystems();
+          if (result?.status == 'success') {
+            // TODO report config entry errors
+            Logger.info(`[FSSpec] Successfully retrieved config:${JSON.stringify(result)}`);
+            this.userFilesystems = result.filesystems;
+
+            // Set active filesystem to first
+            if (Object.keys(result).length > 0) {
+              this.activeFilesystem = Object.keys(this.userFilesystems)[0];
+            }
+            break;
+          } else {
+            // TODO handle no config file
+            Logger.error('[FSSpec] Error fetching filesystems from user config');
+            if (i + 1 < this.retry) {
+              Logger.info('[FSSpec]   retrying...');
+            }
+          }
+        }
+      } catch (error) {
+        Logger.error(`[FSSpec] Error: Unknown error initializing fsspec model:\n${error}`);
+      }
   }
 
   async getStoredFilesystems(): Promise<any> {
