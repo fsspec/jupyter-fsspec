@@ -11,7 +11,7 @@ import { ICommandPalette } from '@jupyterlab/apputils';
 import { FileManagerWidget } from './FileManager';
 
 import { FsspecModel } from './handler/fileOperations';
-import { FilesystemItem } from './FilesystemItem';
+import { FssFilesysItem } from './FssFilesysItem';
 import { FssTreeItem } from './FssTreeItem';
 
 import { Widget } from '@lumino/widgets';
@@ -102,7 +102,7 @@ class FsspecWidget extends Widget {
   }
 
   addFilesystemItem(fsInfo: any) {
-    let fsItem = new FilesystemItem(fsInfo, [this.handleFilesystemClicked.bind(this)]);
+    let fsItem = new FssFilesysItem(fsInfo, [this.handleFilesystemClicked.bind(this)]);
     this.filesysContainer.appendChild(fsItem.element);
   }
 

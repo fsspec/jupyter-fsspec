@@ -1,6 +1,6 @@
 // Element for displaying a single fsspec filesystem
 
-class FilesystemItem {
+class FssFilesysItem {
     element: HTMLElement;
     filesysName: string;
     filesysType: string;
@@ -56,4 +56,4 @@ class FilesystemItem {
     }
   }
 
-  export { FilesystemItem };
+  export { FssFilesysItem };
