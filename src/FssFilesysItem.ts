@@ -25,6 +25,9 @@ class FssFilesysItem {
       fsItem.addEventListener('mouseleave', this.handleFsysHover.bind(this));
       this.root = fsItem;
 
+      // Set the tooltip
+      this.root.title = `Root Path: ${fsInfo.path}`;
+
       this.nameField = document.createElement('div');
       this.nameField.classList.add('jfss-fsitem-name');
       this.nameField.innerText = this.filesysName;

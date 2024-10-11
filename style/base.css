@@ -33,6 +33,8 @@
   margin: 0 0 .5rem 0;
   padding: 0 0 0 .5rem;
 
+  background-color: var(--jp-layout-color1);
+
   border: 1px solid var(--jp-layout-color2);
   border-radius: 2px;
 
@@ -46,7 +48,8 @@
 .jfss-sourceslabel {
   margin: 0 0 0 0;
 
-  font-weight: bold;
+  font-size: var(--jp-ui-font-size2);
+  /* font-weight: bold; */
 }
 
 .jfss-refreshconfig {
@@ -140,8 +143,14 @@
   overflow: auto;
 
   border-radius: 2px;
+  /* border: 1px solid var(--jp-layout-color2);
+  border-top: 0; */
 
   /* background-color: #ddd; */
+}
+
+.jfss-hidden {
+  display: none;
 }
 
 .jp-fsspec-widget {
@@ -168,12 +177,64 @@
   background-color: var(--jp-layout-color2);
 }
 
-.jfss-selectedFsLabel {
+.jfss-browseAreaLabel {
   width: 100%;
 
-  margin: 0 .75rem .75rem 0;
+  margin: 0 .5rem .5rem 0;
+
+  /* font-weight: bold; */
+  font-size: var(--jp-ui-font-size2);
+}
+
+.jfss-selectedFsLabel {
+  /* width: 100%; */
+
+  margin: 0 0 .5rem 0;
+  padding: 0 0 0 0;
+
+  border-radius: 2px;
+  /* color: white; */
+  /* background-color: var(--jp-layout-color2); */
 
   font-weight: bold;
+}
+
+.jfss-fsdetails {
+  /* width: 100%; */
+
+  margin: 0 0 .5rem 0;
+  /* padding: .5rem; */
+
+  overflow: clip;
+
+  border: 1px solid var(--jp-layout-color2);
+  border-radius: 2px;
+  /* color: white; */
+  background-color: var(--jp-layout-color1);
+  white-space: nowrap;
+}
+
+.jfss-detailname {
+  /* width: 100%; */
+
+  margin: 0 0 0 0;
+  padding: .5rem;
+
+  border-radius: 2px;
+  /* color: white; */
+  /* background-color: var(--jp-layout-color2); */
+
+  font-weight: bold;
+}
+
+.jfss-detailextra {
+  /* width: 100%; */
+
+  margin: 0 0 0 0;
+  padding: 0 .5rem .5rem .5rem;
+
+  /* color: white; */
+  /* background-color: var(--jp-layout-color2); */
 }
 
 .jfss-fsitem-type {

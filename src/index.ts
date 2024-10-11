@@ -39,6 +39,9 @@ class FsspecWidget extends Widget {
   upperArea: any;
   model: any;
   selectedFsLabel: any;
+  fsDetails: any;
+  detailName: any;
+  detailPath: any;
   treeView: any;
   elementHeap: any = {};
   filesysContainer: any;
@@ -72,7 +75,8 @@ class FsspecWidget extends Widget {
 
     let sourcesLabel = document.createElement('div');
     sourcesLabel.classList.add('jfss-sourceslabel');
-    sourcesLabel.innerText = 'File sources:'
+    sourcesLabel.innerText = 'Configured Filesystems'
+    sourcesLabel.title = 'A list of filesystems stored in the Jupyter FSSpec yaml';
     sourcesControls.appendChild(sourcesLabel);
 
     let sourcesDivider = document.createElement('div');
@@ -80,6 +84,7 @@ class FsspecWidget extends Widget {
     sourcesControls.appendChild(sourcesDivider);
 
     let refreshConfig = document.createElement('div');
+    refreshConfig.title = 'Re-read and refresh sources from config';
     refreshConfig.classList.add('jfss-refreshconfig');
     refreshConfig.innerText = '\u{21bb}'
     refreshConfig.addEventListener('click', this.fetchConfig.bind(this))
@@ -95,10 +100,31 @@ class FsspecWidget extends Widget {
     let lowerArea = document.createElement('div');
     lowerArea.classList.add('jfss-lowerarea');
 
+    let browserAreaLabel = document.createElement('div');
+    browserAreaLabel.classList.add('jfss-browseAreaLabel');
+    browserAreaLabel.innerText = 'Browse Filesystem';
+    lowerArea.appendChild(browserAreaLabel);
+
     this.selectedFsLabel = document.createElement('div');
     this.selectedFsLabel.classList.add('jfss-selectedFsLabel');
-    this.selectedFsLabel.innerText = 'Select a filesystem to display';
+    this.selectedFsLabel.innerText = '<Select a filesystem>';
     lowerArea.appendChild(this.selectedFsLabel);
+
+    // this.fsDetails = document.createElement('div');
+    // this.fsDetails.classList.add('jfss-fsdetails');
+    // // this.fsDetails.innerText = '<Select a Filesystem>';
+    // lowerArea.appendChild(this.fsDetails);
+    // // this.fsDetails.classList.add('jfss-hidden');
+
+    // this.detailName = document.createElement('div');
+    // this.detailName.classList.add('jfss-detailname');
+    // // this.detailName.innerText = '<Select a Filesystem>';
+    // this.fsDetails.appendChild(this.detailName);
+
+    // this.detailPath = document.createElement('div');
+    // this.detailPath.classList.add('jfss-detailextra');
+    // this.detailPath.innerText = 'Path: ';
+    // this.fsDetails.appendChild(this.detailPath);
 
     let resultArea = document.createElement('div');
     resultArea.classList.add('jfss-resultarea');
@@ -286,8 +312,11 @@ class FsspecWidget extends Widget {
     }
     const pathInfos = response['content'];
 
-    // Update current filesystem display label
-    this.selectedFsLabel.innerText = `Files for: ${fsname}`;
+    // Update current filesystem display labels
+    this.selectedFsLabel.innerText = `${fsname}`;
+    // this.detailName.classList.remove('jfss-hidden');
+    // this.detailName.innerText = fsname;
+    // this.detailPath.innerText = `Path: ${this.model.userFilesystems[fsname].path}`;
 
     // Build a directory tree and update the display
     this.dirTree = this.buildTree(pathInfos, this.model.userFilesystems[fsname].path);
