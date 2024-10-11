@@ -110,22 +110,6 @@ class FsspecWidget extends Widget {
     this.selectedFsLabel.innerText = '<Select a filesystem>';
     lowerArea.appendChild(this.selectedFsLabel);
 
-    // this.fsDetails = document.createElement('div');
-    // this.fsDetails.classList.add('jfss-fsdetails');
-    // // this.fsDetails.innerText = '<Select a Filesystem>';
-    // lowerArea.appendChild(this.fsDetails);
-    // // this.fsDetails.classList.add('jfss-hidden');
-
-    // this.detailName = document.createElement('div');
-    // this.detailName.classList.add('jfss-detailname');
-    // // this.detailName.innerText = '<Select a Filesystem>';
-    // this.fsDetails.appendChild(this.detailName);
-
-    // this.detailPath = document.createElement('div');
-    // this.detailPath.classList.add('jfss-detailextra');
-    // this.detailPath.innerText = 'Path: ';
-    // this.fsDetails.appendChild(this.detailPath);
-
     let resultArea = document.createElement('div');
     resultArea.classList.add('jfss-resultarea');
     lowerArea.appendChild(resultArea);

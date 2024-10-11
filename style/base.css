@@ -199,44 +199,6 @@
   font-weight: bold;
 }
 
-.jfss-fsdetails {
-  /* width: 100%; */
-
-  margin: 0 0 .5rem 0;
-  /* padding: .5rem; */
-
-  overflow: clip;
-
-  border: 1px solid var(--jp-layout-color2);
-  border-radius: 2px;
-  /* color: white; */
-  background-color: var(--jp-layout-color1);
-  white-space: nowrap;
-}
-
-.jfss-detailname {
-  /* width: 100%; */
-
-  margin: 0 0 0 0;
-  padding: .5rem;
-
-  border-radius: 2px;
-  /* color: white; */
-  /* background-color: var(--jp-layout-color2); */
-
-  font-weight: bold;
-}
-
-.jfss-detailextra {
-  /* width: 100%; */
-
-  margin: 0 0 0 0;
-  padding: 0 .5rem .5rem .5rem;
-
-  /* color: white; */
-  /* background-color: var(--jp-layout-color2); */
-}
-
 .jfss-fsitem-type {
   box-sizing: border-box;
 
