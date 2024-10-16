@@ -198,6 +198,7 @@ async def test_patch_file(fs_manager_instance, jp_fetch):
 
 async def test_action_same_fs_files(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
+    # get_filesystem_by_type(filesystem_type) returns first instance of that filesystem type
     mem_fs_info = fs_manager.get_filesystem_by_type('memory')
     mem_key = mem_fs_info['key']
     mem_fs = mem_fs_info['info']['instance']
@@ -245,5 +246,27 @@ async def test_action_same_fs_files(fs_manager_instance, jp_fetch):
     assert mdir_body['description'] == 'Moved /my_mem_dir/test_dir to /my_mem_dir/second_dir'
 
 #TODO: Test xaction endpoint
-async def xtest_xaction_diff_fs(fs_manager_instance, jp_fetch):
-    pass
+# Q: Other fs types for testing purposes
+async def xtest_xaction_diff_fs(fs_manager_instance_parameterized, jp_fetch):
+    fs_manager = fs_manager_instance_parameterized
+    fs_info = fs_manager.get_filesystem_by_type('memory')
+    key = fs_info['key']
+    fs = fs_info['info']['instance']
+    fs_root_path = fs_info['info']['path']
+    assert fs != None
+
+    # # copy file
+    # copy_filepath = f'{fs_root_path}/test_dir/file1.txt'
+    # copy_file_payload = {"item_path": copy_filepath, "content": "/my_local_dir/", "destination_key": "", "action": "copy"}
+    # copy_file_res = await jp_fetch("jupyter_fsspec", "files", "xaction", method="POST", params={"key": mem_key}, body=json.dumps(copy_file_payload))
+
+    # cfile_body_json = copy_file_res.body.decode('utf-8')
+    # cfile_body = json.loads(cfile_body_json)
+    # assert cfile_body["status"] == 'success'
+    # assert cfile_body['description'] == f'Copied {fs_root_path}/test_dir/file1.txt to /my_local_dir/file1.txt'
+
+    # copy dir
+
+    # move file
+
+    # move dir
