@@ -8,8 +8,8 @@ from pathlib import PurePath
 
 class FileSystemManager:
     def __init__(self, config_file):
-        base_dir = jupyter_config_dir()
-        self.config_path = os.path.join(base_dir, config_file)
+        self.base_dir = jupyter_config_dir()
+        self.config_path = os.path.join(self.base_dir, config_file)
         try:
             with open(self.config_path, 'r') as file:
                 self.config = yaml.safe_load(file)

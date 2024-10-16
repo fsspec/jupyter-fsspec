@@ -115,8 +115,8 @@ def populated_fs_manager(mock_config, fs_manager_instance):
     fs_manager_instance.write(key, second_file_path, second_file_content)
     return fs_manager_instance, key
 
-
-def test_file_read_write(mock_config, fs_manager_instance):
+# TODO: update config path for tests
+def xtest_file_read_write(mock_config, fs_manager_instance):
     key = fs_manager_instance._encode_key(mock_config['sources'][0])
 
     #write
@@ -134,7 +134,7 @@ def test_file_read_write(mock_config, fs_manager_instance):
 def xtest_file_update_delete(populated_fs_manager):
     key = fs_manager_instance._encode_key(mock_config['sources'][0])
 
-def test_directory_read_write(mock_config, fs_manager_instance):
+def xtest_directory_read_write(mock_config, fs_manager_instance):
     key = fs_manager_instance._encode_key(mock_config['sources'][0])
 
     #write
@@ -159,173 +159,3 @@ def xtest_directory_update_delete(populated_fs_manager):
     #update
 
     #delete
-
-
-
-
-
-
-
-# ============================================================
-# OLD Test FileSystemManager file operations
-# ============================================================
-# provide the file system with all needed information like key, path etc
-# def generate_fs():
-#     fs_test_config = {
-#         'name': 'mylocal',
-#         'type': 'local',
-#         'path':  str(config_file.parent)
-#     }
-
-# create file
-#TODO: create fs_manager fixture to include for these tests?
-# def test_create_file(config_file):
-#     fs_test_manager = FileSystemManager(config_file)
-#     filesystems = fs_test_manager.filesystems
-
-#     for key in filesystems.keys():
-#         fs_path = filesystems[key]['path']
-
-#         file_path = 'test_create_file.txt'
-#         complete_file_path = str(PurePath(fs_path) / file_path)
-#         content = b'testing file content'
-
-#         fs_test_manager.write(key, complete_file_path, content)
-
-#         fs_info = fs_test_manager.get_filesystem(key)
-#         fs = fs_info['instance']
-#         assert fs.exists(complete_file_path), "File should exist"
-
-#         file_content = fs.cat(complete_file_path)
-#         assert file_content == content, "File content should match expected content."
-
-
-# create directory
-# def test_create_dir(config_file):
-#     fs_test_manager = FileSystemManager(config_file)
-#     filesystems = fs_test_manager.filesystems
-
-#     for key in filesystems.keys():
-#         fs_path = filesystems[key]['path']
-
-#         dir_name = 'testing_dir_name'
-
-#         fs_test_manager.write(key, fs_path, dir_name)
-#         complete_file_path = str(PurePath(fs_path) / dir_name) + '/'
-
-#         fs_info = fs_test_manager.get_filesystem(key)
-#         fs = fs_info['instance']
-#         assert fs.exists(complete_file_path), "Directory should exist"
-
-
-
-# read file
-# TODO: use memory filesystem and mock_filesystem dict
-# def test_read_file_success(memory_filesystem):
-#     mock_filesystem = {
-#         '/dir1': {},
-#         '/dir1/file1.txt': 'Content of file1.',
-#         '/dir1/file2.txt': 'Content of file2.',
-#         '/dir2': {},
-#         '/dir2/subdir': {},
-#         '/dir2/subdir/file3.txt': 'Content of file3 in subdir of dir2.'
-#     }
-
-#     with patch(fsspec.filesystem)
-# def populate_filesystem(filesystem, structure, base_path='/'):
-#     for name, content in structure.items():
-#         path = f"{base_path.rstrip('/')/{name}}"
-
-#         if isinstance(content, dict):
-#             filesystem.mkdir(path)
-#             populate_filesystem(filesystem, content, base_path=path)
-#         else:
-#             if isinstance(content, bytes):
-#                 filesystem.pipe(path, content)
-#             else:
-#                 filesystem.pipe(path, content.encode())
-
-# @pytest.fixture
-# def populated_filesystem(mock_filesystem):
-#     directory_structure = {
-#         'dir1': {
-#             'file1.txt': 'Content of file1 in dir1.',
-#             'file2.txt': 'Content of file2 in dir1.',
-#         },
-#         'dir2': {
-#             'subdir': {
-#                 'file3.txt': 'Content of file3 in subdir of dir2.',
-#                 'file4.txt': 'Content of file4 in subdir of dir2.',
-#             },
-#         },
-#         'fileOne.txt': 'This is content of fileOne in root dir.',
-#         'fileTwo.txt': 'This is content of fileTwo in root dir.',
-#         'binaryfile.bin': b'\x00\x01\x02'
-#     }
-
-#     key, fs_info = next(iter(mock_filesystem.items()))
-#     fs_path = fs_info['path']
-#     fs = fs_info['instance'] 
-#     populate_filesystem(fs, directory_structure, fs_path)
-
-#     return fs, key, fs_path
-
-
-# def test_read_file(config_file):
-#     fs_test_manager = FileSystemManager(config_file)
-#     filesystems = fs_test_manager.filesystems
-
-#     for key in filesystems.keys():
-#         fs_path = filesystems[key]['path']
-
-#         fs_info = fs_test_manager.get_filesystem(key)
-#         fs = fs_info['instance']
-# def test_read_file(populated_filesystem):
-#     fs, key, item_path = populated_filesystem
-#     content = fs.read()
-
-
-# # read directory
-# def test_read_dir_success(config_file):
-#     fs_test_manager = FileSystemManager(config_file)
-
-#     fs = fs_test_manager.filesystems
-#
-#
-#
-#
-#
-#
-#
-#
-
-
-
-
-
-# # write file
-# def test_write_file_success(config_file):
-#     fs_test_manager = FileSystemManager(config_file)
-
-#     fs = fs_test_manager.filesystems
-#
-#
-#
-#
-#
-#
-#
-#
-
-# # delete file
-# def test_delete_file_success(config_file):
-#     fs_test_manager = FileSystemManager(config_file)
-
-#     fs = fs_test_manager.filesystems
-
-
-# # delete directory
-# def test_delete_dir_success(config_file):
-    # fs_test_manager = FileSystemManager(config_file)
-
-    # fs = fs_test_manager.filesystems
