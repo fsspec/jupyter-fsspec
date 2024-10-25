@@ -4,6 +4,7 @@ import { TreeItem } from '@jupyter/web-components';
 import { fileIcon, folderIcon } from '@jupyterlab/ui-components';
 
 import { FssContextMenu } from './treeContext';
+import { Logger } from "./logger"
 
 export class FssTreeItem {
     root: any;
@@ -13,19 +14,37 @@ export class FssTreeItem {
     container: HTMLElement;
     clickSlots: any;
     isDir = false;
+    treeItemObserver: MutationObserver;
+    pendingExpandAction = false;
+    lazyLoadAutoExpand = true;
+    clickAnywhereDoesAutoExpand = true;
 
-    constructor(clickSlots: any) {
+    constructor(clickSlots: any, autoExpand: boolean, expandOnClickAnywhere: boolean) {
         // The TreeItem component is the root and handles
         // tree structure functionality in the UI
         let root = new TreeItem();
         this.root = root;
         this.clickSlots = clickSlots;
+        this.lazyLoadAutoExpand = autoExpand;
+        this.clickAnywhereDoesAutoExpand = expandOnClickAnywhere;
+
+        // Use a MutationObserver on the root TreeItem's shadow DOM,
+        // where the TreeItem's expand/collapse control will live once
+        // the item has children to show
+        let observeOptions = {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class'],
+            attributeOldValue: true,
+        };
+        this.treeItemObserver = new MutationObserver(this.handleDomMutation.bind(this));
 
         // The main container holds custom fsspec UI/functionality
         let container = document.createElement('div');
         container.classList.add('jfss-tree-item-container');
         root.appendChild(container);
-        this.container = container
+        this.container = container;
 
         // Reserve space in the layout for the file/folder icon
         let dirSymbol = document.createElement('div');
@@ -42,6 +61,11 @@ export class FssTreeItem {
         // Add click and right click handlers to the tree component
         root.addEventListener('contextmenu', this.handleContext.bind(this));
         root.addEventListener('click', this.handleClick.bind(this), true);
+
+        // Start observing for changes to the TreeItem's shadow root
+        if (this.root.shadowRoot) {
+            this.treeItemObserver.observe(this.root.shadowRoot, observeOptions)
+        }
     }
 
     appendChild(elem: any) {
@@ -70,12 +94,62 @@ export class FssTreeItem {
         }
     }
 
+    handleDomMutation(records: any, observer: any) {
+        // This is used to auto-expand directory-type TreeItem's to show children after
+        // a lazy-load. It checks the TreeItem's shadow dom for the addition of an
+        // "expand-collapse-button" child control which is used to expand and show
+        // children (in the tree) of this class's root TreeItem node. By auto expanding here,
+        // we save the user from having to click twice on a folder (once to lazy-load
+        // and another time to expand) when they want to expand it
+        if (this.lazyLoadAutoExpand && this.pendingExpandAction) {
+            for (const rec of records) {
+                let addedNodes = rec?.addedNodes;
+                if (addedNodes) {
+                    for (let node of addedNodes) {
+                        if (node?.classList && node.classList.contains('expand-collapse-button')) {
+                            node.click();
+                            this.root.scrollTo();
+                            this.pendingExpandAction = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     handleClick(event: any) {
+        // Handles normal click events on the TreeItem (unlike the MutationObserver system
+        // which is for handling folder auto-expand after lazy load)
+        if (this.clickAnywhereDoesAutoExpand) {
+            let expander = this.root.shadowRoot.querySelector('.expand-collapse-button');
+            if (expander) {
+                let expRect = expander.getBoundingClientRect();
+                if ((event.clientX < expRect.left
+                        || event.clientX > expRect.right
+                        || event.clientY < expRect.top
+                        || event.clientY > expRect.bottom)) {
+                    Logger.debug('--> Click outside expander, force expander click');
+                    expander.click();
+                    this.root.scrollTo();
+                }
+            }
+        }
+
+        // Fire connected slots that were supplied to this item on init
         if (this.isDir) {
             for (let slot of this.clickSlots) {
                 slot(this.root.dataset.fss);
             }
         }
+    }
+
+    expandItem() {
+        // This method's purpose is to expand folder items to show children
+        // after a lazy load, but when this is called, the expand controls aren't
+        // ready...a flag is set here to indicate that an expand action is desired,
+        // which is used by the MutationObserver member var's handler to find the
+        // expand/collapse Element when it is added so that it can be click()'d
+        this.pendingExpandAction = true;
     }
 
     handleContext(event: any) {
