@@ -196,11 +196,11 @@ class FsspecWidget extends Widget {
       Logger.error(`Error fetching files for path ${source_path}`);  // TODO jupyter info print
       return;
     }
-    Logger.debug(`Response: (${JSON.stringify(response)})`);
+    // Logger.debug(`Response: (${JSON.stringify(response)})`);
 
     // Get the dir tree node for this path (updates go into this subtree)
     let nodeForPath = this.getNodeForPath(source_path);
-    Logger.debug(`Found node: ${JSON.stringify(nodeForPath)}`);
+    // Logger.debug(`Found node: ${JSON.stringify(nodeForPath)}`);
     if (!nodeForPath) {
       Logger.error(`Error: Bad path for ${source_path}`);
       return;
@@ -209,7 +209,7 @@ class FsspecWidget extends Widget {
       // Update the dir tree/data
       this.updateTree(nodeForPath, response['content'], source_path);
       nodeForPath.fetch = true;
-      Logger.debug(`After fetch: ${JSON.stringify(nodeForPath)}`);
+      // Logger.debug(`After fetch: ${JSON.stringify(nodeForPath)}`);
     }
     else {
       // Already fetched this child path, ignore and return
@@ -219,6 +219,9 @@ class FsspecWidget extends Widget {
 
     // Update the TreeView in the UI
     await this.updateFileBrowserView(nodeForPath);
+    let uiElement = this.elementHeap[nodeForPath.id.toString()];
+    console.log(`VIEW REFRESH, children:\n\n${uiElement.root.innerHTML}`);
+    uiElement.expandItem();
   }
 
   getElementForNode(ident: any) {
@@ -256,6 +259,9 @@ class FsspecWidget extends Widget {
         // console.log(childPaths);
         // console.log(buildTargets[absPath]);
 
+        if (!childPaths) {
+          // Create a placeholder child item for this dir
+        }
         for (let [pathSegment, pathInfo] of Object.entries(childPaths)) {
           let item = new FssTreeItem([this.lazyLoad.bind(this)]);
           item.setMetadata((pathInfo as any).path);
