@@ -17,14 +17,16 @@ export class FssTreeItem {
     treeItemObserver: MutationObserver;
     pendingExpandAction = false;
     lazyLoadAutoExpand = true;
+    clickAnywhereDoesAutoExpand = true;
 
-    constructor(clickSlots: any, autoExpand: boolean) {
+    constructor(clickSlots: any, autoExpand: boolean, expandOnClickAnywhere: boolean) {
         // The TreeItem component is the root and handles
         // tree structure functionality in the UI
         let root = new TreeItem();
         this.root = root;
         this.clickSlots = clickSlots;
         this.lazyLoadAutoExpand = autoExpand;
+        this.clickAnywhereDoesAutoExpand = expandOnClickAnywhere;
 
         // Use a MutationObserver on the root TreeItem's shadow DOM,
         // where the TreeItem's expand/collapse control will live once
@@ -118,16 +120,18 @@ export class FssTreeItem {
     handleClick(event: any) {
         // Handles normal click events on the TreeItem (unlike the MutationObserver system
         // which is for handling folder auto-expand after lazy load)
-        let expander = this.root.shadowRoot.querySelector('.expand-collapse-button');
-        if (expander) {
-            let expRect = expander.getBoundingClientRect();
-            if ((event.clientX < expRect.left
-                    || event.clientX > expRect.right
-                    || event.clientY < expRect.top
-                    || event.clientY > expRect.bottom)) {
-                Logger.debug('--> Click outside expander, force expander click');
-                expander.click();
-                this.root.scrollTo();
+        if (this.clickAnywhereDoesAutoExpand) {
+            let expander = this.root.shadowRoot.querySelector('.expand-collapse-button');
+            if (expander) {
+                let expRect = expander.getBoundingClientRect();
+                if ((event.clientX < expRect.left
+                        || event.clientX > expRect.right
+                        || event.clientY < expRect.top
+                        || event.clientY > expRect.bottom)) {
+                    Logger.debug('--> Click outside expander, force expander click');
+                    expander.click();
+                    this.root.scrollTo();
+                }
             }
         }
 
@@ -140,22 +144,6 @@ export class FssTreeItem {
     }
 
     expandItem() {
-        // TODO remove this chunk
-        ///////////
-        // console.log('expandItem XX');
-        // let shadow = this.root.shadowRoot;
-        // let expander = this.root.shadowRoot.querySelector('.expand-collapse-button');
-        // console.log(this.root.innerHTML);
-        // console.log(shadow);
-        // console.log(shadow.innerHTML);
-        // console.log(shadow.querySelector('.expand-collapse-button'));
-        // console.log(shadow.children);
-        // if (expander) {
-        //     console.log('CLICKING expander');
-        //     expander.click();
-        // }
-        ///////////
-
         // This method's purpose is to expand folder items to show children
         // after a lazy load, but when this is called, the expand controls aren't
         // ready...a flag is set here to indicate that an expand action is desired,

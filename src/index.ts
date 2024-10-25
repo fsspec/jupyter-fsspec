@@ -65,10 +65,6 @@ class FsspecWidget extends Widget {
     mainLabel.innerText = 'Jupyter FSSpec'
     this.upperArea.appendChild(mainLabel);
 
-    // let hsep2 = document.createElement('div');
-    // hsep2.classList.add('jfss-hseparator');
-    // this.upperArea.appendChild(hsep2);
-
     let sourcesControls = document.createElement('div');
     sourcesControls.classList.add('jfss-sourcescontrols');
     this.upperArea.appendChild(sourcesControls);
@@ -255,17 +251,12 @@ class FsspecWidget extends Widget {
       for (const absPath of Object.keys(buildTargets)) {
         let elemParent = buildTargets[absPath][0];
         let childPaths = buildTargets[absPath][1];
-        // console.log('XXXX');
-        // console.log(absPath);
-        // console.log(elemParent);
-        // console.log(childPaths);
-        // console.log(buildTargets[absPath]);
 
         if (!childPaths) {
           // TODO: Create a placeholder child item for this dir
         }
         for (let [pathSegment, pathInfo] of Object.entries(childPaths)) {
-          let item = new FssTreeItem([this.lazyLoad.bind(this)], true);
+          let item = new FssTreeItem([this.lazyLoad.bind(this)], true, true);
           item.setMetadata((pathInfo as any).path);
           item.setText(pathSegment);
           // (pathInfo as any).ui = item;
@@ -307,9 +298,6 @@ class FsspecWidget extends Widget {
 
     // Update current filesystem display labels
     this.selectedFsLabel.innerText = `${fsname}`;
-    // this.detailName.classList.remove('jfss-hidden');
-    // this.detailName.innerText = fsname;
-    // this.detailPath.innerText = `Path: ${this.model.userFilesystems[fsname].path}`;
 
     // Build a directory tree and update the display
     this.dirTree = this.buildTree(pathInfos, this.model.userFilesystems[fsname].path);
@@ -378,14 +366,6 @@ class FsspecWidget extends Widget {
 
     return dirTree;
   }
-
-  // getStubFileList() {
-  //   let pathList: any = [
-  //     {'name': '/Users/djikstra/workspace/averager/index.html', 'type': 'FILE'},
-  //     {'name': '/Users/djikstra/workspace/averager/styles.css', 'type': 'FILE'},
-  //   ]
-  //   return pathList;
-  // }
 }
 
 /**
