@@ -219,9 +219,11 @@ class FsspecWidget extends Widget {
 
     // Update the TreeView in the UI
     await this.updateFileBrowserView(nodeForPath);
-    let uiElement = this.elementHeap[nodeForPath.id.toString()];
-    console.log(`VIEW REFRESH, children:\n\n${uiElement.root.innerHTML}`);
-    uiElement.expandItem();
+    if (nodeForPath.id.toString() in this.elementHeap) {
+      let uiElement = this.elementHeap[nodeForPath.id.toString()];
+      uiElement.expandItem();
+      // Logger.debug(`[FSSpec] StartNode children after lazy load:\n\n${uiElement.root.innerHTML}`);
+    }
   }
 
   getElementForNode(ident: any) {
@@ -260,10 +262,10 @@ class FsspecWidget extends Widget {
         // console.log(buildTargets[absPath]);
 
         if (!childPaths) {
-          // Create a placeholder child item for this dir
+          // TODO: Create a placeholder child item for this dir
         }
         for (let [pathSegment, pathInfo] of Object.entries(childPaths)) {
-          let item = new FssTreeItem([this.lazyLoad.bind(this)]);
+          let item = new FssTreeItem([this.lazyLoad.bind(this)], true);
           item.setMetadata((pathInfo as any).path);
           item.setText(pathSegment);
           // (pathInfo as any).ui = item;
@@ -298,7 +300,7 @@ class FsspecWidget extends Widget {
     const response = await this.model.listDirectory(this.model.userFilesystems[this.model.activeFilesystem].key);
     if (!('status' in response) || !(response.status == 'success') || !('content' in response)) {
       // TODO refactor validation
-      console.log(`Error fetching files for filesystem ${fsname}`);  // TODO jupyter info print
+      Logger.error(`Error fetching files for filesystem ${fsname}`);  // TODO jupyter info print
       return;
     }
     const pathInfos = response['content'];

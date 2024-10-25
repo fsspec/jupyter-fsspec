@@ -4,6 +4,7 @@ import { TreeItem } from '@jupyter/web-components';
 import { fileIcon, folderIcon } from '@jupyterlab/ui-components';
 
 import { FssContextMenu } from './treeContext';
+import { Logger } from "./logger"
 
 export class FssTreeItem {
     root: any;
@@ -15,15 +16,19 @@ export class FssTreeItem {
     isDir = false;
     treeItemObserver: MutationObserver;
     pendingExpandAction = false;
+    lazyLoadAutoExpand = true;
 
-    constructor(clickSlots: any) {
+    constructor(clickSlots: any, autoExpand: boolean) {
         // The TreeItem component is the root and handles
         // tree structure functionality in the UI
         let root = new TreeItem();
         this.root = root;
         this.clickSlots = clickSlots;
+        this.lazyLoadAutoExpand = autoExpand;
 
-        // Use a MutationObserver to look for new child nodes
+        // Use a MutationObserver on the root TreeItem's shadow DOM,
+        // where the TreeItem's expand/collapse control will live once
+        // the item has children to show
         let observeOptions = {
             childList: true,
             subtree: true,
@@ -57,7 +62,6 @@ export class FssTreeItem {
 
         // Start observing for changes to the TreeItem's shadow root
         if (this.root.shadowRoot) {
-            console.log('ITEM HAS SHADOW')
             this.treeItemObserver.observe(this.root.shadowRoot, observeOptions)
         }
     }
@@ -89,21 +93,21 @@ export class FssTreeItem {
     }
 
     handleDomMutation(records: any, observer: any) {
-        // console.log(`Observing ${this.root.dataset.fss}`);
-        if (this.pendingExpandAction) {
-
+        // This is used to auto-expand directory-type TreeItem's to show children after
+        // a lazy-load. It checks the TreeItem's shadow dom for the addition of an
+        // "expand-collapse-button" child control which is used to expand and show
+        // children (in the tree) of this class's root TreeItem node. By auto expanding here,
+        // we save the user from having to click twice on a folder (once to lazy-load
+        // and another time to expand) when they want to expand it
+        if (this.lazyLoadAutoExpand && this.pendingExpandAction) {
             for (const rec of records) {
-                // console.log(`mREC`);
-                // console.log(rec);
-                // console.log(rec?.class);
-                for (let node of rec?.addedNodes) {
-                    // console.log(node);
-                    // console.log(node?.className);
-                    if (node?.classList) {
-                        // console.log(`chk CLS ${node.classList.contains('expand-collapse-button')}`);
-                        if (node.classList.contains('expand-collapse-button')) {
-                            // console.log('DoEXPAND');
+                let addedNodes = rec?.addedNodes;
+                if (addedNodes) {
+                    for (let node of addedNodes) {
+                        if (node?.classList && node.classList.contains('expand-collapse-button')) {
                             node.click();
+                            this.root.scrollTo();
+                            this.pendingExpandAction = false;
                         }
                     }
                 }
@@ -112,20 +116,22 @@ export class FssTreeItem {
     }
 
     handleClick(event: any) {
-        let target = event.target;
-        console.log(`FOOBAR ${target?.shadowRoot}`);
+        // Handles normal click events on the TreeItem (unlike the MutationObserver system
+        // which is for handling folder auto-expand after lazy load)
         let expander = this.root.shadowRoot.querySelector('.expand-collapse-button');
         if (expander) {
             let expRect = expander.getBoundingClientRect();
-            if (!(event.clientX < expRect.left
+            if ((event.clientX < expRect.left
                     || event.clientX > expRect.right
                     || event.clientY < expRect.top
                     || event.clientY > expRect.bottom)) {
-                console.log('--> Click inside expander');
+                Logger.debug('--> Click outside expander, force expander click');
+                expander.click();
+                this.root.scrollTo();
             }
         }
 
-        console.log(`TCLICK // t... ${event.target} // Q... ${event.target.querySelectorAll('.expand-collapse-button')}`);
+        // Fire connected slots that were supplied to this item on init
         if (this.isDir) {
             for (let slot of this.clickSlots) {
                 slot(this.root.dataset.fss);
@@ -134,25 +140,27 @@ export class FssTreeItem {
     }
 
     expandItem() {
-        console.log('expandItem XX');
-        let shadow = this.root.shadowRoot;
-        let expander = this.root.shadowRoot.querySelector('.expand-collapse-button');
-        console.log(this.root.innerHTML);
-        console.log(shadow);
-        console.log(shadow.innerHTML);
-        console.log(shadow.querySelector('.expand-collapse-button'));
-        console.log(shadow.children);
-        if (expander) {
-            console.log('CLICKING expander');
-            expander.click();
-        }
+        // TODO remove this chunk
+        ///////////
+        // console.log('expandItem XX');
+        // let shadow = this.root.shadowRoot;
+        // let expander = this.root.shadowRoot.querySelector('.expand-collapse-button');
+        // console.log(this.root.innerHTML);
+        // console.log(shadow);
+        // console.log(shadow.innerHTML);
+        // console.log(shadow.querySelector('.expand-collapse-button'));
+        // console.log(shadow.children);
+        // if (expander) {
+        //     console.log('CLICKING expander');
+        //     expander.click();
+        // }
+        ///////////
 
-        // This method's purpose is to expand folder items to show
-        // children, but when this is called, the children aren't ready...
-        // Set this here to indicate that an expand action is desired,
-        // then use the MutationObserver member var to find the
-        // expand/collapse Element so that it can be click()'d to
-        // perform the actual expand action
+        // This method's purpose is to expand folder items to show children
+        // after a lazy load, but when this is called, the expand controls aren't
+        // ready...a flag is set here to indicate that an expand action is desired,
+        // which is used by the MutationObserver member var's handler to find the
+        // expand/collapse Element when it is added so that it can be click()'d
         this.pendingExpandAction = true;
     }
 
