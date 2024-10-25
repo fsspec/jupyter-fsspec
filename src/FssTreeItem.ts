@@ -118,27 +118,32 @@ export class FssTreeItem {
     }
 
     handleClick(event: any) {
-        // Handles normal click events on the TreeItem (unlike the MutationObserver system
-        // which is for handling folder auto-expand after lazy load)
-        if (this.clickAnywhereDoesAutoExpand) {
-            let expander = this.root.shadowRoot.querySelector('.expand-collapse-button');
-            if (expander) {
-                let expRect = expander.getBoundingClientRect();
-                if ((event.clientX < expRect.left
-                        || event.clientX > expRect.right
-                        || event.clientY < expRect.top
-                        || event.clientY > expRect.bottom)) {
-                    Logger.debug('--> Click outside expander, force expander click');
-                    expander.click();
-                    this.root.scrollTo();
+        // Filter click events to handle this item's root+shadow and container
+        if (event.target === this.root || this.container.contains(event.target) || this.root.shadowRoot.contains(event.target)) {
+            // Handles normal click events on the TreeItem (unlike the MutationObserver system
+            // which is for handling folder auto-expand after lazy load)
+            if (this.clickAnywhereDoesAutoExpand) {
+                let expander = this.root.shadowRoot.querySelector('.expand-collapse-button');
+                if (expander) {
+                    let expRect = expander.getBoundingClientRect();
+                    if ((event.clientX < expRect.left
+                            || event.clientX > expRect.right
+                            || event.clientY < expRect.top
+                            || event.clientY > expRect.bottom)) {
+                        Logger.debug('--> Click outside expander, force expander click');
+                        expander.click();
+                        this.root.scrollTo();
+                    }
                 }
             }
-        }
-
-        // Fire connected slots that were supplied to this item on init
-        if (this.isDir) {
-            for (let slot of this.clickSlots) {
-                slot(this.root.dataset.fss);
+            // Fire connected slots that were supplied to this item on init
+            if (this.isDir) {
+                for (let slot of this.clickSlots) {
+                    slot(this.root.dataset.fss);
+                }
+            }
+            else {
+                this.root.click();
             }
         }
     }
