@@ -11,7 +11,7 @@ import { ICommandPalette } from '@jupyterlab/apputils';
 import { FileManagerWidget } from './FileManager';
 
 import { FsspecModel } from './handler/fileOperations';
-import { FilesystemItem } from './FilesystemItem';
+import { FssFilesysItem } from './FssFilesysItem';
 import { FssTreeItem } from './FssTreeItem';
 
 import { Widget } from '@lumino/widgets';
@@ -39,6 +39,9 @@ class FsspecWidget extends Widget {
   upperArea: any;
   model: any;
   selectedFsLabel: any;
+  fsDetails: any;
+  detailName: any;
+  detailPath: any;
   treeView: any;
   elementHeap: any = {};
   filesysContainer: any;
@@ -62,6 +65,27 @@ class FsspecWidget extends Widget {
     mainLabel.innerText = 'Jupyter FSSpec'
     this.upperArea.appendChild(mainLabel);
 
+    let sourcesControls = document.createElement('div');
+    sourcesControls.classList.add('jfss-sourcescontrols');
+    this.upperArea.appendChild(sourcesControls);
+
+    let sourcesLabel = document.createElement('div');
+    sourcesLabel.classList.add('jfss-sourceslabel');
+    sourcesLabel.innerText = 'Configured Filesystems'
+    sourcesLabel.title = 'A list of filesystems stored in the Jupyter FSSpec yaml';
+    sourcesControls.appendChild(sourcesLabel);
+
+    let sourcesDivider = document.createElement('div');
+    sourcesLabel.classList.add('jfss-sourcesdivider');
+    sourcesControls.appendChild(sourcesDivider);
+
+    let refreshConfig = document.createElement('div');
+    refreshConfig.title = 'Re-read and refresh sources from config';
+    refreshConfig.classList.add('jfss-refreshconfig');
+    refreshConfig.innerText = '\u{21bb}'
+    refreshConfig.addEventListener('click', this.fetchConfig.bind(this))
+    sourcesControls.appendChild(refreshConfig);
+
     this.filesysContainer = document.createElement('div');
     this.filesysContainer.classList.add('jfss-userfilesystems');
     this.upperArea.appendChild(this.filesysContainer);
@@ -72,15 +96,19 @@ class FsspecWidget extends Widget {
     let lowerArea = document.createElement('div');
     lowerArea.classList.add('jfss-lowerarea');
 
-    let resultArea = document.createElement('div');
-    resultArea.classList.add('jfss-resultarea');
-    lowerArea.appendChild(resultArea);
+    let browserAreaLabel = document.createElement('div');
+    browserAreaLabel.classList.add('jfss-browseAreaLabel');
+    browserAreaLabel.innerText = 'Browse Filesystem';
+    lowerArea.appendChild(browserAreaLabel);
 
     this.selectedFsLabel = document.createElement('div');
     this.selectedFsLabel.classList.add('jfss-selectedFsLabel');
-    this.selectedFsLabel.classList.add('jfss-mainlabel');
-    this.selectedFsLabel.innerText = 'Select a filesystem to display';
-    resultArea.appendChild(this.selectedFsLabel);
+    this.selectedFsLabel.innerText = '<Select a filesystem>';
+    lowerArea.appendChild(this.selectedFsLabel);
+
+    let resultArea = document.createElement('div');
+    resultArea.classList.add('jfss-resultarea');
+    lowerArea.appendChild(resultArea);
 
     this.treeView = new TreeView();
     resultArea.appendChild(this.treeView);
@@ -93,7 +121,18 @@ class FsspecWidget extends Widget {
     this.populateFilesystems();
   }
 
+  async fetchConfig() {
+    await this.model.refreshConfig();
+    Logger.debug(`[FSSpec] Refresh config:\n${JSON.stringify(this.model.userFilesystems)}`);
+    this.populateFilesystems();
+  }
+
   populateFilesystems() {
+    Logger.debug(`[FSSpec] Populate filesystems: \n${JSON.stringify(this.model.userFilesystems)}`);
+
+    this.filesysContainer.replaceChildren();
+    this.treeView.replaceChildren();
+    this.elementHeap = {};
     for (const key of Object.keys(this.model.userFilesystems)) {
       let fsInfo = this.model.userFilesystems[key];
       this.addFilesystemItem(fsInfo);
@@ -101,8 +140,9 @@ class FsspecWidget extends Widget {
   }
 
   addFilesystemItem(fsInfo: any) {
-    let fsItem = new FilesystemItem(fsInfo, [this.handleFilesystemClicked.bind(this)]);
-    this.filesysContainer.appendChild(fsItem.element);
+    let fsItem = new FssFilesysItem(fsInfo, [this.handleFilesystemClicked.bind(this)]);
+    fsItem.setMetadata(fsInfo.path);
+    this.filesysContainer.appendChild(fsItem.root);
   }
 
   async handleFilesystemClicked(fsInfo: any) {
@@ -147,16 +187,16 @@ class FsspecWidget extends Widget {
     // Fetch files for a given folder and update the dir tree with the results
     Logger.info(`Calling lazy load for ${source_path}`);
     const response = await this.model.listDirectory(this.model.userFilesystems[this.model.activeFilesystem].key, source_path);
-    if (!('status' in response) || !(response.status == 'success') || !('content' in response)) {
+    if (response?.status != 'success' || !response?.content) {
       // TODO refactor validation
       Logger.error(`Error fetching files for path ${source_path}`);  // TODO jupyter info print
       return;
     }
-    Logger.debug(`Response: (${JSON.stringify(response)})`);
+    // Logger.debug(`Response: (${JSON.stringify(response)})`);
 
     // Get the dir tree node for this path (updates go into this subtree)
     let nodeForPath = this.getNodeForPath(source_path);
-    Logger.debug(`Found node: ${JSON.stringify(nodeForPath)}`);
+    // Logger.debug(`Found node: ${JSON.stringify(nodeForPath)}`);
     if (!nodeForPath) {
       Logger.error(`Error: Bad path for ${source_path}`);
       return;
@@ -165,7 +205,7 @@ class FsspecWidget extends Widget {
       // Update the dir tree/data
       this.updateTree(nodeForPath, response['content'], source_path);
       nodeForPath.fetch = true;
-      Logger.debug(`After fetch: ${JSON.stringify(nodeForPath)}`);
+      // Logger.debug(`After fetch: ${JSON.stringify(nodeForPath)}`);
     }
     else {
       // Already fetched this child path, ignore and return
@@ -175,6 +215,11 @@ class FsspecWidget extends Widget {
 
     // Update the TreeView in the UI
     await this.updateFileBrowserView(nodeForPath);
+    if (nodeForPath.id.toString() in this.elementHeap) {
+      let uiElement = this.elementHeap[nodeForPath.id.toString()];
+      uiElement.expandItem();
+      // Logger.debug(`[FSSpec] StartNode children after lazy load:\n\n${uiElement.root.innerHTML}`);
+    }
   }
 
   getElementForNode(ident: any) {
@@ -206,14 +251,12 @@ class FsspecWidget extends Widget {
       for (const absPath of Object.keys(buildTargets)) {
         let elemParent = buildTargets[absPath][0];
         let childPaths = buildTargets[absPath][1];
-        // console.log('XXXX');
-        // console.log(absPath);
-        // console.log(elemParent);
-        // console.log(childPaths);
-        // console.log(buildTargets[absPath]);
 
+        if (!childPaths) {
+          // TODO: Create a placeholder child item for this dir
+        }
         for (let [pathSegment, pathInfo] of Object.entries(childPaths)) {
-          let item = new FssTreeItem([this.lazyLoad.bind(this)]);
+          let item = new FssTreeItem([this.lazyLoad.bind(this)], true, true);
           item.setMetadata((pathInfo as any).path);
           item.setText(pathSegment);
           // (pathInfo as any).ui = item;
@@ -248,13 +291,13 @@ class FsspecWidget extends Widget {
     const response = await this.model.listDirectory(this.model.userFilesystems[this.model.activeFilesystem].key);
     if (!('status' in response) || !(response.status == 'success') || !('content' in response)) {
       // TODO refactor validation
-      console.log(`Error fetching files for filesystem ${fsname}`);  // TODO jupyter info print
+      Logger.error(`Error fetching files for filesystem ${fsname}`);  // TODO jupyter info print
       return;
     }
     const pathInfos = response['content'];
 
-    // Update current filesystem display label
-    this.selectedFsLabel.innerText = `Files for: ${fsname}`;
+    // Update current filesystem display labels
+    this.selectedFsLabel.innerText = `${fsname}`;
 
     // Build a directory tree and update the display
     this.dirTree = this.buildTree(pathInfos, this.model.userFilesystems[fsname].path);
@@ -323,14 +366,6 @@ class FsspecWidget extends Widget {
 
     return dirTree;
   }
-
-  // getStubFileList() {
-  //   let pathList: any = [
-  //     {'name': '/Users/djikstra/workspace/averager/index.html', 'type': 'FILE'},
-  //     {'name': '/Users/djikstra/workspace/averager/styles.css', 'type': 'FILE'},
-  //   ]
-  //   return pathList;
-  // }
 }
 
 /**
@@ -350,24 +385,25 @@ const plugin: JupyterFrontEndPlugin<void> = {
     console.log('JupyterLab extension jupyterFsspec is activated!');
     Logger.setLevel(Logger.DEBUG)
 
+    // Auto initialize the model
     let fsspecModel = new FsspecModel();
     await fsspecModel.initialize();
-    window.fsspecModel = fsspecModel;
-
+    // Use the model to initialize the widget and add to the UI
     let fsspec_widget = new FsspecWidget(fsspecModel);
     fsspec_widget.id = 'jupyterFsspec:widget'
     app.shell.add(fsspec_widget, 'right');
 
-    if (settingRegistry) {
-      settingRegistry
-        .load(plugin.id)
-        .then(settings => {
-          console.log('jupyterFsspec settings loaded:', settings.composite);
-        })
-        .catch(reason => {
-          console.error('Failed to load settings for jupyterFsspec.', reason);
-        });
-    }
+    // // TODO finish this
+    // if (settingRegistry) {
+    //   settingRegistry
+    //     .load(plugin.id)
+    //     .then(settings => {
+    //       Logger.info(`[FSSpec] Settings loaded: ${settings.composite}`);
+    //     })
+    //     .catch(reason => {
+    //       Logger.error(`[FSSpec] Failed to load settings for jupyterFsspec: ${reason}`);
+    //     });
+    // }
 
     const { commands } = app;
     const commandToolkit = 'jupyter_fsspec:open-toolkit';
