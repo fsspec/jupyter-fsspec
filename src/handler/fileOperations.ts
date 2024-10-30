@@ -449,23 +449,11 @@ export class FsspecModel {
     }
   }
 
-  async listDirectory(key: string, item_path: string = '', type: string = ''): Promise<any> {
-    const query = new URLSearchParams({ key, item_path, type }).toString();
-    let result = null;
-
-    Logger.debug(`[FSSpec] Fetching files -> ${query}`);
-    try {
-      result = await requestAPI<any>(`fsspec?${query}`, {
-        method: 'GET'
-      });
-    } catch (error) {
-      Logger.error(`[FSSpec] Failed to list filesystem ${error}: `);
-    }
-
-    return result;
-  }
-
-  async listDirectory_refactored(key: string, item_path: string = '', type: string = 'default'): Promise<any> {
+  async listDirectory(
+    key: string,
+    item_path: string = '',
+    type: string = 'default'
+  ): Promise<any> {
     const query = new URLSearchParams({ key, item_path, type }).toString();
     let result = null;
 

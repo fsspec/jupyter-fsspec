@@ -64,15 +64,11 @@ def test_key_decode_encode(config_file):
         'path':  str(config_file.parent)
     }
 
+    # TODO: update _encoded_key
     encoded_key = fs_test_manager._encode_key(fs_test_config)
-    decoded_type, decoded_path = fs_test_manager._decode_key(encoded_key)
+    decoded_name = fs_test_manager._decode_key(encoded_key)
 
-    # Ensure both paths are absolute by adding leading slash if missing
-    decoded_path = '/' + decoded_path.lstrip('/')  # Normalize decoded path
-    fs_test_config['path'] = '/' + fs_test_config['path'].lstrip('/')  # Normalize original path
-
-    assert decoded_path == fs_test_config['path']  # Compare as strings
-    assert decoded_type == fs_test_config['type']
+    assert decoded_name == fs_test_config['name'] 
 
 
 # ============================================================

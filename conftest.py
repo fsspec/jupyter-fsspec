@@ -2,6 +2,10 @@ from pathlib import Path
 from unittest.mock import patch
 import pytest
 import fsspec
+import os
+import boto3
+from moto import mock_aws
+from moto.moto_server.threaded_moto_server import ThreadedMotoServer
 from jupyter_fsspec.file_manager import FileSystemManager
 
 pytest_plugins = ['pytest_jupyter.jupyter_server', 'jupyter_server.pytest_plugin',
@@ -14,8 +18,7 @@ def setup_config_file_fs(tmp_path: Path):
 
     yaml_content = """sources:
   - name: "TestSourceAWS"
-    path: "/path/to/set1"
-    type: "s3"
+    path: "s3://my-test-bucket/"
     additional_options:
       anon: false
       key: "my-access-key"
@@ -74,6 +77,34 @@ def fs_manager_instance(setup_config_file_fs):
         print("File does not exist!")
     return fs_manager
 
+def get_boto3_client():
+    from botocore.session import Session
+
+    # NB: we use the sync botocore client for setup
+    session = Session()
+
+    endpoint_uri = "http://127.0.0.1:%s/" % "5555"
+    return session.create_client("s3", endpoint_url=endpoint_uri)
+
+@pytest.fixture(scope='function')
+def s3_client(mock_s3_fs):
+    s3_client = get_boto3_client()
+    s3_client.create_bucket(Bucket='my-test-bucket')
+    return s3_client
+
+@pytest.fixture(scope='function')
+def s3_fs_manager_instance(setup_config_file_fs):
+    fs_manager = setup_config_file_fs
+    fs_info = fs_manager.get_filesystem_by_type('s3')
+    key = fs_info['key']
+    fs = fs_info['info']['instance']
+    root_path = fs_info['info']['path']
+
+    endpoint_uri = "http://127.0.0.1:%s/" % "5555"
+    # fs = fsspec.filesystem('s3', asynchronous=True, anon=False, client_kwargs={'endpoint_url': endpoint_uri})
+    return fs_manager
+
+
 @pytest.fixture(params=['memory', 'local', 's3'])
 def filesystem_type(request):
     return request.param
@@ -82,14 +113,11 @@ def filesystem_type(request):
 def populated_file_system(filesystem_type):
     fs_manager = FileSystemManager(config_file='jupyter-fsspec.yaml')
     fs_type = filesystem_type
-    print(f"fs_manager: {fs_manager}")
     fs_info = fs_manager.get_filesystem_by_type(fs_type)
     key = fs_info['key']
     fs = fs_info['info']['instance']
     root_path = fs_info['info']['path']
-    print(f"key: {key}")
-    print(f"fs: {fs}")
-    print(f"root_path: {root_path}")
+
     if fs:
         # Delete any existting directories
         # Populate the filesystem
@@ -102,6 +130,23 @@ def populated_file_system(filesystem_type):
         print(f"invalid filesystem: {fs}")
     return {"fs_type": fs_type, "fs_manager": fs_manager}
 
+#TODO: Update this fixture from s3fs
+@pytest.fixture(scope="function")
+def mock_s3_fs():
+    # This fixture is module-scoped, meaning that we can re-use the MotoServer across all tests
+    server = ThreadedMotoServer(ip_address="127.0.0.1", port=5555)
+    server.start()
+    if "AWS_SECRET_ACCESS_KEY" not in os.environ:
+        os.environ["AWS_SECRET_ACCESS_KEY"] = "foo"
+    if "AWS_ACCESS_KEY_ID" not in os.environ:
+        os.environ["AWS_ACCESS_KEY_ID"] = "foo"
+    # aws_session_token=os.environ["AWS_SESSION_TOKEN"]
+    if "AWS_SESSION_TOKEN" not in os.environ:
+        os.environ["AWS_SESSION_TOKEN"] = "foo"
+    print("server up")
+    yield
+    print("moto done")
+    server.stop()
 
 @pytest.fixture(scope='function')
 def fs_manager_instance_parameterized(populated_file_system):
@@ -112,8 +157,7 @@ def fs_manager_instance_parameterized(populated_file_system):
     key = fs_info['key']
     fs = fs_info['info']['instance']
     root_path = fs_info['info']['path']
-    print(f"root_path is: {root_path}")
-    print(f"fs value is: {fs}")
+
     # fs_info = fs_manager.get_filesystem_by_type('local')
     # key = fs_info['key']
     # fs = fs_info['info']['instance']
