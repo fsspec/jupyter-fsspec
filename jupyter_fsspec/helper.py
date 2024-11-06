@@ -3,7 +3,6 @@
 
 from urllib.parse import quote as urlescape  # TODO refactor
 
-import jupyter_fsspec
 from .file_manager import FileSystemManager
 from .exceptions import JupyterFsspecException
 
@@ -14,6 +13,9 @@ _active = None
 
 
 def _get_manager(cached=True):
+    # Get and cache a manager: The manager handles the config and filesystem
+    # construction using the same underlying machinery used by the frontend extension.
+    # The manager is cached to avoid hitting the disk/config file multiple times.
     global _manager
     if not cached or _manager is None:
         _manager = FileSystemManager.create_default()
@@ -21,6 +23,8 @@ def _get_manager(cached=True):
 
 
 def _get_fs(fs_name):
+    # Get an fsspec filesystem from the manager
+    # The fs_name is url encoded, we handle that here...TODO refactor that
     mgr = _get_manager()
     fs = mgr.get_filesystem(urlescape(fs_name))
     if fs is not None and 'instance' in fs:
@@ -30,10 +34,12 @@ def _get_fs(fs_name):
 
 
 def reload():
+    # Get a new manager/re-read the config file
     return _get_manager(False)
 
 
 def fs(fs_name):
+    # (Public API) Return an fsspec filesystem from the manager
     return _get_fs(fs_name)
 
 
@@ -41,6 +47,7 @@ filesystem = fs  # Alias for matching fsspec call
 
 
 def work_on(fs_name):
+    # Set one of the named filesystems as "active" for use with convenience funcs below
     global _active
     fs = _get_fs(fs_name)
     _active = fs
@@ -49,10 +56,12 @@ def work_on(fs_name):
 
 
 def _get_active():
+    # Gets the "active" filesystem
     return _active
 
 
 def open(*args, **kwargs):
+    # Get a file handle
     if not _active:
         raise JupyterFsspecException('No active filesystem')
 
@@ -61,6 +70,7 @@ def open(*args, **kwargs):
 
 
 def bytes(*args, **kwargs):
+    # Get bytes from the specified path
     if not _active:
         raise JupyterFsspecException('No active filesystem')
 
@@ -71,6 +81,7 @@ def bytes(*args, **kwargs):
 
 
 def utf8(*args, **kwargs):
+    # Get utf8 text from the specified path (valid utf8 data is assumed)
     if not _active:
         raise JupyterFsspecException('No active filesystem')
 
@@ -82,6 +93,7 @@ def utf8(*args, **kwargs):
 
 
 def ls(*args, **kwargs):
+    # Convenience/pass through call to fsspec ls
     if not _active:
         raise JupyterFsspecException('No active filesystem')
 
@@ -90,6 +102,7 @@ def ls(*args, **kwargs):
 
 
 def stat(*args, **kwargs):
+    # Convenience/pass through call to fsspec stat
     if not _active:
         raise JupyterFsspecException('No active filesystem')
 
