@@ -10,6 +10,10 @@ except ImportError:
 from .handlers import setup_handlers
 
 
+# Global config manager for kernel-side jupyter-fsspec use
+_manager = None
+
+
 def _jupyter_labextension_paths():
     return [{
         "src": "labextension",
