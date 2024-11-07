@@ -192,7 +192,7 @@ class FsspecWidget extends Widget {
       Logger.error(`Error fetching files for path ${source_path}`);  // TODO jupyter info print
       return;
     }
-    // Logger.debug(`Response: (${JSON.stringify(response)})`);
+    Logger.debug(`Response: (${JSON.stringify(response)})`);
 
     // Get the dir tree node for this path (updates go into this subtree)
     let nodeForPath = this.getNodeForPath(source_path);
@@ -256,7 +256,7 @@ class FsspecWidget extends Widget {
           // TODO: Create a placeholder child item for this dir
         }
         for (let [pathSegment, pathInfo] of Object.entries(childPaths)) {
-          let item = new FssTreeItem([this.lazyLoad.bind(this)], true, true);
+          let item = new FssTreeItem(this.model, [this.lazyLoad.bind(this)], true, true);
           item.setMetadata((pathInfo as any).path);
           item.setText(pathSegment);
           // (pathInfo as any).ui = item;

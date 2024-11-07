@@ -8,6 +8,7 @@ import { Logger } from "./logger"
 
 export class FssTreeItem {
     root: any;
+    model: any;
     // icon: HTMLElement;
     nameLbl: HTMLElement;
     dirSymbol: HTMLElement;
@@ -19,11 +20,12 @@ export class FssTreeItem {
     lazyLoadAutoExpand = true;
     clickAnywhereDoesAutoExpand = true;
 
-    constructor(clickSlots: any, autoExpand: boolean, expandOnClickAnywhere: boolean) {
+    constructor(model: any, clickSlots: any, autoExpand: boolean, expandOnClickAnywhere: boolean) {
         // The TreeItem component is the root and handles
         // tree structure functionality in the UI
         let root = new TreeItem();
         this.root = root;
+        this.model = model;
         this.clickSlots = clickSlots;
         this.lazyLoadAutoExpand = autoExpand;
         this.clickAnywhereDoesAutoExpand = expandOnClickAnywhere;
@@ -170,7 +172,7 @@ export class FssTreeItem {
         }
 
         // Make/add the context menu
-        let context = new FssContextMenu();
+        let context = new FssContextMenu(this.model);
         context.root.dataset.fss = this.root.dataset.fss;
         let body = document.getElementsByTagName('body')[0];
         body.appendChild(context.root);

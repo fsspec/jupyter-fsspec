@@ -57,7 +57,7 @@ class FssFilesysItem {
         }
 
         // Make/add the context menu
-        let context = new FssContextMenu();
+        let context = new FssContextMenu(null);
         context.root.dataset.fss = this.root.dataset.fss;
         let body = document.getElementsByTagName('body')[0];
         body.appendChild(context.root);
