@@ -257,7 +257,7 @@ class FsspecWidget extends Widget {
         }
         for (let [pathSegment, pathInfo] of Object.entries(childPaths)) {
           let item = new FssTreeItem(this.model, [this.lazyLoad.bind(this)], true, true);
-          item.setMetadata((pathInfo as any).path);
+          item.setMetadata((pathInfo as any).path, (pathInfo as any).metadata.size);
           item.setText(pathSegment);
           // (pathInfo as any).ui = item;
           elemParent.appendChild(item.root);
