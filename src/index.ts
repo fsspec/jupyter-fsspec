@@ -20,6 +20,8 @@ import { TreeView } from '@jupyter/web-components';
 
 import { Logger } from "./logger"
 
+import { DocumentWidget } from '@jupyterlab/docregistry';
+
 declare global {
   interface Window {
     fsspecModel: FsspecModel;
@@ -35,6 +37,15 @@ class UniqueId {
   }
 }
 
+let CODE_GETBYTES = `
+import jupyter_fsspec.helper as _jupyter_fsshelper
+try:
+  _jupyter_fsshelper._request_bytes('FS_NAME', 'FILEPATH')
+except:
+  pass  # TODO
+del _jupyter_fsshelper
+`
+
 class FsspecWidget extends Widget {
   upperArea: any;
   model: any;
@@ -46,10 +57,14 @@ class FsspecWidget extends Widget {
   elementHeap: any = {};
   filesysContainer: any;
   dirTree: any = {};
+  getCurrentWidget: any;
+  currentTarget: any = null;
 
-  constructor(model: any) {
+  constructor(model: any, fetchCurrentWidget: any) {
     super();
     this.model = model;
+
+    this.getCurrentWidget = fetchCurrentWidget;
 
     this.title.label = 'FSSpec'
     this.node.classList.add('jfss-root');
@@ -119,6 +134,68 @@ class FsspecWidget extends Widget {
 
     this.node.appendChild((primaryDivider));
     this.populateFilesystems();
+  }
+
+  handleMainWidgetChanged() {
+    // Change the target notebook when the user switches widgets in the application
+    const currentWidget = this.getCurrentWidget();
+    if (currentWidget instanceof DocumentWidget) {
+      // TODO: !!!!!!!! Fix/make more specific, for notebooks
+      // Notebooks are the only valid target
+      // this.currentTargetLbl.innerText =
+      //   'Current Notebook: ' + currentWidget.title.label;
+      this.currentTarget = currentWidget;
+    } else {
+      // Set target to nothing if it's not valid
+      // this.currentTargetLbl.innerText = 'Current Notebook: <None>';
+      this.currentTarget = null;
+    }
+  }
+
+  handleContextGetBytes(user_path: string) {
+    const target = this.currentTarget;
+
+    if (!target || target.isDisposed) {
+      // console.log('Invalid target widget');
+      return;
+    }
+
+    console.log('INDEX handle context get bytes');
+
+    // console.log('Session: ' + target.context.sessionContext.session);
+    if (target?.context?.sessionContext?.session) {
+      const kernel = target.context.sessionContext.session.kernel;
+      // console.log('Kernel: ' + kernel);
+      // console.log(
+      //   `this.savedSnapshotPathField.value is : ${this.savedSnapshotPathField.value}`
+      // );
+      let getBytesCode = CODE_GETBYTES.replace(
+        'FS_NAME', (match, p1, p2, p3, offset, string) => {return this.model.activeFilesystem})
+      getBytesCode = getBytesCode.replace(
+        'FILEPATH', (match, p1, p2, p3, offset, string) => {return user_path}
+      )
+      console.log(getBytesCode);
+      kernel
+        .requestExecute({
+          code: getBytesCode,
+          user_expressions: {
+            jfss_data: '_jupyter_fsshelper'
+          }
+        })
+        .done.then((message: any) => {
+          console.log(message);
+          console.log('xxYY');
+
+          // this.kernelOutput.innerText = ''; // Empty the summary box
+          const raw_text_container = document.createElement('pre');
+          raw_text_container.innerText = JSON.stringify(message, null, ' ');
+
+          // this.kernelOutput.appendChild(raw_text_container);
+        })
+        .catch(() => {
+          console.log('Error loading on kernel');
+        });
+    }
   }
 
   async fetchConfig() {
@@ -256,7 +333,7 @@ class FsspecWidget extends Widget {
           // TODO: Create a placeholder child item for this dir
         }
         for (let [pathSegment, pathInfo] of Object.entries(childPaths)) {
-          let item = new FssTreeItem([this.lazyLoad.bind(this)], true, true);
+          let item = new FssTreeItem([this.lazyLoad.bind(this)], true, true, [this.handleContextGetBytes.bind(this)]);
           item.setMetadata((pathInfo as any).path);
           item.setText(pathSegment);
           // (pathInfo as any).ui = item;
@@ -389,8 +466,15 @@ const plugin: JupyterFrontEndPlugin<void> = {
     let fsspecModel = new FsspecModel();
     await fsspecModel.initialize();
     // Use the model to initialize the widget and add to the UI
-    let fsspec_widget = new FsspecWidget(fsspecModel);
-    fsspec_widget.id = 'jupyterFsspec:widget'
+    let fsspec_widget = new FsspecWidget(
+      fsspecModel,
+      () => { return app.shell.currentWidget; }  // TODO fix this, use signals
+    );
+    fsspec_widget.id = 'jupyterFsspec:widget';
+    (app.shell as any).currentChanged.connect(  // TODO this is horrible, fix it
+      fsspec_widget.handleMainWidgetChanged,
+      fsspec_widget
+    ); // TODO fix any
     app.shell.add(fsspec_widget, 'right');
 
     // // TODO finish this

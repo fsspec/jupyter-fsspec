@@ -1,6 +1,8 @@
 # Gives users access to filesystems defined in the jupyter_fsspec config file
 
 
+import datetime
+from types import SimpleNamespace
 from urllib.parse import quote as urlescape  # TODO refactor
 
 from .file_manager import FileSystemManager
@@ -10,6 +12,13 @@ from .exceptions import JupyterFsspecException
 # Global config manager for kernel-side jupyter-fsspec use
 _manager = None
 _active = None
+_EMPTY_RESULT = {
+    'ok': False,
+    'value': None,
+    'path': None,
+    'timestamp': None,
+}
+out = SimpleNamespace(_EMPTY_RESULT)
 
 
 def _get_manager(cached=True):
@@ -44,6 +53,23 @@ def fs(fs_name):
 
 
 filesystem = fs  # Alias for matching fsspec call
+
+
+def _request_bytes(fs_name, path):
+    global out
+
+    # Empty results first
+    now = datetime.datetime.now().isoformat()
+    out = SimpleNamespace(_EMPTY_RESULT)
+    out.timestamp = now
+
+    filesys = filesystem(fs_name)
+    out = SimpleNamespace({
+        'ok': True,
+        'value': filesys.open(path, mode='rb').read(),
+        'path': path,
+        'timestamp': now,
+    })
 
 
 def work_on(fs_name):

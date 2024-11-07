@@ -3,8 +3,9 @@
 export class FssContextMenu {
     root: any;
     clicked = false;
+    parentControl: any = null;
 
-    constructor() {
+    constructor(parentControl: any) {
         let root = document.createElement('div');
         root.classList.add('jfss-tree-context-menu');
         this.root = root;
@@ -18,7 +19,21 @@ export class FssContextMenu {
         menuItem.dataset.fssContextType = 'copyPath';
         root.appendChild(menuItem);
 
+        // TODO refactor this...add a second option for TreeItems
+        if (parentControl) {
+            let menuItem2 = document.createElement('div');
+            menuItem2.classList.add('jfss-tree-context-item');
+            menuItem2.innerText = 'Send Bytes to helper';
+            menuItem2.addEventListener('mouseenter', this.handleItemHover.bind(this));
+            menuItem2.addEventListener('mouseleave', this.handleItemUnhover.bind(this));
+            menuItem2.addEventListener('click', this.handleItemClick.bind(this));
+            menuItem2.dataset.fssContextType = 'getBytes';
+            root.appendChild(menuItem2);
+        }
+
         root.addEventListener('mouseleave', this.handleMouseExit.bind(this), false);
+
+        this.parentControl = parentControl;
     }
 
     handleItemClick(event: any) {  // TODO multiple menu it
@@ -33,6 +48,14 @@ export class FssContextMenu {
                     this.root.remove();
                 },
             );
+        }
+        if (event.target.dataset.fssContextType == 'getBytes') {
+            console.log('AAA ffoo');
+            if (this.parentControl) {
+                this.parentControl.handleRequestBytes();
+            }
+
+            this.root.remove();
         }
     }
 

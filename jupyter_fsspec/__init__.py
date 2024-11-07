@@ -7,11 +7,8 @@ except ImportError:
     import warnings
     warnings.warn("Importing 'jupyter_fsspec' outside a proper installation.")
     __version__ = "dev"
+from . import helper
 from .handlers import setup_handlers
-
-
-# Global config manager for kernel-side jupyter-fsspec use
-_manager = None
 
 
 def _jupyter_labextension_paths():

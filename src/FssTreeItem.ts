@@ -13,18 +13,20 @@ export class FssTreeItem {
     dirSymbol: HTMLElement;
     container: HTMLElement;
     clickSlots: any;
+    getBytesSlots: any;
     isDir = false;
     treeItemObserver: MutationObserver;
     pendingExpandAction = false;
     lazyLoadAutoExpand = true;
     clickAnywhereDoesAutoExpand = true;
 
-    constructor(clickSlots: any, autoExpand: boolean, expandOnClickAnywhere: boolean) {
+    constructor(clickSlots: any, autoExpand: boolean, expandOnClickAnywhere: boolean, userGetBytesSlots: any) {
         // The TreeItem component is the root and handles
         // tree structure functionality in the UI
         let root = new TreeItem();
         this.root = root;
         this.clickSlots = clickSlots;
+        this.getBytesSlots = userGetBytesSlots;  // TODO fix its horrible
         this.lazyLoadAutoExpand = autoExpand;
         this.clickAnywhereDoesAutoExpand = expandOnClickAnywhere;
 
@@ -67,6 +69,13 @@ export class FssTreeItem {
             this.treeItemObserver.observe(this.root.shadowRoot, observeOptions)
         }
     }
+
+    handleRequestBytes() {
+        console.log('Treeitem get bytes');
+        for (const slot of this.getBytesSlots) {
+          slot(this.root.dataset.fss);
+        }
+      }
 
     appendChild(elem: any) {
         this.root.appendChild(elem);
@@ -170,7 +179,7 @@ export class FssTreeItem {
         }
 
         // Make/add the context menu
-        let context = new FssContextMenu();
+        let context = new FssContextMenu(this);  // TODO fix this its horrible
         context.root.dataset.fss = this.root.dataset.fss;
         let body = document.getElementsByTagName('body')[0];
         body.appendChild(context.root);
