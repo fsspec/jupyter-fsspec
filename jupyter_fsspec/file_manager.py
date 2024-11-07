@@ -125,7 +125,7 @@ class FileSystemManager:
                         fs.mkdir(fs_path)
 
                 # Store the filesystem instance
-                new_filesystems[key] = {"instance": fs, "name": fs_name, "type": fs_type, "path": fs_path}
+                new_filesystems[key] = {"instance": fs, "name": fs_name, "type": fs_type, "path": fs_path.unstrip_protocol()}
             except Exception as e:
                 print(f'Error initializing filesystems: {e}')
 
