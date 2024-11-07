@@ -140,7 +140,7 @@ class FsspecWidget extends Widget {
   }
 
   addFilesystemItem(fsInfo: any) {
-    let fsItem = new FssFilesysItem(fsInfo, [this.handleFilesystemClicked.bind(this)]);
+    let fsItem = new FssFilesysItem(this.model, fsInfo, [this.handleFilesystemClicked.bind(this)]);
     fsItem.setMetadata(fsInfo.path);
     this.filesysContainer.appendChild(fsItem.root);
   }
