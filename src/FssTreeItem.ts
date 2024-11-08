@@ -8,10 +8,8 @@ import { Logger } from "./logger"
 
 export class FssTreeItem {
     root: any;
-    model: any;
     // icon: HTMLElement;
     nameLbl: HTMLElement;
-    sizeLbl: HTMLElement;
     dirSymbol: HTMLElement;
     container: HTMLElement;
     clickSlots: any;
@@ -21,12 +19,11 @@ export class FssTreeItem {
     lazyLoadAutoExpand = true;
     clickAnywhereDoesAutoExpand = true;
 
-    constructor(model: any, clickSlots: any, autoExpand: boolean, expandOnClickAnywhere: boolean) {
+    constructor(clickSlots: any, autoExpand: boolean, expandOnClickAnywhere: boolean) {
         // The TreeItem component is the root and handles
         // tree structure functionality in the UI
         let root = new TreeItem();
         this.root = root;
-        this.model = model;
         this.clickSlots = clickSlots;
         this.lazyLoadAutoExpand = autoExpand;
         this.clickAnywhereDoesAutoExpand = expandOnClickAnywhere;
@@ -61,12 +58,6 @@ export class FssTreeItem {
         container.appendChild(nameLbl);
         this.nameLbl = nameLbl;
 
-        // Show the name of this file/folder (a single path segment)
-        let sizeLbl = document.createElement('div');
-        sizeLbl.classList.add('jfss-filesize-lbl');
-        container.appendChild(sizeLbl);
-        this.sizeLbl = sizeLbl;
-
         // Add click and right click handlers to the tree component
         root.addEventListener('contextmenu', this.handleContext.bind(this));
         root.addEventListener('click', this.handleClick.bind(this), true);
@@ -81,18 +72,8 @@ export class FssTreeItem {
         this.root.appendChild(elem);
     }
 
-    setMetadata(user_path: string, size: string) {
-        this.root.dataset.fss = user_path;
-        this.root.dataset.fsize = size;
-
-        let sizeDisplay = `(${size.toLocaleString()})`;
-        // if (parseInt(size) > 100) {
-        //     const sizeFormat = new Intl.NumberFormat(undefined, {
-        //         notation: 'scientific',
-        //     });
-        //     sizeDisplay = `(${sizeFormat.format(parseInt(size))})`;
-        // }
-        this.sizeLbl.innerText = sizeDisplay;
+    setMetadata(value: string) {
+        this.root.dataset.fss = value;
     }
 
     setText(value: string) {
@@ -106,7 +87,6 @@ export class FssTreeItem {
         if (symbol == 'dir') {
             folderIcon.element({container: this.dirSymbol});
             this.isDir = true;
-            this.sizeLbl.style.display = 'none';
         }
         if (symbol == 'file') {
             fileIcon.element({container: this.dirSymbol});
@@ -190,7 +170,7 @@ export class FssTreeItem {
         }
 
         // Make/add the context menu
-        let context = new FssContextMenu(this.model);
+        let context = new FssContextMenu();
         context.root.dataset.fss = this.root.dataset.fss;
         let body = document.getElementsByTagName('body')[0];
         body.appendChild(context.root);
