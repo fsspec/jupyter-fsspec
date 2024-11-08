@@ -4,6 +4,7 @@ import { FssContextMenu } from './treeContext';
 
 class FssFilesysItem {
     root: HTMLElement;
+    model: any;
     filesysName: string;
     filesysType: string;
     fsInfo: any;
@@ -11,7 +12,8 @@ class FssFilesysItem {
     nameField: any;
     typeField: any;
 
-    constructor(fsInfo: any, userClickSlots: any) {
+    constructor(model: any, fsInfo: any, userClickSlots: any) {
+      this.model = model;
       this.filesysName = fsInfo.name;
       this.filesysType = fsInfo.type;
       this.fsInfo = fsInfo;
@@ -57,7 +59,7 @@ class FssFilesysItem {
         }
 
         // Make/add the context menu
-        let context = new FssContextMenu();
+        let context = new FssContextMenu(this.model);
         context.root.dataset.fss = this.root.dataset.fss;
         let body = document.getElementsByTagName('body')[0];
         body.appendChild(context.root);
