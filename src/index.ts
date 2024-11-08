@@ -316,7 +316,7 @@ class FsspecWidget extends Widget {
       Logger.error(`Error fetching files for filesystem ${fsname}`);  // TODO jupyter info print
       return;
     }
-    const pathInfos = response['content'];
+    const pathInfos = response['content'].sort((a: any, b: any) => {return a.name.localeCompare(b.name)});
 
     // Update current filesystem display labels
     this.selectedFsLabel.innerText = `${fsname}`;
