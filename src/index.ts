@@ -43,7 +43,8 @@ class FsspecWidget extends Widget {
   detailName: any;
   detailPath: any;
   treeView: any;
-  elementHeap: any = {};
+  elementHeap: any = {};  // Holds FssTreeItem's keyed by path
+  sourcesHeap: any = {};  // Holds FssFilesysItem's keyed by name
   filesysContainer: any;
   dirTree: any = {};
 
@@ -96,10 +97,10 @@ class FsspecWidget extends Widget {
     let lowerArea = document.createElement('div');
     lowerArea.classList.add('jfss-lowerarea');
 
-    let browserAreaLabel = document.createElement('div');
-    browserAreaLabel.classList.add('jfss-browseAreaLabel');
-    browserAreaLabel.innerText = 'Browse Filesystem';
-    lowerArea.appendChild(browserAreaLabel);
+    // let browserAreaLabel = document.createElement('div');
+    // browserAreaLabel.classList.add('jfss-browseAreaLabel');
+    // browserAreaLabel.innerText = 'Browse Filesystem';
+    // lowerArea.appendChild(browserAreaLabel);
 
     this.selectedFsLabel = document.createElement('div');
     this.selectedFsLabel.classList.add('jfss-selectedFsLabel');
@@ -122,6 +123,7 @@ class FsspecWidget extends Widget {
   }
 
   async fetchConfig() {
+    this.selectedFsLabel.innerText = '<Select a filesystem>';
     await this.model.refreshConfig();
     Logger.debug(`[FSSpec] Refresh config:\n${JSON.stringify(this.model.userFilesystems)}`);
     this.populateFilesystems();
@@ -130,6 +132,7 @@ class FsspecWidget extends Widget {
   populateFilesystems() {
     Logger.debug(`[FSSpec] Populate filesystems: \n${JSON.stringify(this.model.userFilesystems)}`);
 
+    this.sourcesHeap = {};
     this.filesysContainer.replaceChildren();
     this.treeView.replaceChildren();
     this.elementHeap = {};
@@ -140,12 +143,31 @@ class FsspecWidget extends Widget {
   }
 
   addFilesystemItem(fsInfo: any) {
-    let fsItem = new FssFilesysItem(fsInfo, [this.handleFilesystemClicked.bind(this)]);
+    let fsItem = new FssFilesysItem(this.model, fsInfo, [this.handleFilesystemClicked.bind(this)]);
+    this.sourcesHeap[fsInfo.name] = fsItem;
     fsItem.setMetadata(fsInfo.path);
     this.filesysContainer.appendChild(fsItem.root);
   }
 
   async handleFilesystemClicked(fsInfo: any) {
+    for (let fsElem of this.filesysContainer.children) {
+      // Set clicked FS to selected state (+colorize), deselect others
+      if (!(fsElem.dataset.fssname in this.sourcesHeap)) {
+        // This should never happen
+        Logger.error('Error selecting filesystem');
+        break;
+      }
+
+      let wrapper = this.sourcesHeap[fsElem.dataset.fssname];
+
+      if (fsElem.dataset.fssname == fsInfo.name) {
+        wrapper.selected = true;
+      }
+      else {
+        wrapper.selected = false;
+      }
+    }
+
     this.model.setActiveFilesystem(fsInfo.name);
     await this.fetchAndDisplayFileInfo(fsInfo.name);
   }
@@ -192,7 +214,7 @@ class FsspecWidget extends Widget {
       Logger.error(`Error fetching files for path ${source_path}`);  // TODO jupyter info print
       return;
     }
-    // Logger.debug(`Response: (${JSON.stringify(response)})`);
+    Logger.debug(`Response: (${JSON.stringify(response)})`);
 
     // Get the dir tree node for this path (updates go into this subtree)
     let nodeForPath = this.getNodeForPath(source_path);
@@ -256,8 +278,8 @@ class FsspecWidget extends Widget {
           // TODO: Create a placeholder child item for this dir
         }
         for (let [pathSegment, pathInfo] of Object.entries(childPaths)) {
-          let item = new FssTreeItem([this.lazyLoad.bind(this)], true, true);
-          item.setMetadata((pathInfo as any).path);
+          let item = new FssTreeItem(this.model, [this.lazyLoad.bind(this)], true, true);
+          item.setMetadata((pathInfo as any).path, (pathInfo as any).metadata.size);
           item.setText(pathSegment);
           // (pathInfo as any).ui = item;
           elemParent.appendChild(item.root);
@@ -294,7 +316,7 @@ class FsspecWidget extends Widget {
       Logger.error(`Error fetching files for filesystem ${fsname}`);  // TODO jupyter info print
       return;
     }
-    const pathInfos = response['content'];
+    const pathInfos = response['content'].sort((a: any, b: any) => {return a.name.localeCompare(b.name)});
 
     // Update current filesystem display labels
     this.selectedFsLabel.innerText = `${fsname}`;

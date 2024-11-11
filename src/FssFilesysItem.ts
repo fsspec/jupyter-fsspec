@@ -1,17 +1,26 @@
 // Element for displaying a single fsspec filesystem
 
 import { FssContextMenu } from './treeContext';
+// import { Logger } from "./logger"
+
+const HOVER = 'var(--jp-layout-color3)';
+const UNHOVER = 'var(--jp-layout-color2)';
+const SELECTED = 'var(--jp-layout-color4)';
 
 class FssFilesysItem {
     root: HTMLElement;
+    model: any;
     filesysName: string;
     filesysType: string;
     fsInfo: any;
     clickSlots: any;
     nameField: any;
-    typeField: any;
+    pathField: any;
+    _selected = false;
+    _hovered = false;
 
-    constructor(fsInfo: any, userClickSlots: any) {
+    constructor(model: any, fsInfo: any, userClickSlots: any) {
+      this.model = model;
       this.filesysName = fsInfo.name;
       this.filesysType = fsInfo.type;
       this.fsInfo = fsInfo;
@@ -25,6 +34,7 @@ class FssFilesysItem {
       fsItem.classList.add('jfss-fsitem-root');
       fsItem.addEventListener('mouseenter', this.handleFsysHover.bind(this));
       fsItem.addEventListener('mouseleave', this.handleFsysHover.bind(this));
+      fsItem.dataset.fssname = fsInfo.name;
       this.root = fsItem;
 
       // Set the tooltip
@@ -35,10 +45,10 @@ class FssFilesysItem {
       this.nameField.innerText = this.filesysName;
       fsItem.appendChild(this.nameField);
 
-      this.typeField = document.createElement('div');
-      this.typeField.classList.add('jfss-fsitem-type');
-      this.typeField.innerText = 'Type: ' + this.filesysType;
-      fsItem.appendChild(this.typeField);
+      this.pathField = document.createElement('div');
+      this.pathField.classList.add('jfss-fsitem-type');
+      this.pathField.innerText = 'Path: ' + fsInfo.path;
+      fsItem.appendChild(this.pathField);
 
       fsItem.addEventListener('click', this.handleClick.bind(this));
       fsItem.addEventListener('contextmenu', this.handleContext.bind(this));
@@ -57,7 +67,7 @@ class FssFilesysItem {
         }
 
         // Make/add the context menu
-        let context = new FssContextMenu();
+        let context = new FssContextMenu(this.model);
         context.root.dataset.fss = this.root.dataset.fss;
         let body = document.getElementsByTagName('body')[0];
         body.appendChild(context.root);
@@ -91,18 +101,42 @@ class FssFilesysItem {
       this.root.dataset.fss = value;
     }
 
-    handleFsysHover(event: any) {
-      if (event.type == 'mouseenter') {
-        this.root.style.backgroundColor = 'var(--jp-layout-color3)';
-        this.root.style.backgroundColor = 'var(--jp-layout-color3)';
+    set selected(value: boolean) {
+      this._selected = value;
+      if (value) {
+        this.root.style.backgroundColor = SELECTED;
       }
       else {
-        this.root.style.backgroundColor = 'var(--jp-layout-color2)';
-        this.root.style.backgroundColor = 'var(--jp-layout-color2)';
+        this.hovered = this._hovered;
+      }
+    }
+
+    set hovered(state: boolean) {
+      this._hovered = state;
+      if (this._selected) {
+        this.root.style.backgroundColor = SELECTED;
+      }
+      else {
+        if (state) {
+          this.root.style.backgroundColor = HOVER;
+        }
+        else {
+          this.root.style.backgroundColor = UNHOVER;
+        }
+      }
+    }
+
+    handleFsysHover(event: any) {
+      if (event.type == 'mouseenter') {
+        this.hovered = true;
+      }
+      else {
+        this.hovered = false;
       }
     }
 
     handleClick(_event: any) {
+      this.selected = true;
       for (const slot of this.clickSlots) {
         slot(this.fsInfo);
       }

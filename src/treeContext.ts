@@ -3,11 +3,13 @@
 export class FssContextMenu {
     root: any;
     clicked = false;
+    model: any;
 
-    constructor() {
+    constructor(model: any) {
         let root = document.createElement('div');
         root.classList.add('jfss-tree-context-menu');
         this.root = root;
+        this.model = model;
 
         let menuItem = document.createElement('div');
         menuItem.classList.add('jfss-tree-context-item');
@@ -23,16 +25,24 @@ export class FssContextMenu {
 
     handleItemClick(event: any) {  // TODO multiple menu it
         if (event.target.dataset.fssContextType == 'copyPath') {
-            navigator.clipboard.writeText(this.root.dataset.fss).then(
-                () => {  // Success
-                    console.log('Copy path: ' + this.root.dataset.fss);
-                    this.root.remove();
-                },
-                () => {
-                    console.log('Copy path failed: ' + this.root.dataset.fss);
-                    this.root.remove();
-                },
-            );
+            let info = this.model.getActiveFilesystemInfo();
+            let protocol = info?.canonical_path.slice(
+                0,
+                info.canonical_path.length - info.path.length,
+            )
+            if (protocol) {
+                let canonical = protocol + '/' + this.root.dataset.fss.replace(/^\/+/, () => '');
+                navigator.clipboard.writeText(canonical).then(
+                    () => {  // Success
+                        console.log('Copy path: ' + canonical);
+                        this.root.remove();
+                    },
+                    () => {
+                        console.log('Copy path failed: ' + canonical);
+                        this.root.remove();
+                    },
+                );
+            }
         }
     }
 

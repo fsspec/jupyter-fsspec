@@ -111,6 +111,11 @@
   display: flex;
 }
 
+.jfss-filesize-lbl {
+  margin-left: .5rem;
+  color: var(--jp-ui-font-color3)
+}
+
 .jfss-hseparator {
   box-sizing: border-box;
 
@@ -164,10 +169,11 @@
   /* box-sizing: border-box; */
 
   display: flex;
+  overflow: hidden;
   flex-direction: column;
   align-items: flex-start;
 
-  flex: 1 0 2.25rem;
+  flex: 1 0 1.75rem;
   /* font-weight: bold; */
 
   margin: 0 .5rem .5rem 0;
@@ -204,7 +210,7 @@
 
   align-self: flex-start;
 
-  height: 1.25rem;
+  /* height: 1.25rem; */
 
   /* padding: .25rem; */
   /* border-radius: 2px; */
@@ -216,7 +222,7 @@
 .jfss-fsitem-name {
   box-sizing: border-box;
 
-  height: 1.25rem;
+  /* height: 1rem; */
 
   border-radius: 2px;
 
