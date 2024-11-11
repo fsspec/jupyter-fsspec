@@ -111,6 +111,11 @@
   display: flex;
 }
 
+.jfss-filesize-lbl {
+  margin-left: .5rem;
+  color: var(--jp-ui-font-color3)
+}
+
 .jfss-hseparator {
   box-sizing: border-box;
 
