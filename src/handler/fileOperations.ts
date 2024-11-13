@@ -1,5 +1,5 @@
 import { requestAPI } from './handler';
-import { Logger } from "../logger"
+import { Logger } from '../logger';
 
 /*
 interface IFilesystemConfig {
@@ -12,6 +12,7 @@ interface IFilesystemConfig {
   */
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/naming-convention
   interface Window {
     fsspecModel: FsspecModel;
   }
@@ -22,7 +23,7 @@ export class FsspecModel {
   userFilesystems: any = {};
   retry = 0;
 
-  async initialize(automatic: boolean=true, retry=3) {
+  async initialize(automatic: boolean = true, retry = 3) {
     this.retry = retry;
     if (automatic) {
       // Perform automatic setup: Fetch filesystems from config and store
@@ -33,12 +34,13 @@ export class FsspecModel {
       this.userFilesystems = {};
       try {
         for (let i = 0; i < retry; i++) {
-
           Logger.info('[FSSpec] Attempting to read config file...');
-          let result = await this.getStoredFilesystems();
-          if (result?.status == 'success') {
+          const result = await this.getStoredFilesystems();
+          if (result?.status === 'success') {
             // TODO report config entry errors
-            Logger.info(`[FSSpec] Successfully retrieved config:${JSON.stringify(result)}`);
+            Logger.info(
+              `[FSSpec] Successfully retrieved config:${JSON.stringify(result)}`
+            );
             this.userFilesystems = result.filesystems;
 
             // Set active filesystem to first
@@ -48,14 +50,18 @@ export class FsspecModel {
             break;
           } else {
             // TODO handle no config file
-            Logger.error('[FSSpec] Error fetching filesystems from user config');
+            Logger.error(
+              '[FSSpec] Error fetching filesystems from user config'
+            );
             if (i + 1 < retry) {
               Logger.info('[FSSpec]   retrying...');
             }
           }
         }
       } catch (error) {
-        Logger.error(`[FSSpec] Error: Unknown error initializing fsspec model:\n${error}`);
+        Logger.error(
+          `[FSSpec] Error: Unknown error initializing fsspec model:\n${error}`
+        );
       }
     }
   }
@@ -83,56 +89,63 @@ export class FsspecModel {
   async refreshConfig() {
     // TODO fix/refactor
     this.userFilesystems = {};
-      try {
-        for (let i = 0; i < this.retry; i++) {
+    try {
+      for (let i = 0; i < this.retry; i++) {
+        Logger.info('[FSSpec] Attempting to read config file...');
+        const result = await this.getStoredFilesystems();
+        if (result?.status === 'success') {
+          // TODO report config entry errors
+          Logger.info(
+            `[FSSpec] Successfully retrieved config:${JSON.stringify(result)}`
+          );
+          this.userFilesystems = result.filesystems;
 
-          Logger.info('[FSSpec] Attempting to read config file...');
-          let result = await this.getStoredFilesystems();
-          if (result?.status == 'success') {
-            // TODO report config entry errors
-            Logger.info(`[FSSpec] Successfully retrieved config:${JSON.stringify(result)}`);
-            this.userFilesystems = result.filesystems;
-
-            // Set active filesystem to first
-            if (Object.keys(result).length > 0) {
-              this.activeFilesystem = Object.keys(this.userFilesystems)[0];
-            }
-            break;
-          } else {
-            // TODO handle no config file
-            Logger.error('[FSSpec] Error fetching filesystems from user config');
-            if (i + 1 < this.retry) {
-              Logger.info('[FSSpec]   retrying...');
-            }
+          // Set active filesystem to first
+          if (Object.keys(result).length > 0) {
+            this.activeFilesystem = Object.keys(this.userFilesystems)[0];
+          }
+          break;
+        } else {
+          // TODO handle no config file
+          Logger.error('[FSSpec] Error fetching filesystems from user config');
+          if (i + 1 < this.retry) {
+            Logger.info('[FSSpec]   retrying...');
           }
         }
-      } catch (error) {
-        Logger.error(`[FSSpec] Error: Unknown error initializing fsspec model:\n${error}`);
       }
+    } catch (error) {
+      Logger.error(
+        `[FSSpec] Error: Unknown error initializing fsspec model:\n${error}`
+      );
+    }
   }
 
   async getStoredFilesystems(): Promise<any> {
     // Fetch list of filesystems stored in user's config file
-    let filesystems: any = {};
-    let result = {
-      'filesystems': filesystems,
-      'status': 'success',
+    const filesystems: any = {};
+    const result = {
+      filesystems: filesystems,
+      status: 'success'
     };
     try {
       const response = await requestAPI<any>('config');
       Logger.debug(`[FSSpec] Request config:\n${JSON.stringify(response)}`);
-      if (response?.status == 'success' && response?.content) {
+      if (response?.status === 'success' && response?.content) {
         for (const filesysInfo of response.content) {
           if (filesysInfo?.name) {
-            Logger.debug(`[FSSpec] Found filesystem: ${JSON.stringify(filesysInfo)}`)
+            Logger.debug(
+              `[FSSpec] Found filesystem: ${JSON.stringify(filesysInfo)}`
+            );
             filesystems[filesysInfo.name] = filesysInfo;
           } else {
             // TODO better handling for partial errors
-            Logger.error( `[FSSpec] Error, filesystem from config is missing a name: ${filesysInfo}`);
+            Logger.error(
+              `[FSSpec] Error, filesystem from config is missing a name: ${filesysInfo}`
+            );
           }
         }
       } else {
-        Logger.error(`[FSSpec] Error fetching config from server...`);
+        Logger.error('[FSSpec] Error fetching config from server...');
       }
       // // const fetchedFilesystems = response['content'];
       // // console.log(fetchedFilesystems);

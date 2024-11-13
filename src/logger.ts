@@ -16,22 +16,22 @@ export class Logger {
   }
 
   static debug(message: string) {
-    Logger.print(message, Logger.DEBUG)
+    Logger.print(message, Logger.DEBUG);
   }
 
   static info(message: string) {
-    Logger.print(message, Logger.INFO)
+    Logger.print(message, Logger.INFO);
   }
 
   static warn(message: string) {
-    Logger.print(message, Logger.WARN)
+    Logger.print(message, Logger.WARN);
   }
 
   static error(message: string) {
-    Logger.print(message, Logger.ERROR)
+    Logger.print(message, Logger.ERROR);
   }
 
   static setLevel(value: any) {
-    Logger.level = value
+    Logger.level = value;
   }
 }
