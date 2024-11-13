@@ -5,7 +5,7 @@ import { FssContextMenu } from './treeContext';
 
 const HOVER = 'var(--jp-layout-color3)';
 const UNHOVER = 'var(--jp-layout-color2)';
-const SELECTED = 'var(--jp-layout-color4)';
+const SELECTED = 'var(--jp-brand-color2)';
 
 class FssFilesysItem {
     root: HTMLElement;
