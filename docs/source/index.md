@@ -2,7 +2,7 @@
 
 ![Jupyter FSSpec inside JupyterLab](_static/extension_example_1.png "Jupyter FSSpec inside JupyterLab")
 
-> 📘 Note: This project is in a pre-release state, in active development. Expect instability.
+> 📘 **Note:** This project is in a pre-release state, in active development. Expect instability.
 
 Welcome to the `jupyter_fsspec` documentation, the JupyterLab (!) extension for the `fsspec` Python library.
 
@@ -37,10 +37,10 @@ inside a file named `~/.jupyter/jupyter-fsspec.yaml`. Here's a sample file:
 ```
 sources:
   - name: "Cell filter repo"
-    path: "/Users/egentry/workspace_ana/cfilter"
+    path: "/Users/finnmertens/cfilter/jupyterlab"
     type: "file"
   - name: "Averager project"
-    path: "file:///Users/egentry/workspace_ana/averager"
+    path: "file:///Users/finnmertens/averager"
 ```
 
 The config file has a list of sources, where each item needs a name and a path. The name
@@ -49,6 +49,27 @@ is a unique identifier, so don't use duplicate names.
 You can also optionally specify a type
 (which is the type of `fsspec` filesystem should construct). If you prefer you can omit the
 `type` argument and include the protocol in the path instead (like in the second entry).
+
+Basic navigation works as you'd expect: Click to expand/collapse folders, and right click for
+context options (such as copying the path of the current file to the clipboard).
+
+## The `helper` module
+
+You can import the `jupyter_fsspec.helper` module into your notebooks to interact with
+filesystems defined in your config file:
+
+```
+# Import the helper module directly
+from jupyter_fsspec import helper
+
+# Get an fsspec filesystem using the config name
+# (and use it as you would any fsspec filesystem)
+fs = helper.filesystem('Averager project')
+
+with fs.open('/My/file/path', 'rb') as fhandle:
+    filebytes = fhandle.read()
+filebytes[:256]
+```
 
 <!-- 
 TODO populate this
