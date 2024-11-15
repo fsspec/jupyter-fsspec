@@ -2,7 +2,7 @@
 
 Welcome to the `jupyter_fsspec` repo, a Jupyter extension for the `fsspec` Python library.
 Browse your fsspec filesystems in Jupyter, copy files and paths and otherwise interact with
-your data in the JupyterLab interface and inside your notebooks.
+your data in the Jupyter interface and inside your notebooks.
 
 ## Documentation
 
