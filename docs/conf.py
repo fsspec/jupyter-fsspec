@@ -7,8 +7,8 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Jupyter fsspec'
-copyright = '2024, Eric Gentry, Rosio Reyes, Martin Durant'
-author = 'Eric Gentry, Rosio Reyes, Martin Durant'
+copyright = '2024, Anaconda Inc'
+author = 'Anaconda Inc'
 release = '0.2.0'
 
 # -- General configuration ---------------------------------------------------
