@@ -18,7 +18,6 @@ declare global {
   }
 }
 
-
 /**
  * Initialization data for the jupyterFsspec extension.
  */
@@ -57,7 +56,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           const args = {
             side: 'right',
             title: 'Show jupyterFsspec',
-            id: 'plugin',
+            id: 'plugin'
           };
 
           // Check if right area is open
@@ -75,9 +74,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
           fsspec_widget.id = 'jupyter_fsspec:widget';
 
           // Add the widget to the top area
-          app.shell.add(fsspec_widget, 'right', { 'rank': 100 });
+          app.shell.add(fsspec_widget, 'right', { rank: 100 });
           app.shell.activateById(fsspec_widget.id);
-
         }
       });
 

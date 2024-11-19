@@ -29,7 +29,7 @@ export class FssTreeItem {
     // tree structure functionality in the UI
     // We use the tagName `jp-tree-item` for Notebook 7 compatibility
     const root = document.createElement('jp-tree-item');
-    root.setAttribute('name', `jfss-treeitem-root`);
+    root.setAttribute('name', 'jfss-treeitem-root');
     if (!root.shadowRoot) {
       const item_shadowRoot = root.attachShadow({ mode: 'open' });
       const item_slot = document.createElement('slot');
@@ -86,7 +86,7 @@ export class FssTreeItem {
     // Start observing for changes to the TreeItem's shadow root
     if (this.root.shadowRoot) {
       this.treeItemObserver.observe(this.root.shadowRoot, observeOptions);
-    } 
+    }
 
     root.addEventListener('click', event => {
       const target = event.target as HTMLElement | null;
@@ -96,7 +96,9 @@ export class FssTreeItem {
       const treeItem = target.closest('jp-tree-item');
       if (treeItem) {
         const isExpanded = treeItem.hasAttribute('expanded');
-        const items = treeItem.querySelectorAll('jp-tree-item[name="jfss-treeitem-root"]');
+        const items = treeItem.querySelectorAll(
+          'jp-tree-item[name="jfss-treeitem-root"]'
+        );
         if (isExpanded) {
           treeItem.removeAttribute('expanded');
           treeItem.setAttribute('aria-expanded', 'false');
@@ -119,7 +121,7 @@ export class FssTreeItem {
   }
 
   styleItems(items: NodeListOf<Element>, style: string) {
-    for (let t_item of items) {
+    for (const t_item of items) {
       const item = t_item as unknown as HTMLElement | null;
       if (item) {
         item.style.display = style;
