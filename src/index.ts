@@ -46,6 +46,7 @@ class FsspecWidget extends Widget {
   treeView: any;
   elementHeap: any = {}; // Holds FssTreeItem's keyed by path
   sourcesHeap: any = {}; // Holds FssFilesysItem's keyed by name
+  emptySourcesHint: any;
   filesysContainer: any;
   dirTree: any = {};
 
@@ -88,6 +89,14 @@ class FsspecWidget extends Widget {
     refreshConfig.innerText = '\u{21bb}';
     refreshConfig.addEventListener('click', this.fetchConfig.bind(this));
     sourcesControls.appendChild(refreshConfig);
+
+    this.emptySourcesHint = document.createElement('div');
+    this.emptySourcesHint.classList.add('jfss-emptysourceshint');
+    this.emptySourcesHint.innerHTML = (
+      '<span><a target="_blank" href="https://jupyter-fsspec.readthedocs.io/en/latest/">\u{26A0} No configured filesystems found,'
+      + ' click here to read docs/config info.</a></span>'
+    );
+    this.upperArea.appendChild(this.emptySourcesHint);
 
     this.filesysContainer = document.createElement('div');
     this.filesysContainer.classList.add('jfss-userfilesystems');
@@ -142,9 +151,15 @@ class FsspecWidget extends Widget {
     this.filesysContainer.replaceChildren();
     this.treeView.replaceChildren();
     this.elementHeap = {};
-    for (const key of Object.keys(this.model.userFilesystems)) {
-      const fsInfo = this.model.userFilesystems[key];
-      this.addFilesystemItem(fsInfo);
+    if (Object.keys(this.model.userFilesystems).length == 0) {
+      this.emptySourcesHint.style.display = 'block';
+    }
+    else {
+      this.emptySourcesHint.style.display = 'none';
+      for (const key of Object.keys(this.model.userFilesystems)) {
+        const fsInfo = this.model.userFilesystems[key];
+        this.addFilesystemItem(fsInfo);
+      }
     }
   }
 
