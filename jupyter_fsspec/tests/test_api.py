@@ -8,7 +8,7 @@ from tornado.httpclient import HTTPClientError
 from unittest.mock import patch
 # TODO: Testing: different file types, received expected errors
 
-async def xtest_get_config(jp_fetch):
+async def test_get_config(jp_fetch):
     response = await jp_fetch("jupyter_fsspec", "config", method="GET")
     assert response.code == 200
 
@@ -16,9 +16,9 @@ async def xtest_get_config(jp_fetch):
     body = json.loads(json_body)
     assert body['status'] == 'success'
 
-async def xtest_get_files_memory(fs_manager_instance, jp_fetch):
+async def test_get_files_memory(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem_by_type('memory')
+    mem_fs_info = fs_manager.get_filesystem_by_protocol('memory')
     mem_key = mem_fs_info['key']
     mem_fs = mem_fs_info['info']['instance']
     mem_item_path = mem_fs_info['info']['path']
@@ -59,9 +59,9 @@ async def xtest_get_files_memory(fs_manager_instance, jp_fetch):
     assert range_file_body['status'] == 'success'
     assert range_file_body['content'] == 'Test con'
 
-async def xtest_post_files(fs_manager_instance, jp_fetch):
+async def test_post_files(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem_by_type('memory')
+    mem_fs_info = fs_manager.get_filesystem_by_protocol('memory')
     mem_key = mem_fs_info['key']
     mem_fs = mem_fs_info['info']['instance']
     assert mem_fs != None
@@ -93,9 +93,9 @@ async def xtest_post_files(fs_manager_instance, jp_fetch):
     assert dir_body['status'] == 'success'
     assert dir_body['description'] == 'Wrote /my_mem_dir/test_dir/subdir/.'
 
-async def xtest_delete_files(fs_manager_instance, jp_fetch):
+async def test_delete_files(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem_by_type('memory')
+    mem_fs_info = fs_manager.get_filesystem_by_protocol('memory')
     mem_key = mem_fs_info['key']
     mem_fs = mem_fs_info['info']['instance']
     assert mem_fs != None
@@ -131,7 +131,7 @@ async def xtest_delete_files(fs_manager_instance, jp_fetch):
 async def xtest_put_files(fs_manager_instance, jp_fetch):
     # PUT replace entire resource
     fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem_by_type('memory')
+    mem_fs_info = fs_manager.get_filesystem_by_protocol('memory')
     mem_key = mem_fs_info['key']
     mem_fs = mem_fs_info['info']['instance']
     assert mem_fs != None
@@ -154,9 +154,9 @@ async def xtest_put_files(fs_manager_instance, jp_fetch):
         await jp_fetch("jupyter_fsspec", "files", method="PUT", params={"key": mem_key}, body=json.dumps(dir_payload))
     assert exc_info.value.code == 409
 
-async def xtest_rename_files(fs_manager_instance, jp_fetch):
+async def test_rename_files(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem_by_type('memory')
+    mem_fs_info = fs_manager.get_filesystem_by_protocol('memory')
     mem_key = mem_fs_info['key']
     mem_fs = mem_fs_info['info']['instance']
     assert mem_fs != None
@@ -192,7 +192,7 @@ async def xtest_rename_files(fs_manager_instance, jp_fetch):
 async def xtest_patch_file(fs_manager_instance, jp_fetch):
     #file only
     fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem_by_type('memory')
+    mem_fs_info = fs_manager.get_filesystem_by_protocol('memory')
     mem_key = mem_fs_info['key']
     mem_fs = mem_fs_info['info']['instance']
     assert mem_fs != None
@@ -206,8 +206,8 @@ async def xtest_patch_file(fs_manager_instance, jp_fetch):
 
 async def xtest_action_same_fs_files(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
-    # get_filesystem_by_type(filesystem_type) returns first instance of that filesystem type
-    mem_fs_info = fs_manager.get_filesystem_by_type('memory')
+    # get_filesystem_by_protocol(filesystem_protocol_string) returns first instance of that filesystem protocol
+    mem_fs_info = fs_manager.get_filesystem_by_protocol('memory')
     mem_key = mem_fs_info['key']
     mem_fs = mem_fs_info['info']['instance']
     assert mem_fs != None
@@ -263,7 +263,7 @@ async def xtest_action_same_fs_files(fs_manager_instance, jp_fetch):
 #     return session.create_client("s3", endpoint_url=endpoint_uri)
 
 @pytest.mark.asyncio
-async def test_async_s3_file_operations(s3_client, s3_fs_manager_instance, jp_fetch):
+async def xtest_async_s3_file_operations(s3_client, s3_fs_manager_instance, jp_fetch):
     # s3_client = get_boto3_client()
     s3_client = s3_client
     # boto3.set_stream_logger('botocore', level='DEBUG')
@@ -288,7 +288,7 @@ async def test_async_s3_file_operations(s3_client, s3_fs_manager_instance, jp_fe
     fs_manager = s3_fs_manager_instance
     print(f'fs_manager is: {fs_manager}')
 
-    fs_info = fs_manager.get_filesystem_by_type('s3')
+    fs_info = fs_manager.get_filesystem_by_protocol('s3')
     key = fs_info['key']
     fs = fs_info['info']['instance']
     item_path = fs_info['info']['path']
@@ -327,7 +327,7 @@ async def xtest___async_s3_file_operations(mock_s3_fs):
 #TODO: Test transfer endpoint
 async def xtest_file_transfer(fs_manager_instance_parameterized, jp_fetch):
     fs_manager = fs_manager_instance_parameterized
-    fs_info = fs_manager.get_filesystem_by_type('memory')
+    fs_info = fs_manager.get_filesystem_by_protocol('memory')
     key = fs_info['key']
     fs = fs_info['info']['instance']
     fs_root_path = fs_info['info']['path']

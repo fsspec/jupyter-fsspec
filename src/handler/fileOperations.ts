@@ -5,7 +5,7 @@ import { Logger } from '../logger';
 interface IFilesystemConfig {
   name: string;
   path: string;
-  type: 's3' | 'local';
+  protocol: 's3' | 'local';
   access_key_env?: string;
   secret_key_env?: string;
 }

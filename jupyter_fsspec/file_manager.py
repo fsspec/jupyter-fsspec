@@ -20,16 +20,16 @@ class FileSystemManager:
     def _encode_key(self, fs_config):
         # fs_path = fs_config['path'].strip('/')
         fs_name = fs_config['name']
-        # combined = f"{fs_config['type']}|{fs_path}"
+        # combined = f"{fs_config['protocol']}|{fs_path}"
         combined = f"{fs_name}"
         encoded_key = urllib.parse.quote(combined, safe='')
         return encoded_key
 
     def _decode_key(self, encoded_key):
         combined = urllib.parse.unquote(encoded_key)
-        # fs_type, fs_path = combined.split('|', 1)
+        # fs_protocol, fs_path = combined.split('|', 1)
         fs_name = combined
-        # return fs_type, fs_path
+        # return fs_protocol, fs_path
         return fs_name
    
     @staticmethod
@@ -61,23 +61,30 @@ class FileSystemManager:
         placeholder_config = {
             "sources": [
                 {
-                    "name": "Sample",
-                    "path": "/test"
+                    "name": "test",
+                    "path": "memory://mytests"
                 },
                 {
-                    "name": "test2",
-                    "path": "memory://mytests"
+                    "name": "test1",
+                    "path": "/testing",
+                    "protocol": "memory"
                 }
             ]
         }
 
+        config_documentation = """# This file is in you JUPYTER_CONFIG_DIR.\n# Multiple filesystem sources can be configured\n# with a unique `name` field, the `path` which\n# can include the protocol, or can omit it and\n# provide it as a seperate field `protocol`. \n# You can also provide `args` such as `key` \n# and `kwargs` such as `client_kwargs` to\n# the filesystem. More details can be found at https://jupyter-fsspec.readthedocs.io/en/latest/#config-file."""
+
         try:
+            yaml_content = yaml.dump(placeholder_config, default_flow_style=False)
+            commented_yaml = "\n".join(f"# {line}" for line in yaml_content.splitlines())
+
+            full_content = config_documentation + '\n\n' + commented_yaml
             with open(config_path, 'w') as config_file:
-                yaml_content = yaml.dump(placeholder_config, config_file)
+                config_file.write(full_content)
 
             print(f"Configuration file created at {config_path}")
         except Exception as e:
-            print(f"Error creating configuration file")
+            print(f"Error creating configuration file: ", e)
 
     def _get_protocol_from_path(self, path):
         storage_options = infer_storage_options(path)
@@ -109,22 +116,23 @@ class FileSystemManager:
             key = self._encode_key(fs_config)
             fs_name = fs_config['name']
             fs_path = fs_config['path']
+            # TODO: args and kwargs update: additional_options
             options = fs_config.get('additional_options', {})
-            fs_type = fs_config.get("type", None)
+            fs_protocol = fs_config.get("protocol", None)
 
-            if fs_type == None:
-                fs_type = self._get_protocol_from_path(fs_path)
+            if fs_protocol == None:
+                fs_protocol = self._get_protocol_from_path(fs_path)
 
             # Init filesystem
             try:
-                fs_async = self._async_available(fs_type)
-                fs = fsspec.filesystem(fs_type, asynchronous=fs_async, **options)
+                fs_async = self._async_available(fs_protocol)
+                fs = fsspec.filesystem(fs_protocol, asynchronous=fs_async, **options)
 
-                if fs_type == 'memory':
+                if fs_protocol == 'memory':
                     if not fs.exists(fs_path):
                         fs.mkdir(fs_path)
                 # Store the filesystem instance
-                new_filesystems[key] = {"instance": fs, "name": fs_name, "type": fs_type, "path": fs._strip_protocol(fs_path), "canonical_path": fs.unstrip_protocol(fs_path)}
+                new_filesystems[key] = {"instance": fs, "name": fs_name, "protocol": fs_protocol, "path": fs._strip_protocol(fs_path), "canonical_path": fs.unstrip_protocol(fs_path)}
             except Exception as e:
                 print(f'Error initializing filesystems: {e}')
 
@@ -145,8 +153,8 @@ class FileSystemManager:
     def get_filesystem(self, key):
         return self.filesystems.get(key)
     
-    def get_filesystem_by_type(self, fs_type):
+    def get_filesystem_by_protocol(self, fs_protocol):
         for encoded_key, fs_info in self.filesystems.items():
-            if fs_info.get('type') == fs_type:
+            if fs_info.get('protocol') == fs_protocol:
                 return {'key': encoded_key, 'info': fs_info} 
         return None

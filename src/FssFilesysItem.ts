@@ -11,7 +11,7 @@ class FssFilesysItem {
   root: HTMLElement;
   model: any;
   filesysName: string;
-  filesysType: string;
+  filesysProtocol: string;
   fsInfo: any;
   clickSlots: any;
   nameField: any;
@@ -22,7 +22,7 @@ class FssFilesysItem {
   constructor(model: any, fsInfo: any, userClickSlots: any) {
     this.model = model;
     this.filesysName = fsInfo.name;
-    this.filesysType = fsInfo.type;
+    this.filesysProtocol = fsInfo.protocol;
     this.fsInfo = fsInfo;
 
     this.clickSlots = [];
@@ -46,7 +46,7 @@ class FssFilesysItem {
     fsItem.appendChild(this.nameField);
 
     this.pathField = document.createElement('div');
-    this.pathField.classList.add('jfss-fsitem-type');
+    this.pathField.classList.add('jfss-fsitem-protocol');
     this.pathField.innerText = 'Path: ' + fsInfo.path;
     fsItem.appendChild(this.pathField);
 

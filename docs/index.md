@@ -43,7 +43,7 @@ inside a file named `~/.jupyter/jupyter-fsspec.yaml`. Here's a sample file:
 sources:
   - name: "Cell filter repo"
     path: "/Users/finnmertens/cfilter/jupyterlab"
-    type: "file"
+    protocol: "file"
   - name: "Averager project"
     path: "file:///Users/finnmertens/averager"
     additional_options:
@@ -55,8 +55,8 @@ sources:
 The config file has a list of sources, where each item needs a name and a path. The name
 is a unique identifier, so don't use duplicate names.
 
-You can also optionally specify a type (which is the type of filesystem `fsspec` should
-construct). If you prefer you can omit the `type` argument and include the protocol in the
+You can also optionally specify a protocol (which is the type of filesystem `fsspec` should
+construct). If you prefer you can omit the `protocol` argument and include the protocol in the
 path instead (like in the second entry).
 
 Last, you can pass additional arguments to the `fsspec` filesystem contructor by using the

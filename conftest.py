@@ -25,13 +25,13 @@ def setup_config_file_fs(tmp_path: Path):
       secret: "my-secret-key"
   - name: "TestDir"
     path: "/Users/someuser/Desktop/test_fsspec"
-    type: "local"
+    protocol: "local"
   - name: "TestEmptyLocalDir"
     path: "/Users/someuser/Desktop/notebooks/sample/nothinghere"
-    type: "local"
+    protocol: "local"
   - name: "TestMem Source"
     path: "/my_mem_dir"
-    type: "memory"
+    protocol: "memory"
     """
     yaml_file = config_dir / "jupyter-fsspec.yaml"
     yaml_file.write_text(yaml_content)
@@ -45,7 +45,7 @@ def setup_config_file_fs(tmp_path: Path):
 @pytest.fixture(scope='function')
 def fs_manager_instance(setup_config_file_fs):
     fs_manager = setup_config_file_fs
-    fs_info = fs_manager.get_filesystem_by_type('memory')
+    fs_info = fs_manager.get_filesystem_by_protocol('memory')
     key = fs_info['key']
     fs = fs_info['info']['instance']
     mem_root_path = fs_info['info']['path']
@@ -95,7 +95,7 @@ def s3_client(mock_s3_fs):
 @pytest.fixture(scope='function')
 def s3_fs_manager_instance(setup_config_file_fs):
     fs_manager = setup_config_file_fs
-    fs_info = fs_manager.get_filesystem_by_type('s3')
+    fs_info = fs_manager.get_filesystem_by_protocol('s3')
     key = fs_info['key']
     fs = fs_info['info']['instance']
     root_path = fs_info['info']['path']
@@ -106,14 +106,14 @@ def s3_fs_manager_instance(setup_config_file_fs):
 
 
 @pytest.fixture(params=['memory', 'local', 's3'])
-def filesystem_type(request):
+def filesystem_protocol(request):
     return request.param
 
 @pytest.fixture(scope="function")
-def populated_file_system(filesystem_type):
+def populated_file_system(filesystem_protocol):
     fs_manager = FileSystemManager(config_file='jupyter-fsspec.yaml')
-    fs_type = filesystem_type
-    fs_info = fs_manager.get_filesystem_by_type(fs_type)
+    fs_protocol = filesystem_protocol
+    fs_info = fs_manager.get_filesystem_by_protocol(fs_protocol)
     key = fs_info['key']
     fs = fs_info['info']['instance']
     root_path = fs_info['info']['path']
@@ -128,7 +128,7 @@ def populated_file_system(filesystem_type):
         print(f'valid filesystem: {fs}')
     else:
         print(f"invalid filesystem: {fs}")
-    return {"fs_type": fs_type, "fs_manager": fs_manager}
+    return {"fs_protocol": fs_protocol, "fs_manager": fs_manager}
 
 #TODO: Update this fixture from s3fs
 @pytest.fixture(scope="function")
@@ -151,14 +151,14 @@ def mock_s3_fs():
 @pytest.fixture(scope='function')
 def fs_manager_instance_parameterized(populated_file_system):
     fs_ret = populated_file_system
-    fs_type = fs_ret['fs_type']
+    fs_protocol = fs_ret['fs_protocol']
     fs_manager = fs_ret["fs_manager"]
-    fs_info = fs_manager.get_filesystem_by_type(fs_type)
+    fs_info = fs_manager.get_filesystem_by_protocol(fs_protocol)
     key = fs_info['key']
     fs = fs_info['info']['instance']
     root_path = fs_info['info']['path']
 
-    # fs_info = fs_manager.get_filesystem_by_type('local')
+    # fs_info = fs_manager.get_filesystem_by_protocol('local')
     # key = fs_info['key']
     # fs = fs_info['info']['instance']
     # local_root_path = fs_info['info']['path']
@@ -184,7 +184,7 @@ def fs_manager_instance_parameterized(populated_file_system):
         #     f.write("Test content".encode())
         #     f.close()
     else:
-        print(f"Filesystem of type {fs_type} NOT FOUND")
+        print(f"Filesystem of protocol {fs_protocol} NOT FOUND")
 
     if fs.exists(f'{root_path}test_dir/file1.txt'):
         file_info = fs.info(f'/{root_path}/test_dir/file1.txt')
