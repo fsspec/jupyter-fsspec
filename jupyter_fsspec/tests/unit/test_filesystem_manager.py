@@ -18,7 +18,7 @@ def config_file(tmp_path):
         'sources': [{
             'name': 'inmem',
             'path': '/mem_dir',
-            'type': 'memory'
+            'protocol': 'memory'
         }]
     }
     config_path = tmp_path / 'config.yaml'
@@ -45,13 +45,13 @@ def test_filesystem_init(config_file):
     in_memory_fs = fs_test_manager.get_filesystem(fs_test_manager._encode_key({
         'name': 'inmem',
         'path': '/mem_dir',
-        'type': 'memory'
+        'protocol': 'memory'
     }))
 
     assert in_memory_fs is not None
     # TODO:
     # assert any('memory' in key for key in fs_test_manager.filesystems)
-    # assert in_memory_fs['type'] == 'memory'
+    # assert in_memory_fs['protocol'] == 'memory'
     # assert in_memory_fs['path'] == '/mem_dir'
 
 # test key encoding/decoding
@@ -60,7 +60,7 @@ def test_key_decode_encode(config_file):
 
     fs_test_config = {
         'name': 'mylocal',
-        'type': 'local',
+        'protocol': 'local',
         'path':  str(config_file.parent)
     }
 
@@ -78,7 +78,7 @@ def test_key_decode_encode(config_file):
 def mock_config():
     mock_config = {
         'sources': [{
-            'type': 'memory',
+            'protocol': 'memory',
             'name': 'test_memory_fs',
             'path': '/test_memory'
         }]

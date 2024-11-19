@@ -61,7 +61,7 @@ class FsspecConfigHandler(APIHandler):
 
             for fs in self.fs_manager.filesystems:
                 fs_info = self.fs_manager.filesystems[fs]
-                instance = {"key": fs, 'name': fs_info['name'], 'type': fs_info['type'], 'path': fs_info['path'], 'canonical_path': fs_info['canonical_path'] }
+                instance = {"key": fs, 'name': fs_info['name'], 'protocol': fs_info['protocol'], 'path': fs_info['path'], 'canonical_path': fs_info['canonical_path'] }
                 file_systems.append(instance)
             self.set_status(200)
             self.write({'status': 'success', 'description': 'Retrieved available filesystems from configuration file.', 'content': file_systems})
