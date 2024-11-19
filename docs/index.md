@@ -1,6 +1,6 @@
 # Jupyter fsspec documentation
 
-![Jupyter FSSpec inside JupyterLab](_static/extension_example_1.png "Jupyter FSSpec inside JupyterLab")
+![Jupyter FSSpec inside JupyterLab](_static/extension_example_1.png 'Jupyter FSSpec inside JupyterLab')
 
 > 📘 **Note:** This project is in a pre-release state, in active development. Expect instability.
 
@@ -81,7 +81,7 @@ with fs.open('/My/file/path', 'rb') as fhandle:
 filebytes[:256]
 ```
 
-<!-- 
+<!--
 TODO populate this
 ```{toctree}
 examples/content_child1.md
