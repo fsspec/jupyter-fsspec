@@ -92,10 +92,9 @@ class FsspecWidget extends Widget {
 
     this.emptySourcesHint = document.createElement('div');
     this.emptySourcesHint.classList.add('jfss-emptysourceshint');
-    this.emptySourcesHint.innerHTML = (
-      '<span><a target="_blank" href="https://jupyter-fsspec.readthedocs.io/en/latest/">\u{26A0} No configured filesystems found,'
-      + ' click here to read docs/config info.</a></span>'
-    );
+    this.emptySourcesHint.innerHTML =
+      '<span><a target="_blank" href="https://jupyter-fsspec.readthedocs.io/en/latest/">\u{26A0} No configured filesystems found,' +
+      ' click here to read docs/config info.</a></span>';
     this.upperArea.appendChild(this.emptySourcesHint);
 
     this.filesysContainer = document.createElement('div');
@@ -151,10 +150,9 @@ class FsspecWidget extends Widget {
     this.filesysContainer.replaceChildren();
     this.treeView.replaceChildren();
     this.elementHeap = {};
-    if (Object.keys(this.model.userFilesystems).length == 0) {
+    if (Object.keys(this.model.userFilesystems).length === 0) {
       this.emptySourcesHint.style.display = 'block';
-    }
-    else {
+    } else {
       this.emptySourcesHint.style.display = 'none';
       for (const key of Object.keys(this.model.userFilesystems)) {
         const fsInfo = this.model.userFilesystems[key];

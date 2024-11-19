@@ -90,13 +90,13 @@ export class FsspecModel {
     // TODO fix/refactor
     this.userFilesystems = {};
     Logger.debug('aaa');
-    Logger.debug(`[FSSpec] Refresh config requested`);
+    Logger.debug('[FSSpec] Refresh config requested');
     try {
       Logger.debug('bbb');
       for (let i = 0; i < this.retry; i++) {
         Logger.debug('ccc');
         Logger.info('[FSSpec] Attempting to read config file...');
-        const result = await this.getStoredFilesystems();  // This is a result dict, not a response
+        const result = await this.getStoredFilesystems(); // This is a result dict, not a response
         if (result?.status === 'success') {
           // TODO report config entry errors
           Logger.info(
