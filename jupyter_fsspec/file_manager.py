@@ -6,6 +6,7 @@ import os
 import yaml
 import hashlib
 import urllib.parse
+import traceback
 
 class FileSystemManager:
     def __init__(self, config_file):
@@ -39,16 +40,25 @@ class FileSystemManager:
     # os.path.exists(config_path)
     def load_config(self):
         config_path = self.config_path
-        if not os.path.exists(config_path):
-            self.create_config_file()
+        result = {'sources': []} 
 
         try:
+            if not os.path.exists(config_path):
+                self.create_config_file()
+
             with open(config_path, 'r') as file:
-                config = yaml.safe_load(file)
-            return config
+                config_loaded = yaml.safe_load(file)
+            if config_loaded is not None and 'sources' in config_loaded:
+                result = config_loaded
+
         except yaml.YAMLError as e:
             print(f"Error parsing configuration file: {e}")
-            return None
+        #TODO: Check for permissions / handle case for OSError
+        # except OSError as oserr:
+        except Exception as e:
+            traceback.print_exc()
+            print('Error when loading the config file')
+        return result
 
     def hash_config(self, config_content):
         yaml_str = yaml.dump(config_content)
@@ -112,19 +122,22 @@ class FileSystemManager:
     def initialize_filesystems(self):
         new_filesystems = {}
 
-        for fs_config in self.config['sources']:
-            key = self._encode_key(fs_config)
-            fs_name = fs_config['name']
-            fs_path = fs_config['path']
-            # TODO: args and kwargs update: additional_options
-            options = fs_config.get('additional_options', {})
-            fs_protocol = fs_config.get("protocol", None)
+        # Init filesystem
+        try:
+            for fs_config in self.config['sources']:
+                if 'name' not in fs_config or 'path' not in fs_config:
+                    continue
 
-            if fs_protocol == None:
-                fs_protocol = self._get_protocol_from_path(fs_path)
+                key = self._encode_key(fs_config)
+                fs_name = fs_config['name']
+                fs_path = fs_config['path']
+                # TODO: args and kwargs update: additional_options
+                options = fs_config.get('additional_options', {})
+                fs_protocol = fs_config.get("protocol", None)
 
-            # Init filesystem
-            try:
+                if fs_protocol is None:
+                    fs_protocol = self._get_protocol_from_path(fs_path)
+            
                 fs_async = self._async_available(fs_protocol)
                 fs = fsspec.filesystem(fs_protocol, asynchronous=fs_async, **options)
 
@@ -133,7 +146,8 @@ class FileSystemManager:
                         fs.mkdir(fs_path)
                 # Store the filesystem instance
                 new_filesystems[key] = {"instance": fs, "name": fs_name, "protocol": fs_protocol, "path": fs._strip_protocol(fs_path), "canonical_path": fs.unstrip_protocol(fs_path)}
-            except Exception as e:
+        except Exception as e:
+                traceback.print_exc()
                 print(f'Error initializing filesystems: {e}')
 
         self.filesystems = new_filesystems

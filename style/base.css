@@ -23,13 +23,15 @@
 
 .jfss-sourcescontrols {
   display: flex;
-  height: 1.5rem;
+  align-items: center;
+
   margin: 0 0 0.5rem;
-  padding: 0 0 0.5rem;
-  background-color: var(--jp-layout-color1);
+  padding: 0 0 0 0.5rem;
+
   border: 1px solid var(--jp-layout-color2);
   border-radius: 2px;
-  align-items: center;
+
+  background-color: var(--jp-layout-color1);
 }
 
 .jfss-sourcesdivider {
@@ -73,6 +75,14 @@
   height: 40%;
 
   /* background-color: greenyellow; */
+}
+
+.jfss-emptysourceshint {
+  height: 3rem;
+  margin: 0.5rem 0 0.5rem 0;
+
+  color: var(--jp-content-link-color);
+  user-select: none;
 }
 
 .jfss-userfilesystems {
