@@ -2,6 +2,7 @@ from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 import tornado
 import json
+import traceback
 import asyncio
 
 from .file_manager import FileSystemManager
@@ -67,6 +68,7 @@ class FsspecConfigHandler(APIHandler):
             self.write({'status': 'success', 'description': 'Retrieved available filesystems from configuration file.', 'content': file_systems})
             self.finish()
         except Exception as e:
+            traceback.print_exc()
             self.set_status(404)
             self.write({"response": {"status": "failed", "error": "FILE_NOT_FOUND", "description": f"Error loading config: {str(e)}"}})
             self.finish()
