@@ -40,6 +40,7 @@ exclude = [".github", "binder"]
 [tool.hatch.build.targets.wheel.shared-data]
 "jupyter_fsspec/labextension" = "share/jupyter/labextensions/jupyterFsspec"
 "install.json" = "share/jupyter/labextensions/jupyterFsspec/install.json"
+"jupyter-config/server-config" = "etc/jupyter/jupyter_server_config.d"
 
 [tool.hatch.build.hooks.version]
 path = "jupyter_fsspec/_version.py"
