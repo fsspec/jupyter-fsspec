@@ -27,9 +27,9 @@ class FileSystemManager:
         # fs_path = fs_config['path'].strip('/')
         fs_name = fs_config['name']
         # combined = f"{fs_config['protocol']}|{fs_path}"
-        combined = f"{fs_name}"
-        encoded_key = urllib.parse.quote(combined, safe='')
-        return encoded_key
+        # combined = f"{fs_name}"
+        # encoded_key = urllib.parse.quote(combined, safe='')
+        return fs_name
 
     def _decode_key(self, encoded_key):
         combined = urllib.parse.unquote(encoded_key)
