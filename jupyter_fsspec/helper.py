@@ -1,8 +1,6 @@
 # Gives users access to filesystems defined in the jupyter_fsspec config file
 
 
-from urllib.parse import quote as urlescape  # TODO refactor
-
 from .file_manager import FileSystemManager
 from .exceptions import JupyterFsspecException
 
@@ -26,7 +24,7 @@ def _get_fs(fs_name):
     # Get an fsspec filesystem from the manager
     # The fs_name is url encoded, we handle that here...TODO refactor that
     mgr = _get_manager()
-    fs = mgr.get_filesystem(urlescape(fs_name))
+    fs = mgr.get_filesystem(fs_name)
     if fs is not None and 'instance' in fs:
         return fs['instance']  # TODO refactor
     else:
