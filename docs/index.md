@@ -46,10 +46,15 @@ sources:
     protocol: "file"
   - name: "Averager project"
     path: "file:///Users/finnmertens/averager"
-    additional_options:
+  - name: "Remote MyBucket
+    path: "s3://mybucket"
+    args: []
+    kwargs:
       anon: false
       key: "my-access-key"
       secret: "my-secret-key"
+      client_kwargs:
+        endpoint_url: "https://s3.provider.com"
 ```
 
 The config file has a list of sources, where each item needs a name and a path. The name
@@ -60,7 +65,7 @@ construct). If you prefer you can omit the `protocol` argument and include the p
 path instead (like in the second entry).
 
 Last, you can pass additional arguments to the `fsspec` filesystem contructor by using the
-`additional_options` key. You can check the `fsspec` docs for the available options that
+`kwargs` key. You can check the `fsspec` docs for the available options that
 each filesystem implementation offers.
 
 ## The `helper` module

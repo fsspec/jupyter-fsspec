@@ -3,10 +3,15 @@ import fsspec
 from fsspec.utils import infer_storage_options
 from fsspec.registry import known_implementations
 import os
+import sys
 import yaml
 import hashlib
 import urllib.parse
 import traceback
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 class FileSystemManager:
     def __init__(self, config_file):
@@ -22,9 +27,9 @@ class FileSystemManager:
         # fs_path = fs_config['path'].strip('/')
         fs_name = fs_config['name']
         # combined = f"{fs_config['protocol']}|{fs_path}"
-        combined = f"{fs_name}"
-        encoded_key = urllib.parse.quote(combined, safe='')
-        return encoded_key
+        # combined = f"{fs_name}"
+        # encoded_key = urllib.parse.quote(combined, safe='')
+        return fs_name
 
     def _decode_key(self, encoded_key):
         combined = urllib.parse.unquote(encoded_key)
@@ -125,27 +130,39 @@ class FileSystemManager:
         # Init filesystem
         try:
             for fs_config in self.config['sources']:
-                if 'name' not in fs_config or 'path' not in fs_config:
+                fs_name = fs_config.get('name', None)
+                fs_path = fs_config.get('path', None)
+                fs_protocol = fs_config.get("protocol", None)
+                args = fs_config.get('args', [])
+                kwargs = fs_config.get('kwargs', {})
+
+                if not fs_name:
+                    logger.error(f"Skipping configuration: Missing 'name'")
                     continue
+                if fs_protocol is None:
+                    if fs_path:
+                        fs_protocol = self._get_protocol_from_path(fs_path)
+                    else:
+                        logger.error(f"Skipping '{fs_name}': Missing 'protocol' and 'path' to infer it from")
+                        continue
+
+                # TODO: support for case no path
+                if not fs_path:
+                    logger.error(f"Filesystem '{fs_name}' with protocol 'fs_protocol' requires 'path'")
 
                 key = self._encode_key(fs_config)
-                fs_name = fs_config['name']
-                fs_path = fs_config['path']
-                # TODO: args and kwargs update: additional_options
-                options = fs_config.get('additional_options', {})
-                fs_protocol = fs_config.get("protocol", None)
 
-                if fs_protocol is None:
-                    fs_protocol = self._get_protocol_from_path(fs_path)
-            
+                # Add: _is_protocol_supported? Or rely on fsspec?
                 fs_async = self._async_available(fs_protocol)
-                fs = fsspec.filesystem(fs_protocol, asynchronous=fs_async, **options)
+                fs = fsspec.filesystem(fs_protocol, asynchronous=fs_async, *args, **kwargs)
 
                 if fs_protocol == 'memory':
                     if not fs.exists(fs_path):
                         fs.mkdir(fs_path)
+
                 # Store the filesystem instance
                 new_filesystems[key] = {"instance": fs, "name": fs_name, "protocol": fs_protocol, "path": fs._strip_protocol(fs_path), "canonical_path": fs.unstrip_protocol(fs_path)}
+                logger.info(f"Initialized filesystem '{fs_name}' with protocol '{fs_protocol}'")
         except Exception as e:
                 traceback.print_exc()
                 print(f'Error initializing filesystems: {e}')
