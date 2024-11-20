@@ -24,13 +24,10 @@
 .jfss-sourcescontrols {
   display: flex;
   align-items: center;
-
   margin: 0 0 0.5rem;
   padding: 0 0 0 0.5rem;
-
   border: 1px solid var(--jp-layout-color2);
   border-radius: 2px;
-
   background-color: var(--jp-layout-color1);
 }
 
@@ -79,8 +76,7 @@
 
 .jfss-emptysourceshint {
   height: 3rem;
-  margin: 0.5rem 0 0.5rem 0;
-
+  margin: 0.5rem 0;
   color: var(--jp-content-link-color);
   user-select: none;
 }
