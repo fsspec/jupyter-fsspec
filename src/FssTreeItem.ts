@@ -28,13 +28,22 @@ export class FssTreeItem {
     // The TreeItem component is the root and handles
     // tree structure functionality in the UI
     // We use the tagName `jp-tree-item` for Notebook 7 compatibility
+    if (!customElements.get('jp-tree-item')) {
+      import('@jupyter/web-components').then(({ provideJupyterDesignSystem, jpTreeItem }) => {
+        provideJupyterDesignSystem().register(jpTreeItem());
+        console.log('jpTreeItem was registered!');
+      }).catch(error => {
+        console.log('jpTreeItem was not registered. Failed to load Jupyter web components: ', error);
+      });
+    }
+
     const root = document.createElement('jp-tree-item');
     root.setAttribute('name', 'jfss-treeitem-root');
-    if (!root.shadowRoot) {
-      const item_shadowRoot = root.attachShadow({ mode: 'open' });
-      const item_slot = document.createElement('slot');
-      item_shadowRoot.appendChild(item_slot);
-    }
+    // if (!root.shadowRoot) {
+    //   const item_shadowRoot = root.attachShadow({ mode: 'open' });
+    //   const item_slot = document.createElement('slot');
+    //   item_shadowRoot.appendChild(item_slot);
+    // }
     this.root = root;
     this.model = model;
     this.clickSlots = clickSlots;
@@ -88,36 +97,36 @@ export class FssTreeItem {
       this.treeItemObserver.observe(this.root.shadowRoot, observeOptions);
     }
 
-    root.addEventListener('click', event => {
-      const target = event.target as HTMLElement | null;
-      if (!target) {
-        return;
-      }
-      const treeItem = target.closest('jp-tree-item');
-      if (treeItem) {
-        const isExpanded = treeItem.hasAttribute('expanded');
-        const items = treeItem.querySelectorAll(
-          'jp-tree-item[name="jfss-treeitem-root"]'
-        );
-        if (isExpanded) {
-          treeItem.removeAttribute('expanded');
-          treeItem.setAttribute('aria-expanded', 'false');
-          treeItem.classList.remove('expanded');
+    // root.addEventListener('click', event => {
+    //   const target = event.target as HTMLElement | null;
+    //   if (!target) {
+    //     return;
+    //   }
+    //   const treeItem = target.closest('jp-tree-item');
+    //   if (treeItem) {
+    //     const isExpanded = treeItem.hasAttribute('expanded');
+    //     const items = treeItem.querySelectorAll(
+    //       'jp-tree-item[name="jfss-treeitem-root"]'
+    //     );
+    //     if (isExpanded) {
+    //       treeItem.removeAttribute('expanded');
+    //       treeItem.setAttribute('aria-expanded', 'false');
+    //       treeItem.classList.remove('expanded');
 
-          if (items) {
-            this.styleItems(items, 'none');
-          }
-        } else {
-          treeItem.setAttribute('expanded', '');
-          treeItem.setAttribute('aria-expanded', 'true');
-          treeItem.classList.add('expanded');
+    //       if (items) {
+    //         this.styleItems(items, 'none');
+    //       }
+    //     } else {
+    //       treeItem.setAttribute('expanded', '');
+    //       treeItem.setAttribute('aria-expanded', 'true');
+    //       treeItem.classList.add('expanded');
 
-          if (items) {
-            this.styleItems(items, 'block');
-          }
-        }
-      }
-    });
+    //       if (items) {
+    //         this.styleItems(items, 'block');
+    //       }
+    //     }
+    //   }
+    // });
   }
 
   styleItems(items: NodeListOf<Element>, style: string) {

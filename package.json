@@ -57,6 +57,8 @@
         "watch:labextension": "jupyter labextension watch ."
     },
     "dependencies": {
+        "@jupyter/react-components": "^0.15.3",
+        "@jupyter/web-components": "^0.15.3",
         "@jupyterlab/application": "^4.0.0",
         "@jupyterlab/apputils": "^4.0.0",
         "@jupyterlab/settingregistry": "^4.0.0",
@@ -92,8 +94,11 @@
         "yjs": "^13.5.0"
     },
     "resolutions": {
-        "@jupyter/react-components": "^0.15.0",
-        "@jupyter/web-components": "^0.15.0"
+        "@jupyter/react-components": "^0.15.3",
+        "@jupyter/web-components": "^0.15.3",
+        "@microsoft/fast-element": "1.14.0",
+        "@microsoft/fast-foundation": "2.49.4",
+        "@microsoft/fast-web-utilities": "^5.4.1"
     },
     "sideEffects": [
         "style/*.css",
@@ -106,7 +111,29 @@
     "jupyterlab": {
         "extension": true,
         "outputDir": "jupyter_fsspec/labextension",
-        "schemaDir": "schema"
+        "schemaDir": "schema",
+        "sharedPackages": {
+            "@jupyter/react-components": {
+                "bundled": true,
+                "singleton": true,
+                "strictVersion": true
+            },
+            "@jupyter/web-components": {
+                "bundled": true,
+                "singleton": true,
+                "strictVersion": true
+            },
+            "@microsoft/fast-foundation": {
+                "bundled": true,
+                "singleton": true,
+                "strictVersion": true
+            },
+            "@microsoft/fast-element": {
+                "bundled": true,
+                "singleton": true,
+                "strictVersion": true
+            }
+        }
     },
     "eslintIgnore": [
         "node_modules",
