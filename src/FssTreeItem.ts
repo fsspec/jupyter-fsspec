@@ -98,15 +98,6 @@ export class FssTreeItem {
     }
   }
 
-  styleItems(items: NodeListOf<Element>, style: string) {
-    for (const t_item of items) {
-      const item = t_item as unknown as HTMLElement | null;
-      if (item) {
-        item.style.display = style;
-      }
-    }
-  }
-
   appendChild(elem: any) {
     this.root.appendChild(elem);
   }
