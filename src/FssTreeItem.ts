@@ -39,11 +39,6 @@ export class FssTreeItem {
 
     const root = document.createElement('jp-tree-item');
     root.setAttribute('name', 'jfss-treeitem-root');
-    // if (!root.shadowRoot) {
-    //   const item_shadowRoot = root.attachShadow({ mode: 'open' });
-    //   const item_slot = document.createElement('slot');
-    //   item_shadowRoot.appendChild(item_slot);
-    // }
     this.root = root;
     this.model = model;
     this.clickSlots = clickSlots;
@@ -96,37 +91,6 @@ export class FssTreeItem {
     if (this.root.shadowRoot) {
       this.treeItemObserver.observe(this.root.shadowRoot, observeOptions);
     }
-
-    // root.addEventListener('click', event => {
-    //   const target = event.target as HTMLElement | null;
-    //   if (!target) {
-    //     return;
-    //   }
-    //   const treeItem = target.closest('jp-tree-item');
-    //   if (treeItem) {
-    //     const isExpanded = treeItem.hasAttribute('expanded');
-    //     const items = treeItem.querySelectorAll(
-    //       'jp-tree-item[name="jfss-treeitem-root"]'
-    //     );
-    //     if (isExpanded) {
-    //       treeItem.removeAttribute('expanded');
-    //       treeItem.setAttribute('aria-expanded', 'false');
-    //       treeItem.classList.remove('expanded');
-
-    //       if (items) {
-    //         this.styleItems(items, 'none');
-    //       }
-    //     } else {
-    //       treeItem.setAttribute('expanded', '');
-    //       treeItem.setAttribute('aria-expanded', 'true');
-    //       treeItem.classList.add('expanded');
-
-    //       if (items) {
-    //         this.styleItems(items, 'block');
-    //       }
-    //     }
-    //   }
-    // });
   }
 
   styleItems(items: NodeListOf<Element>, style: string) {
@@ -211,10 +175,7 @@ export class FssTreeItem {
       // Handles normal click events on the TreeItem (unlike the MutationObserver system
       // which is for handling folder auto-expand after lazy load)
       if (this.clickAnywhereDoesAutoExpand) {
-        const element = this.root;
-        const expander = element.shadowRoot
-          ? element.shadowRoot.querySelector('.expand-collapse-button')
-          : element.querySelector('.expand-collapse-button');
+        const expander = this.root.shadowRoot.querySelector('.expand-collapse-button');
 
         if (expander) {
           const expRect = expander.getBoundingClientRect();
