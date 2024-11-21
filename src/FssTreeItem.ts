@@ -29,12 +29,17 @@ export class FssTreeItem {
     // tree structure functionality in the UI
     // We use the tagName `jp-tree-item` for Notebook 7 compatibility
     if (!customElements.get('jp-tree-item')) {
-      import('@jupyter/web-components').then(({ provideJupyterDesignSystem, jpTreeItem }) => {
-        provideJupyterDesignSystem().register(jpTreeItem());
-        console.log('jpTreeItem was registered!');
-      }).catch(error => {
-        console.log('jpTreeItem was not registered. Failed to load Jupyter web components: ', error);
-      });
+      import('@jupyter/web-components')
+        .then(({ provideJupyterDesignSystem, jpTreeItem }) => {
+          provideJupyterDesignSystem().register(jpTreeItem());
+          console.log('jpTreeItem was registered!');
+        })
+        .catch(error => {
+          console.log(
+            'jpTreeItem was not registered. Failed to load Jupyter web components: ',
+            error
+          );
+        });
     }
 
     const root = document.createElement('jp-tree-item');
@@ -175,7 +180,9 @@ export class FssTreeItem {
       // Handles normal click events on the TreeItem (unlike the MutationObserver system
       // which is for handling folder auto-expand after lazy load)
       if (this.clickAnywhereDoesAutoExpand) {
-        const expander = this.root.shadowRoot.querySelector('.expand-collapse-button');
+        const expander = this.root.shadowRoot.querySelector(
+          '.expand-collapse-button'
+        );
 
         if (expander) {
           const expRect = expander.getBoundingClientRect();

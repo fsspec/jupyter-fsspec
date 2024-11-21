@@ -96,12 +96,17 @@ export class FsspecWidget extends Widget {
 
     // We use the tagName `jp-tree-view` for Notebook 7 compatibility
     if (!customElements.get('jp-tree-view')) {
-      import('@jupyter/web-components').then(({ provideJupyterDesignSystem, jpTreeView }) => {
-        provideJupyterDesignSystem().register(jpTreeView());
-        console.log('jpTreeView was registered!');
-      }).catch(error => {
-        console.log('jpTreeView was not registered. Failed to load Jupyter web components: ', error);
-      });
+      import('@jupyter/web-components')
+        .then(({ provideJupyterDesignSystem, jpTreeView }) => {
+          provideJupyterDesignSystem().register(jpTreeView());
+          console.log('jpTreeView was registered!');
+        })
+        .catch(error => {
+          console.log(
+            'jpTreeView was not registered. Failed to load Jupyter web components: ',
+            error
+          );
+        });
     }
     const treeView = document.createElement('jp-tree-view');
     treeView.setAttribute('name', 'jfss-treeView');
