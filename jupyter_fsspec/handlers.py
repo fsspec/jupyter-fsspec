@@ -378,6 +378,12 @@ class FileSystemHandler(BaseFileSystemHandler):
         fs_instance = fs["instance"]
         response = {"content": None}
 
+        if not isinstance(content, bytes):
+            if isinstance(content, str):
+                content = content.encode('utf-8')
+            else:
+                raise TypeError("Unsupported type, cannot convert to bytes")
+
         try:
             if fs_instance.async_impl:
                 isfile = await fs_instance.isfile(item_path)
