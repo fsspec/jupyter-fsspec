@@ -92,8 +92,8 @@
         "yjs": "^13.5.0"
     },
     "resolutions": {
-        "@jupyter/react-components": "^0.15.0",
-        "@jupyter/web-components": "^0.15.0"
+        "@jupyter/web-components": "^0.15.0",
+        "@microsoft/fast-foundation": "2.49.4"
     },
     "sideEffects": [
         "style/*.css",
@@ -106,7 +106,21 @@
     "jupyterlab": {
         "extension": true,
         "outputDir": "jupyter_fsspec/labextension",
-        "schemaDir": "schema"
+        "schemaDir": "schema",
+        "sharedPackages": {
+            "@jupyter/web-components": {
+                "bundled": true,
+                "singleton": true
+            },
+            "@microsoft/fast-foundation": {
+                "bundled": true,
+                "singleton": true
+            },
+            "@microsoft/fast-element": {
+                "bundled": true,
+                "singleton": true
+            }
+        }
     },
     "eslintIgnore": [
         "node_modules",

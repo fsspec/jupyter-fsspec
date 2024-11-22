@@ -1,6 +1,10 @@
 // Element for displaying a single fsspec tree entry
 
-import { TreeItem } from '@jupyter/web-components';
+import {
+  provideJupyterDesignSystem,
+  jpTreeItem
+} from '@jupyter/web-components';
+
 import { fileIcon, folderIcon } from '@jupyterlab/ui-components';
 
 import { FssContextMenu } from './treeContext';
@@ -29,7 +33,13 @@ export class FssTreeItem {
   ) {
     // The TreeItem component is the root and handles
     // tree structure functionality in the UI
-    const root = new TreeItem();
+    // We use the tagName `jp-tree-item` for Notebook 7 compatibility
+    if (!customElements.get('jp-tree-item')) {
+      provideJupyterDesignSystem().register(jpTreeItem());
+      console.log('`jpTreeItem` was registered!');
+    }
+    const root = document.createElement('jp-tree-item');
+    root.setAttribute('name', 'jfss-treeitem-root');
     this.root = root;
     this.model = model;
     this.clickSlots = clickSlots;

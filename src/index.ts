@@ -5,18 +5,20 @@ import {
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
 
+import {
+  provideJupyterDesignSystem,
+  jpTreeView
+} from '@jupyter/web-components';
+import { addJupyterLabThemeChangeListener } from '@jupyter/web-components';
+
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ICommandPalette } from '@jupyterlab/apputils';
-
-import { FileManagerWidget } from './FileManager';
 
 import { FsspecModel } from './handler/fileOperations';
 import { FssFilesysItem } from './FssFilesysItem';
 import { FssTreeItem } from './FssTreeItem';
 
 import { Widget } from '@lumino/widgets';
-
-import { TreeView } from '@jupyter/web-components';
 
 import { Logger } from './logger';
 
@@ -121,7 +123,14 @@ class FsspecWidget extends Widget {
     resultArea.classList.add('jfss-resultarea');
     lowerArea.appendChild(resultArea);
 
-    this.treeView = new TreeView();
+    // We use the tagName `jp-tree-view` for Notebook 7 compatibility
+    if (!customElements.get('jp-tree-view')) {
+      provideJupyterDesignSystem().register(jpTreeView());
+      console.log('`jpTreeView` was registered!');
+      addJupyterLabThemeChangeListener();
+    }
+    this.treeView = document.createElement('jp-tree-view');
+    this.treeView.setAttribute('name', 'jfss-treeView');
     resultArea.appendChild(this.treeView);
 
     primaryDivider.appendChild(this.upperArea);
@@ -461,13 +470,56 @@ const plugin: JupyterFrontEndPlugin<void> = {
     console.log('JupyterLab extension jupyterFsspec is activated!');
     Logger.setLevel(Logger.DEBUG);
 
-    // Auto initialize the model
-    const fsspecModel = new FsspecModel();
-    await fsspecModel.initialize();
-    // Use the model to initialize the widget and add to the UI
-    const fsspec_widget = new FsspecWidget(fsspecModel);
-    fsspec_widget.id = 'jupyterFsspec:widget';
-    app.shell.add(fsspec_widget, 'right');
+    if (app['namespace'] !== 'Jupyter Notebook') {
+      // Auto initialize the model
+      const fsspecModel = new FsspecModel();
+      await fsspecModel.initialize();
+
+      // Use the model to initialize the widget and add to the UI
+      const fsspec_widget = new FsspecWidget(fsspecModel);
+      fsspec_widget.id = 'jupyterFsspec:widget';
+
+      app.shell.add(fsspec_widget, 'right');
+    } else {
+      const { commands } = app;
+      const commandToolkit = 'jupyter_fsspec:open';
+
+      commands.addCommand(commandToolkit, {
+        label: 'Open jupyterFsspec',
+        execute: async () => {
+          const top_area_command = 'application:toggle-panel';
+          const args = {
+            side: 'right',
+            title: 'Show jupyterFsspec',
+            id: 'plugin'
+          };
+
+          // Check if right area is open
+          if (!commands.isToggled(top_area_command, args)) {
+            await commands.execute(top_area_command, args).then(async () => {
+              console.log('Opened JupyterFsspec!');
+            });
+          }
+
+          // Auto initialize the model
+          const fsspecModel = new FsspecModel();
+          await fsspecModel.initialize();
+          // Use the model to initialize the widget and add to the UI
+          const fsspec_widget = new FsspecWidget(fsspecModel);
+          fsspec_widget.id = 'jupyter_fsspec:widget';
+
+          // Add the widget to the top area
+          app.shell.add(fsspec_widget, 'right', { rank: 100 });
+          app.shell.activateById(fsspec_widget.id);
+        }
+      });
+
+      palette.addItem({
+        command: commandToolkit,
+        category: 'My Extensions',
+        args: { origin: 'from palette', area: 'right' }
+      });
+    }
 
     // // TODO finish this
     // if (settingRegistry) {
@@ -480,24 +532,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
     //       Logger.error(`[FSSpec] Failed to load settings for jupyterFsspec: ${reason}`);
     //     });
     // }
-
-    const { commands } = app;
-    const commandToolkit = 'jupyter_fsspec:open-toolkit';
-    commands.addCommand(commandToolkit, {
-      label: 'Open fsspec Toolkit Widget',
-      execute: () => {
-        const widget = new FileManagerWidget();
-        widget.id = 'jupyter_fsspec-toolkit-widget';
-        widget.title.label = 'fsspec Toolkit Widget';
-        app.shell.add(widget, 'right');
-      }
-    });
-
-    palette.addItem({
-      command: commandToolkit,
-      category: 'My Extensions',
-      args: { origin: 'from palette ' }
-    });
   }
 };
 
