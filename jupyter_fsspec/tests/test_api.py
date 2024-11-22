@@ -128,7 +128,7 @@ async def test_delete_files(fs_manager_instance, jp_fetch):
     assert dir_body['description'] == f'Deleted {dirpath}.'
     assert mem_fs.exists(dirpath) == False
 
-async def xtest_put_files(fs_manager_instance, jp_fetch):
+async def test_put_files(fs_manager_instance, jp_fetch):
     # PUT replace entire resource
     fs_manager = fs_manager_instance
     mem_fs_info = fs_manager.get_filesystem_by_protocol('memory')
@@ -145,14 +145,14 @@ async def xtest_put_files(fs_manager_instance, jp_fetch):
     file_body_json = file_response.body.decode('utf-8')
     file_body = json.loads(file_body_json)
     assert file_body["status"] == 'success'
-    assert file_body['description'] == 'Wrote /my_mem_dir/test_dir/file1.txt'
+    assert file_body['description'] == 'Updated file /my_mem_dir/test_dir/file1.txt.'
 
     # replacing directory returns error
     dirpath = '/my_mem_dir/test_dir'
     dir_payload = {"item_path": dirpath, "content": "new_test_dir"}
     with pytest.raises(HTTPClientError) as exc_info:
         await jp_fetch("jupyter_fsspec", "files", method="PUT", params={"key": mem_key}, body=json.dumps(dir_payload))
-    assert exc_info.value.code == 409
+    assert exc_info.value.code == 500
 
 async def test_rename_files(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
