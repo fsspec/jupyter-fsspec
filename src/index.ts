@@ -93,7 +93,7 @@ class FsspecWidget extends Widget {
     this.emptySourcesHint = document.createElement('div');
     this.emptySourcesHint.classList.add('jfss-emptysourceshint');
     this.emptySourcesHint.innerHTML =
-      '<span><a target="_blank" href="https://jupyter-fsspec.readthedocs.io/en/latest/">\u{26A0} No configured filesystems found,' +
+      '<span><a target="_blank" href="https://jupyter-fsspec.readthedocs.io/en/latest/#config-file">\u{26A0} No configured filesystems found,' +
       ' click here to read docs/config info.</a></span>';
     this.upperArea.appendChild(this.emptySourcesHint);
 

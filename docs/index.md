@@ -65,7 +65,7 @@ construct). If you prefer you can omit the `protocol` argument and include the p
 path instead (like in the second entry).
 
 Last, you can pass additional arguments to the `fsspec` filesystem contructor by using the
-`kwargs` key. You can check the `fsspec` docs for the available options that
+`args` and/or `kwargs` keys. You can check the `fsspec` docs for the available options that
 each filesystem implementation offers.
 
 ## The `helper` module
