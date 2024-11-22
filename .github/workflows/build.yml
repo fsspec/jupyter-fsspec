@@ -35,6 +35,9 @@ jobs:
         set -eux
         jlpm run test
 
+    - name: Ensure Jupyter config directory
+      run: mkdir -p ~/.jupyter
+
     - name: Build the extension
       run: |
         set -eux
