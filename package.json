@@ -93,7 +93,8 @@
     },
     "resolutions": {
         "@jupyter/react-components": "^0.15.0",
-        "@jupyter/web-components": "^0.15.0"
+        "@jupyter/web-components": "^0.15.0",
+        "@types/node": "^20.11.27"
     },
     "sideEffects": [
         "style/*.css",
