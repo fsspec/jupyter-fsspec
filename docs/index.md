@@ -16,7 +16,7 @@ You can verify that the JupyterLab extension and Jupyter Server extension are en
 
 ```
 jupyter labextension list
-jupyter serverextension list
+jupyter server extension list
 ```
 
 ## Basic Usage
