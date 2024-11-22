@@ -10,13 +10,16 @@ import urllib.parse
 import traceback
 import logging
 
+logging.basicConfig(level=logging.WARNING, stream=sys.stdout)
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+logger.setLevel(logging.INFO)
 
 class FileSystemManager:
     def __init__(self, config_file):
         self.filesystems = {}
         self.base_dir = jupyter_config_dir()
+        logger.info(f"Using Jupyter config directory: {self.base_dir}")
+        os.makedirs(self.base_dir, exist_ok=True)
         self.config_path = os.path.join(self.base_dir, config_file)
 
         self.config = self.load_config()
@@ -49,20 +52,23 @@ class FileSystemManager:
 
         try:
             if not os.path.exists(config_path):
+                logger.info(f"Config file not found at {config_path}. Creating default file.")
                 self.create_config_file()
 
             with open(config_path, 'r') as file:
                 config_loaded = yaml.safe_load(file)
             if config_loaded is not None and 'sources' in config_loaded:
                 result = config_loaded
-
+        except FileNotFoundError:
+            logger.error(f"Config file was not found and could not be created at {config_path}.")
         except yaml.YAMLError as e:
-            print(f"Error parsing configuration file: {e}")
+            logger.error(f"Error parsing configuration file: {e}")
         #TODO: Check for permissions / handle case for OSError
         # except OSError as oserr:
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
-            print('Error when loading the config file')
+            logger.error(f'Error occured when loading the config file.')
+
         return result
 
     def hash_config(self, config_content):
@@ -72,6 +78,7 @@ class FileSystemManager:
 
     def create_config_file(self):
         config_path = self.config_path
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
 
         placeholder_config = {
             "sources": [
@@ -97,9 +104,9 @@ class FileSystemManager:
             with open(config_path, 'w') as config_file:
                 config_file.write(full_content)
 
-            print(f"Configuration file created at {config_path}")
+            logger.info(f"Configuration file created at {config_path}")
         except Exception as e:
-            print(f"Error creating configuration file: ", e)
+            logger.error(f"Error creating configuration file: ", e)
 
     def _get_protocol_from_path(self, path):
         storage_options = infer_storage_options(path)
