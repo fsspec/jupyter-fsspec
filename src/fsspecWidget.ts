@@ -1,5 +1,11 @@
 import * as path from 'path';
 
+import {
+  provideJupyterDesignSystem,
+  jpTreeView,
+  jpTreeItem
+} from '@jupyter/web-components';
+import { addJupyterLabThemeChangeListener } from '@jupyter/web-components';
 import { FssFilesysItem } from './FssFilesysItem';
 import { FssTreeItem } from './FssTreeItem';
 
@@ -95,18 +101,13 @@ export class FsspecWidget extends Widget {
     lowerArea.appendChild(resultArea);
 
     // We use the tagName `jp-tree-view` for Notebook 7 compatibility
-    if (!customElements.get('jp-tree-view')) {
-      import('@jupyter/web-components')
-        .then(({ provideJupyterDesignSystem, jpTreeView }) => {
-          provideJupyterDesignSystem().register(jpTreeView());
-          console.log('jpTreeView was registered!');
-        })
-        .catch(error => {
-          console.log(
-            'jpTreeView was not registered. Failed to load Jupyter web components: ',
-            error
-          );
-        });
+    if (
+      !customElements.get('jp-tree-view') ||
+      !customElements.get('jp-tree-item')
+    ) {
+      provideJupyterDesignSystem().register(jpTreeView(), jpTreeItem());
+      console.log('`jpTreeView` and `jpTreeItem` were registered!');
+      addJupyterLabThemeChangeListener();
     }
     const treeView = document.createElement('jp-tree-view');
     treeView.setAttribute('name', 'jfss-treeView');

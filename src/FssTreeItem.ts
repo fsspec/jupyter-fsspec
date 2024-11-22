@@ -28,20 +28,7 @@ export class FssTreeItem {
     // The TreeItem component is the root and handles
     // tree structure functionality in the UI
     // We use the tagName `jp-tree-item` for Notebook 7 compatibility
-    if (!customElements.get('jp-tree-item')) {
-      import('@jupyter/web-components')
-        .then(({ provideJupyterDesignSystem, jpTreeItem }) => {
-          provideJupyterDesignSystem().register(jpTreeItem());
-          console.log('jpTreeItem was registered!');
-        })
-        .catch(error => {
-          console.log(
-            'jpTreeItem was not registered. Failed to load Jupyter web components: ',
-            error
-          );
-        });
-    }
-
+    // jpTreeItem was registered along side jpTreeView
     const root = document.createElement('jp-tree-item');
     root.setAttribute('name', 'jfss-treeitem-root');
     this.root = root;
