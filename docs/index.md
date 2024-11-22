@@ -2,21 +2,15 @@
 
 ![Jupyter FSSpec inside JupyterLab](_static/extension_example_1.png 'Jupyter FSSpec inside JupyterLab')
 
-> 📘 **Note:** This project is in a pre-release state, in active development. Expect instability.
-
 Welcome to the `jupyter_fsspec` documentation, the Jupyter extension for the `fsspec` Python library.
 
 `jupyter_fsspec` provides a file browser for your `fsspec` filesystems using a config file, and a Python module (`jupyter_fsspec.helper`) for using your defined filesystems inside your notebook kernels.
 
 ## Installation
 
-You can install `jupyter_fsspec` with pip, note that this extension is in pre-release so you'll need to add the `--pre` argument (make sure you've installed JupyterLab or another editor first):
+You can install `jupyter_fsspec` with pip (make sure you've installed JupyterLab or another editor first):
 
-`pip install --pre jupyter-fsspec`
-
-Once installed, you will need to enable the Jupyter Server extension with:
-
-`jupyter server extension enable jupyter_fsspec`
+`pip install jupyter-fsspec`
 
 You can verify that the JupyterLab extension and Jupyter Server extension are enabled properly with:
 
