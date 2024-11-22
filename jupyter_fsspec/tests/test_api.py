@@ -154,7 +154,7 @@ async def test_put_files(fs_manager_instance, jp_fetch):
         await jp_fetch("jupyter_fsspec", "files", method="PUT", params={"key": mem_key}, body=json.dumps(dir_payload))
     assert exc_info.value.code == 500
 
-async def xtest_rename_files(fs_manager_instance, jp_fetch):
+async def test_rename_files(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
     mem_fs_info = fs_manager.get_filesystem_by_protocol('memory')
     mem_key = mem_fs_info['key']
