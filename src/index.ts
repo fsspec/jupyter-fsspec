@@ -5,6 +5,12 @@ import {
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
 
+import {
+  provideJupyterDesignSystem,
+  jpTreeView
+} from '@jupyter/web-components';
+import { addJupyterLabThemeChangeListener } from '@jupyter/web-components';
+
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ICommandPalette } from '@jupyterlab/apputils';
 
@@ -13,8 +19,6 @@ import { FssFilesysItem } from './FssFilesysItem';
 import { FssTreeItem } from './FssTreeItem';
 
 import { Widget } from '@lumino/widgets';
-
-import { TreeView } from '@jupyter/web-components';
 
 import { Logger } from './logger';
 
@@ -119,7 +123,14 @@ class FsspecWidget extends Widget {
     resultArea.classList.add('jfss-resultarea');
     lowerArea.appendChild(resultArea);
 
-    this.treeView = new TreeView();
+    // We use the tagName `jp-tree-view` for Notebook 7 compatibility
+    if (!customElements.get('jp-tree-view')) {
+      provideJupyterDesignSystem().register(jpTreeView());
+      console.log('`jpTreeView` was registered!');
+      addJupyterLabThemeChangeListener();
+    }
+    this.treeView = document.createElement('jp-tree-view');
+    this.treeView.setAttribute('name', 'jfss-treeView');
     resultArea.appendChild(this.treeView);
 
     primaryDivider.appendChild(this.upperArea);
