@@ -8,8 +8,6 @@ import {
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ICommandPalette } from '@jupyterlab/apputils';
 
-import { FileManagerWidget } from './FileManager';
-
 import { FsspecModel } from './handler/fileOperations';
 import { FssFilesysItem } from './FssFilesysItem';
 import { FssTreeItem } from './FssTreeItem';
