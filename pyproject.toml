@@ -93,6 +93,7 @@ test = [
     "pytest_jupyter",
     "pytest_asyncio",
     "s3fs"
+]
 docs = [
     "sphinx",
     "sphinx-rtd-theme",

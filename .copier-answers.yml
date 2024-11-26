@@ -11,4 +11,3 @@ project_short_description: A Jupyter interface for fsspec.
 python_name: jupyter_fsspec
 repository: https://github.com/fsspec/jupyter-fsspec
 test: true
-
