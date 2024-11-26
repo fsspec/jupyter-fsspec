@@ -18,7 +18,7 @@ class FileSystemManager:
     def __init__(self, config_file):
         self.filesystems = {}
         self.base_dir = jupyter_config_dir()
-        logger.info(f"Using Jupyter config directory: {self.base_dir}")
+        logger.debug(f"Using Jupyter config directory: {self.base_dir}")
         os.makedirs(self.base_dir, exist_ok=True)
         self.config_path = os.path.join(self.base_dir, config_file)
 
@@ -52,7 +52,7 @@ class FileSystemManager:
 
         try:
             if not os.path.exists(config_path):
-                logger.info(f"Config file not found at {config_path}. Creating default file.")
+                logger.debug(f"Config file not found at {config_path}. Creating default file.")
                 self.create_config_file()
 
             with open(config_path, 'r') as file:
@@ -104,7 +104,7 @@ class FileSystemManager:
             with open(config_path, 'w') as config_file:
                 config_file.write(full_content)
 
-            logger.info(f"Configuration file created at {config_path}")
+            logger.debug(f"Configuration file created at {config_path}")
         except Exception as e:
             logger.error(f"Error creating configuration file: ", e)
 
@@ -169,7 +169,7 @@ class FileSystemManager:
 
                 # Store the filesystem instance
                 new_filesystems[key] = {"instance": fs, "name": fs_name, "protocol": fs_protocol, "path": fs._strip_protocol(fs_path), "canonical_path": fs.unstrip_protocol(fs_path)}
-                logger.info(f"Initialized filesystem '{fs_name}' with protocol '{fs_protocol}'")
+                logger.debug(f"Initialized filesystem '{fs_name}' with protocol '{fs_protocol}'")
         except Exception as e:
                 traceback.print_exc()
                 print(f'Error initializing filesystems: {e}')
