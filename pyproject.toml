@@ -3,7 +3,6 @@ requires = ["hatchling>=1.5.0", "jupyterlab>=4.0.0,<5", "hatch-nodejs-version>=0
 build-backend = "hatchling.build"
 
 [project]
-version = "v0.3.0"
 name = "jupyter_fsspec"
 authors = [
     {name = "Jupyter Fsspec contributors"},
@@ -29,7 +28,7 @@ classifiers = [
 dependencies = [
     "fsspec"
 ]
-dynamic = ["description", "urls", "keywords"]
+dynamic = ["version", "description", "urls", "keywords"]
 
 [tool.hatch.version]
 source = "nodejs"
