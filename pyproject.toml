@@ -56,6 +56,7 @@ ensured-targets = [
     "jupyter_fsspec/labextension/package.json",
 ]
 skip-if-exists = ["jupyter_fsspec/labextension/static/style.js"]
+install-pre-commit-hook = true
 
 [tool.hatch.build.hooks.jupyter-builder.build-kwargs]
 build_cmd = "build:prod"
@@ -82,8 +83,6 @@ before-build-python = ["jlpm clean:all"]
 ignore = ["W002"]
 
 [project.optional-dependencies]
-dev = ["sphinx", "sphinx-rtd-theme", "myst-parser"]
-
 test = [
     "pytest",
     "fsspec",
@@ -93,4 +92,15 @@ test = [
     "pytest_jupyter",
     "pytest_asyncio",
     "s3fs"
+]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "myst-parser"
+]
+# Check ruff version is aligned with the one in .pre-commit-config.yaml
+dev = [
+    "pre-commit",
+    "hatch",
+    "ruff==0.7.2"
 ]
