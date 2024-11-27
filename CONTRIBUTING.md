@@ -46,7 +46,6 @@ In development mode, you will also need to remove the symlink created by `jupyte
 command. To find its location, you can run `jupyter labextension list` to figure out where the `labextensions`
 folder is located. Then you can remove the symlink named `jupyterFsspec` within that folder.
 
-
 ### Code Styling
 
 All non-Python source code is formatted with Prettier; while Python source code is formatted with Ruff. Before commiting changes, you should install pre-commit and the pre-commit git hooks. These hooks are defined in the `.pre-commit-config.yaml`.
