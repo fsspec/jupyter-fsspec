@@ -13,8 +13,8 @@
     },
     "license": "BSD-3-Clause",
     "author": {
-        "name": "Eric Gentry",
-        "email": "ericsnekbytes@gmail.com"
+        "name": "JupyterFsspec Contributors",
+        "email": "no-email-provided@anaconda.com"
     },
     "files": [
         "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
