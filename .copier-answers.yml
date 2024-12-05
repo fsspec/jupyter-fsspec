@@ -1,8 +1,8 @@
 # Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
 _commit: v4.3.5
 _src_path: https://github.com/jupyterlab/extension-template
-author_email: ericsnekbytes@gmail.com
-author_name: Eric Gentry
+author_email: no-email-provided@anaconda.com
+author_name: JupyterFsspec Contributors
 has_binder: false
 has_settings: true
 kind: frontend
