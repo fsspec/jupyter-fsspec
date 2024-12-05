@@ -13,8 +13,7 @@
     },
     "license": "BSD-3-Clause",
     "author": {
-        "name": "JupyterFsspec Contributors",
-        "email": "no-email-provided@anaconda.com"
+        "name": "JupyterFsspec Contributors"
     },
     "files": [
         "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
