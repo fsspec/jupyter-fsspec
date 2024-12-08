@@ -99,7 +99,6 @@ const myMemFsDirectory = {
 
 test.beforeEach(async ({ page }) => {
   await page.route('http://localhost:8888/jupyter_fsspec/config?**', route => {
-    console.log('Intercepted config request from `beforeEach`');
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -122,7 +121,6 @@ test.beforeEach(async ({ page }) => {
 
 test('test open jupyterFsspec with empty config', async ({ page }) => {
   await page.route('http://localhost:8888/jupyter_fsspec/config?**', route => {
-    console.log('Intercepted config request from `beforeEach`');
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -139,8 +137,6 @@ test('test open jupyterFsspec with empty config', async ({ page }) => {
 });
 
 test('test memory filesystem with mock config data', async ({ page }) => {
-  // page.on('console', logMsg => console.log('[BROWSER OUTPUT] ', logMsg.text()));
-
   await page.goto();
   await page.getByText('FSSpec', { exact: true }).click();
 
@@ -156,6 +152,7 @@ test('test memory filesystem with mock config data', async ({ page }) => {
 });
 
 test('test interacting with a filesystem', async ({ page }) => {
+  page.on('console', logMsg => console.log('[BROWSER OUTPUT] ', logMsg.text()));
   await page.goto();
   await page.getByText('FSSpec', { exact: true }).click();
   await expect.soft(page.locator('.jfss-fsitem-root')).toBeVisible();
@@ -166,9 +163,17 @@ test('test interacting with a filesystem', async ({ page }) => {
   // Verify the filesystem name is updated in lower area
   await expect.soft(page.locator('.jfss-selectedFsLabel')).toHaveText('mymem');
 
-  const resultDiv = page.locator('jp-tree-view');
-  const treeItems = resultDiv.locator('jp-tree-item');
+  const treeItems = await page
+    .locator('jp-tree-view')
+    .locator('jp-tree-item')
+    .filter({
+      has: page.locator(':visible')
+    });
   const countTreeItems = await treeItems.count();
+  const elements = await treeItems.elementHandles();
+  for (const element of elements) {
+    console.log(await element.evaluate(el => el.textContent));
+  }
   expect(countTreeItems).toEqual(3);
 });
 
@@ -181,7 +186,7 @@ test('test copy path', async ({ page }) => {
   await page.locator('.jfss-fsitem-root').click();
 
   // Right-click first item (directory) in tree
-  const targetPath = page.locator('jp-tree-item:nth-child(1)').first();
+  const targetPath = page.locator('jp-tree-item').first();
   await targetPath.click({ button: 'right' });
 
   // Wait for pop up
@@ -213,10 +218,10 @@ test('test expanding directory', async ({ page }) => {
   );
 
   // Select first item (folder)
-  const targetFolder = page.locator('jp-tree-item:nth-child(1)').first();
+  const targetFolder = page.locator('jp-tree-item').first();
   await targetFolder.click({ button: 'left' });
 
-  const subdirContainer = page.locator('jp-tree-item:nth-child(1)').first();
+  const subdirContainer = page.locator('jp-tree-item').first();
   const subdirItems = subdirContainer.locator('jp-tree-item');
   const countSubdirItems = await subdirItems.count();
   expect(countSubdirItems).toEqual(2);
