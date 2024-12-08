@@ -169,7 +169,7 @@ test('test interacting with a filesystem', async ({ page }) => {
   const resultDiv = page.locator('jp-tree-view');
   const treeItems = resultDiv.locator('jp-tree-item');
   const countTreeItems = await treeItems.count();
-  expect(countTreeItems).toBe(3);
+  expect(countTreeItems).toEqual(3);
 });
 
 test('test copy path', async ({ page }) => {
@@ -181,7 +181,7 @@ test('test copy path', async ({ page }) => {
   await page.locator('.jfss-fsitem-root').click();
 
   // Right-click first item (directory) in tree
-  const targetPath = page.locator('jp-tree-item:nth-child(1)');
+  const targetPath = page.locator('jp-tree-item:nth-child(1)').first();
   await targetPath.click({ button: 'right' });
 
   // Wait for pop up
@@ -189,7 +189,7 @@ test('test copy path', async ({ page }) => {
   await page.getByText('Copy Path').click();
 
   const copiedText = await page.evaluate(() => navigator.clipboard.readText());
-  expect(copiedText).toBe('memory:///mymemoryfs/mydocs');
+  expect(copiedText).toEqual('memory:///mymemoryfs/mydocs');
 });
 
 test('test expanding directory', async ({ page }) => {
@@ -213,13 +213,13 @@ test('test expanding directory', async ({ page }) => {
   );
 
   // Select first item (folder)
-  const targetFolder = page.locator('jp-tree-item:nth-child(1)');
+  const targetFolder = page.locator('jp-tree-item:nth-child(1)').first();
   await targetFolder.click({ button: 'left' });
 
-  const subdirContainer = page.locator('jp-tree-item:nth-child(1)');
+  const subdirContainer = page.locator('jp-tree-item:nth-child(1)').first();
   const subdirItems = subdirContainer.locator('jp-tree-item');
   const countSubdirItems = await subdirItems.count();
-  expect(countSubdirItems).toBe(2);
+  expect(countSubdirItems).toEqual(2);
 });
 
 test('test refresh for updated config', async ({ page }) => {
@@ -229,7 +229,7 @@ test('test refresh for updated config', async ({ page }) => {
   // verify original config is present
   const originalFilesystems = page.locator('.jfss-fsitem-root');
   const firstFilesystemsCount = await originalFilesystems.count();
-  expect(firstFilesystemsCount).toBe(1);
+  expect(firstFilesystemsCount).toEqual(1);
 
   await page.route('http://localhost:8888/jupyter_fsspec/config?**', route => {
     route.fulfill({
@@ -244,5 +244,5 @@ test('test refresh for updated config', async ({ page }) => {
   // verify updated config has two filesystem items
   const updatedFilesystems = page.locator('.jfss-fsitem-root');
   const updatedFilesystemsCount = await updatedFilesystems.count();
-  expect(updatedFilesystemsCount).toBe(2);
+  expect(updatedFilesystemsCount).toEqual(2);
 });
