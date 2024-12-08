@@ -186,8 +186,7 @@ test('test copy path', async ({ page }) => {
   await page.locator('.jfss-fsitem-root').click();
 
   // Right-click first item (directory) in tree
-  const targetPath = page.locator('jp-tree-item').first();
-  await targetPath.click({ button: 'right' });
+  await page.getByText('mydocs', { exact: true }).click({ button: 'right' });
 
   // Wait for pop up
   await expect.soft(page.getByText('Copy Path')).toBeVisible();
@@ -218,12 +217,14 @@ test('test expanding directory', async ({ page }) => {
   );
 
   // Select first item (folder)
-  const targetFolder = page.locator('jp-tree-item').first();
-  await targetFolder.click({ button: 'left' });
+  await page.getByText('mydocs', { exact: true }).click({ button: 'left' });
+  await page.waitForTimeout(2000);
 
-  const subdirContainer = page.locator('jp-tree-item').first();
-  const subdirItems = subdirContainer.locator('jp-tree-item');
-  const countSubdirItems = await subdirItems.count();
+  const countSubdirItems = await page
+    .locator('jp-tree-view')
+    .locator('jp-tree-item.expanded')
+    .locator('jp-tree-item')
+    .count();
   expect(countSubdirItems).toEqual(2);
 });
 
