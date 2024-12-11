@@ -5,7 +5,7 @@ author_email: ericsnekbytes@gmail.com
 author_name: Eric Gentry
 has_binder: false
 has_settings: true
-kind: frontend
+kind: server
 labextension_name: jupyterFsspec
 project_short_description: A Jupyter interface for fsspec.
 python_name: jupyter_fsspec
