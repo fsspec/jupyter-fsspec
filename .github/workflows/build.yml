@@ -39,6 +39,9 @@ jobs:
       run: mkdir -p ~/.jupyter
 
     - name: Build the extension
+      env:
+        LANG: en_US.UTF-8
+        LC_ALL: en_US.UTF-8
       run: |
         set -eux
         python -m pip install .[test]
