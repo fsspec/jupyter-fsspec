@@ -247,6 +247,10 @@
   background-color: var(--jp-layout-color1);
 }
 
+.jfss-tree-context-item:hover {
+  background-color: var(--jp-layout-color2);
+}
+
 .jfss-filesys-item {
   width: 200px;
   height: 100px;

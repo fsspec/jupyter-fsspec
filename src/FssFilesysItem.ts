@@ -2,6 +2,7 @@
 
 import { FssContextMenu } from './treeContext';
 // import { Logger } from "./logger"
+import { INotebookTracker } from '@jupyterlab/notebook';
 
 const HOVER = 'var(--jp-layout-color3)';
 const UNHOVER = 'var(--jp-layout-color2)';
@@ -18,8 +19,14 @@ class FssFilesysItem {
   pathField: any;
   _selected = false;
   _hovered = false;
+  notebookTracker: INotebookTracker;
 
-  constructor(model: any, fsInfo: any, userClickSlots: any) {
+  constructor(
+    model: any,
+    fsInfo: any,
+    userClickSlots: any,
+    notebookTracker: INotebookTracker
+  ) {
     this.model = model;
     this.filesysName = fsInfo.name;
     this.filesysProtocol = fsInfo.protocol;
@@ -29,6 +36,7 @@ class FssFilesysItem {
     for (const slot of userClickSlots) {
       this.clickSlots.push(slot);
     }
+    this.notebookTracker = notebookTracker;
 
     const fsItem = document.createElement('div');
     fsItem.classList.add('jfss-fsitem-root');
@@ -67,7 +75,7 @@ class FssFilesysItem {
     }
 
     // Make/add the context menu
-    const context = new FssContextMenu(this.model);
+    const context = new FssContextMenu(this.model, this.notebookTracker);
     context.root.dataset.fss = this.root.dataset.fss;
     const body = document.getElementsByTagName('body')[0];
     body.appendChild(context.root);
