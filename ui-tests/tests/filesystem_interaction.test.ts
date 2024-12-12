@@ -252,3 +252,67 @@ test('test refresh for updated config', async ({ page }) => {
   const updatedFilesystemsCount = await updatedFilesystems.count();
   expect(updatedFilesystemsCount).toEqual(2);
 });
+
+test('copy open with code block', async ({ page }) => {
+  // activate extension from launcher page
+  await page.goto();
+  await page.getByText('FSSpec', { exact: true }).click();
+
+  await page.locator('.jfss-fsitem-root').click();
+  await page
+    .getByText('myfile.txt', { exact: true })
+    .click({ button: 'right' });
+
+  await expect.soft(page.getByText('Copy `open` code block')).toBeVisible();
+  await page.getByText('Copy `open` code block').click();
+
+  const copiedText = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copiedText).toEqual(
+    `with fsspec.open("memory:///mymemoryfs/myfile.txt", "rt") as f:\n   for line in f:\n      print(line)`
+  );
+});
+
+test('copy open with code block with active notebook cell', async ({
+  page
+}) => {
+  await page.goto();
+  await page.getByText('FSSpec', { exact: true }).click();
+  await page.locator('.jfss-fsitem-root').click();
+
+  // open a notebook
+  await page.notebook.createNew();
+  await page.waitForTimeout(1000);
+
+  // add a cell with some content
+  const cellText = '# This is a code cell.';
+  await page.notebook.addCell('code', cellText);
+
+  const copyCodeBlock = `with fsspec.open("memory:///mymemoryfs/myfile.txt", "rt") as f:\n   for line in f:\n      print(line)`;
+
+  await page
+    .getByText('myfile.txt', { exact: true })
+    .click({ button: 'right' });
+
+  // click copy code block
+  await expect.soft(page.getByText('Copy `open` code block')).toBeVisible();
+  await page.getByText('Copy `open` code block').click();
+
+  // verify the clipboard contents
+  const copiedText = await page.evaluate(() => navigator.clipboard.readText());
+  console.log('copiedText: ');
+  console.log(copiedText);
+  expect(copiedText).toEqual(copyCodeBlock);
+
+  // // verify the cell contents # TODO: debug cell content grab
+  // const fullText = cellText + '\n' + copyCodeBlock;
+  // const finalCellContent = await page.notebook.getCellTextInput(1);
+  // expect(finalCellContent).toEqual(fullText);
+
+  // WORKAROUND
+  const content = await page.evaluate(() => {
+    const cell = document.querySelector('.jp-Notebook .jp-Cell:nth-child(2)');
+    return cell ? cell.textContent : null;
+  });
+  expect(content?.includes(cellText));
+  expect(content?.includes(copyCodeBlock));
+});

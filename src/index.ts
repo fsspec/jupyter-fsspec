@@ -14,6 +14,8 @@ import { addJupyterLabThemeChangeListener } from '@jupyter/web-components';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ICommandPalette } from '@jupyterlab/apputils';
 
+import { INotebookTracker } from '@jupyterlab/notebook';
+
 import { FsspecModel } from './handler/fileOperations';
 import { FssFilesysItem } from './FssFilesysItem';
 import { FssTreeItem } from './FssTreeItem';
@@ -51,10 +53,12 @@ class FsspecWidget extends Widget {
   emptySourcesHint: any;
   filesysContainer: any;
   dirTree: any = {};
+  notebookTracker: INotebookTracker;
 
-  constructor(model: any) {
+  constructor(model: any, notebookTracker: INotebookTracker) {
     super();
     this.model = model;
+    this.notebookTracker = notebookTracker;
 
     this.title.label = 'FSSpec';
     this.node.classList.add('jfss-root');
@@ -171,9 +175,12 @@ class FsspecWidget extends Widget {
   }
 
   addFilesystemItem(fsInfo: any) {
-    const fsItem = new FssFilesysItem(this.model, fsInfo, [
-      this.handleFilesystemClicked.bind(this)
-    ]);
+    const fsItem = new FssFilesysItem(
+      this.model,
+      fsInfo,
+      [this.handleFilesystemClicked.bind(this)],
+      this.notebookTracker
+    );
     this.sourcesHeap[fsInfo.name] = fsItem;
     fsItem.setMetadata(fsInfo.path);
     this.filesysContainer.appendChild(fsItem.root);
@@ -321,7 +328,8 @@ class FsspecWidget extends Widget {
             this.model,
             [this.lazyLoad.bind(this)],
             true,
-            true
+            true,
+            this.notebookTracker
           );
           item.setMetadata(
             (pathInfo as any).path,
@@ -460,11 +468,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
   id: 'jupyterFsspec:plugin',
   description: 'A Jupyter interface for fsspec.',
   autoStart: true,
-  requires: [ICommandPalette],
+  requires: [ICommandPalette, INotebookTracker],
   optional: [ISettingRegistry],
   activate: async (
     app: JupyterFrontEnd,
     palette: ICommandPalette,
+    notebookTracker: INotebookTracker,
     settingRegistry: ISettingRegistry | null
   ) => {
     console.log('JupyterLab extension jupyterFsspec is activated!');
@@ -476,7 +485,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       await fsspecModel.initialize();
 
       // Use the model to initialize the widget and add to the UI
-      const fsspec_widget = new FsspecWidget(fsspecModel);
+      const fsspec_widget = new FsspecWidget(fsspecModel, notebookTracker);
       fsspec_widget.id = 'jupyterFsspec:widget';
 
       app.shell.add(fsspec_widget, 'right');
@@ -505,7 +514,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           const fsspecModel = new FsspecModel();
           await fsspecModel.initialize();
           // Use the model to initialize the widget and add to the UI
-          const fsspec_widget = new FsspecWidget(fsspecModel);
+          const fsspec_widget = new FsspecWidget(fsspecModel, notebookTracker);
           fsspec_widget.id = 'jupyter_fsspec:widget';
 
           // Add the widget to the top area

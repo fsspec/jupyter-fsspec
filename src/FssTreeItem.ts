@@ -5,6 +5,8 @@ import {
   jpTreeItem
 } from '@jupyter/web-components';
 
+import { INotebookTracker } from '@jupyterlab/notebook';
+
 import { fileIcon, folderIcon } from '@jupyterlab/ui-components';
 
 import { FssContextMenu } from './treeContext';
@@ -24,12 +26,14 @@ export class FssTreeItem {
   pendingExpandAction = false;
   lazyLoadAutoExpand = true;
   clickAnywhereDoesAutoExpand = true;
+  notebookTracker: INotebookTracker;
 
   constructor(
     model: any,
     clickSlots: any,
     autoExpand: boolean,
-    expandOnClickAnywhere: boolean
+    expandOnClickAnywhere: boolean,
+    notebookTracker: INotebookTracker
   ) {
     // The TreeItem component is the root and handles
     // tree structure functionality in the UI
@@ -45,6 +49,7 @@ export class FssTreeItem {
     this.clickSlots = clickSlots;
     this.lazyLoadAutoExpand = autoExpand;
     this.clickAnywhereDoesAutoExpand = expandOnClickAnywhere;
+    this.notebookTracker = notebookTracker;
 
     // Use a MutationObserver on the root TreeItem's shadow DOM,
     // where the TreeItem's expand/collapse control will live once
@@ -217,7 +222,7 @@ export class FssTreeItem {
     }
 
     // Make/add the context menu
-    const context = new FssContextMenu(this.model);
+    const context = new FssContextMenu(this.model, this.notebookTracker);
     context.root.dataset.fss = this.root.dataset.fss;
     const body = document.getElementsByTagName('body')[0];
     body.appendChild(context.root);
