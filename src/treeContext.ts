@@ -5,7 +5,6 @@ export class FssContextMenu {
   root: any;
   clicked = false;
   model: any;
-  copiedPath: string;
   notebookTracker: any;
 
   constructor(model: any, notebookTracker: INotebookTracker) {
@@ -13,7 +12,6 @@ export class FssContextMenu {
     root.classList.add('jfss-tree-context-menu');
     this.root = root;
     this.model = model;
-    this.copiedPath = '';
     this.notebookTracker = notebookTracker;
 
     const menuItem = this.createMenuItem('Copy Path', 'copyPath');
@@ -48,13 +46,12 @@ export class FssContextMenu {
     if (protocol) {
       const canonical =
         protocol + '/' + this.root.dataset.fss.replace(/^\/+/, () => '');
-      this.copiedPath = canonical;
+      return canonical;
     }
   }
 
   copyPathToClipboard() {
-    this.copyPath();
-    const path = this.copiedPath;
+    const path = this.copyPath();
 
     if (path) {
       navigator.clipboard.writeText(path).then(
@@ -85,8 +82,7 @@ export class FssContextMenu {
     }
   }
   copyOpenCodeBlock() {
-    this.copyPath();
-    const path = this.copiedPath;
+    const path = this.copyPath();
 
     if (path) {
       const openCodeBlock = `with fsspec.open("${path}", "rt") as f:\n   for line in f:\n      print(line)`;
