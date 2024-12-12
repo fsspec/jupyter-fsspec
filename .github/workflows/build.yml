@@ -50,6 +50,10 @@ jobs:
         jupyter labextension list 2>&1 | grep -ie "jupyterFsspec.*OK"
         python -m jupyterlab.browser_check
 
+        pytest -vv -r ap --cov jupyter_fsspec
+        jupyter server extension list
+        jupyter server extension list 2>&1 | grep -ie "jupyter_fsspec.*OK"
+
     - name: Package the extension
       run: |
         set -eux
@@ -87,6 +91,8 @@ jobs:
 
         pip install "jupyterlab>=4.0.0,<5" jupyter_fsspec*.whl
 
+        jupyter server extension list
+        jupyter server extension list 2>&1 | grep -ie "jupyter_fsspec.*OK"
 
         jupyter labextension list
         jupyter labextension list 2>&1 | grep -ie "jupyterFsspec.*OK"
