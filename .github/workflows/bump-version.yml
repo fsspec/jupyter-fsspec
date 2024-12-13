@@ -41,10 +41,24 @@ jobs:
         run: |
           hatch version ${{ inputs.version }}
 
+      - name: Check only changes in package.json
+        run: |
+          git diff
+          git diff --exit-code -- . ':(exclude)package.json' || (
+            echo "Unexpected changes detected."
+            exit 1
+          )
+          echo "No unexpected changes detected."
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor}}@users.noreply.github.com"
+
       - name: Commit and push version bump
         run: |
           git commit -am "Bump version to ${{ inputs.version }}" || (
-            echo "Error: No changes detected during version bump. Ensure the version is updated in the project files."
+            echo "Error: git commit failed."
             exit 1
           )
           git push || (
@@ -54,5 +68,5 @@ jobs:
 
       - name: Create and push tags
         run: |
-          git tag -a "v${{ inputs.version }}" -m "Version ${{ inputs.version }}"
+          git tag -a "v${{ inputs.version }}" -m "Release version ${{ inputs.version }}"
           git push origin "v${{ inputs.version }}"
