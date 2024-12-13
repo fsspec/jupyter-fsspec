@@ -2,63 +2,17 @@ name: PyPI Publish Release
 
 on:
   workflow_dispatch:
-    inputs:
-      run_bump_version:
-        description: "Run bump-version?"
-        required: true
-        type: choice
-        options:
-          - "true"
-          - "false"
-        default: "true"
-      version:
-        description: "Enter the new version for the release e.g., 0.4.0"
-        required: true
 
 jobs:
-  bump-version:
-    runs-on: ubuntu-latest
-    environment: pypi-publish
-    permissions:
-      contents: write
-    if: github.ref == 'refs/heads/main' && github.event.inputs.run_bump_version == 'true'
-
-    steps:
-      - name: Call base bump version setup
-        uses: ./.github/workflows/setup-bump-version.yml
-        with:
-          version: "${{ github.event.inputs.version }}"
-
-      - name: Bump package version
-        run: |
-          hatch version ${{ github.event.inputs.version }}
-
-      - name: Commit and push version bump
-        run: |
-          git commit -am "Bump version to ${{ github.event.inputs.version }}" || (
-            echo "Error: No changes detected during version bump. Ensure the version is updated in the project files."
-            exit 1
-          )
-          git push || (
-            echo "Error: Failed to push changes. Check repo permissions."
-            exit 1
-          )
-
-      - name: Create and push tags
-        run: |
-          git tag -a "v${{ github.event.inputs.version }}" -m "Version ${github.event.inputs.version}"
-          git push origin "v${{ github.event.inputs.version }}"
-
   release:
-    needs: [bump-version]
     runs-on: ubuntu-latest
     environment: pypi-publish
     permissions:
       id-token: write
-    if: github.ref == 'refs/heads/main' && (needs.bump-version.result == 'success' || needs.bump-version.result == null)
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository-url: https://test.pypi.org/legacy
+          repository-url: https://test.pypi.org/legacy/
