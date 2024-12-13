@@ -10,7 +10,7 @@ on:
 jobs:
   bump-version:
     runs-on: ubuntu-latest
-    environment: pypi-publish
+    environment: bump-version
     permissions:
       contents: write
     if: github.ref == 'refs/heads/main'
@@ -21,8 +21,10 @@ jobs:
 
       - name: Base Setup
         uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
-        with:
-          extra-packages: build hatch
+
+      - name: Install Dependencies
+        run: |
+          pip install build hatch
 
       - name: Validate Version
         run: |
@@ -37,11 +39,11 @@ jobs:
 
       - name: Bump package version
         run: |
-          hatch version ${{ github.event.inputs.version }}
+          hatch version ${{ inputs.version }}
 
       - name: Commit and push version bump
         run: |
-          git commit -am "Bump version to ${{ github.event.inputs.version }}" || (
+          git commit -am "Bump version to ${{ inputs.version }}" || (
             echo "Error: No changes detected during version bump. Ensure the version is updated in the project files."
             exit 1
           )
@@ -52,5 +54,5 @@ jobs:
 
       - name: Create and push tags
         run: |
-          git tag -a "v${{ github.event.inputs.version }}" -m "Version ${github.event.inputs.version}"
-          git push origin "v${{ github.event.inputs.version }}"
+          git tag -a "v${{ inputs.version }}" -m "Version ${{ inputs.version }}"
+          git push origin "v${{ inputs.version }}"
