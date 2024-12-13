@@ -10,7 +10,6 @@ on:
 jobs:
   bump-version:
     runs-on: ubuntu-latest
-    environment: bump-version
     permissions:
       contents: write
     if: github.ref == 'refs/heads/main'
