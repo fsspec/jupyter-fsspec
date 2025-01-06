@@ -1,112 +1,153 @@
 // Element for displaying a single fsspec filesystem
 
 import { FssContextMenu } from './treeContext';
+// import { Logger } from "./logger"
+import { INotebookTracker } from '@jupyterlab/notebook';
+
+const HOVER = 'var(--jp-layout-color3)';
+const UNHOVER = 'var(--jp-layout-color2)';
+const SELECTED = 'var(--jp-brand-color2)';
 
 class FssFilesysItem {
-    root: HTMLElement;
-    filesysName: string;
-    filesysType: string;
-    fsInfo: any;
-    clickSlots: any;
-    nameField: any;
-    typeField: any;
+  root: HTMLElement;
+  model: any;
+  filesysName: string;
+  filesysProtocol: string;
+  fsInfo: any;
+  clickSlots: any;
+  nameField: any;
+  pathField: any;
+  _selected = false;
+  _hovered = false;
+  notebookTracker: INotebookTracker;
 
-    constructor(fsInfo: any, userClickSlots: any) {
-      this.filesysName = fsInfo.name;
-      this.filesysType = fsInfo.type;
-      this.fsInfo = fsInfo;
+  constructor(
+    model: any,
+    fsInfo: any,
+    userClickSlots: any,
+    notebookTracker: INotebookTracker
+  ) {
+    this.model = model;
+    this.filesysName = fsInfo.name;
+    this.filesysProtocol = fsInfo.protocol;
+    this.fsInfo = fsInfo;
 
-      this.clickSlots = [];
-      for (const slot of userClickSlots) {
-        this.clickSlots.push(slot);
-      }
+    this.clickSlots = [];
+    for (const slot of userClickSlots) {
+      this.clickSlots.push(slot);
+    }
+    this.notebookTracker = notebookTracker;
 
-      let fsItem = document.createElement('div');
-      fsItem.classList.add('jfss-fsitem-root');
-      fsItem.addEventListener('mouseenter', this.handleFsysHover.bind(this));
-      fsItem.addEventListener('mouseleave', this.handleFsysHover.bind(this));
-      this.root = fsItem;
+    const fsItem = document.createElement('div');
+    fsItem.classList.add('jfss-fsitem-root');
+    fsItem.addEventListener('mouseenter', this.handleFsysHover.bind(this));
+    fsItem.addEventListener('mouseleave', this.handleFsysHover.bind(this));
+    fsItem.dataset.fssname = fsInfo.name;
+    this.root = fsItem;
 
-      // Set the tooltip
-      this.root.title = `Root Path: ${fsInfo.path}`;
+    // Set the tooltip
+    this.root.title = `Root Path: ${fsInfo.path}`;
 
-      this.nameField = document.createElement('div');
-      this.nameField.classList.add('jfss-fsitem-name');
-      this.nameField.innerText = this.filesysName;
-      fsItem.appendChild(this.nameField);
+    this.nameField = document.createElement('div');
+    this.nameField.classList.add('jfss-fsitem-name');
+    this.nameField.innerText = this.filesysName;
+    fsItem.appendChild(this.nameField);
 
-      this.typeField = document.createElement('div');
-      this.typeField.classList.add('jfss-fsitem-type');
-      this.typeField.innerText = 'Type: ' + this.filesysType;
-      fsItem.appendChild(this.typeField);
+    this.pathField = document.createElement('div');
+    this.pathField.classList.add('jfss-fsitem-protocol');
+    this.pathField.innerText = 'Path: ' + fsInfo.path;
+    fsItem.appendChild(this.pathField);
 
-      fsItem.addEventListener('click', this.handleClick.bind(this));
-      fsItem.addEventListener('contextmenu', this.handleContext.bind(this));
+    fsItem.addEventListener('click', this.handleClick.bind(this));
+    fsItem.addEventListener('contextmenu', this.handleContext.bind(this));
+  }
+
+  handleContext(event: any) {
+    // Prevent ancestors from adding extra context boxes
+    event.stopPropagation();
+
+    // Prevent default browser context menu (unless shift pressed
+    // as per usual JupyterLab conventions)
+    if (!event.shiftKey) {
+      event.preventDefault();
+    } else {
+      return;
     }
 
-    handleContext(event: any) {
-        // Prevent ancestors from adding extra context boxes
-        event.stopPropagation();
+    // Make/add the context menu
+    const context = new FssContextMenu(this.model, this.notebookTracker, null);
+    context.root.dataset.fss = this.root.dataset.fss;
+    const body = document.getElementsByTagName('body')[0];
+    body.appendChild(context.root);
 
-        // Prevent default browser context menu (unless shift pressed
-        // as per usual JupyterLab conventions)
-        if (!event.shiftKey) {
-            event.preventDefault();
-        } else {
-            return;
-        }
-
-        // Make/add the context menu
-        let context = new FssContextMenu(null);
-        context.root.dataset.fss = this.root.dataset.fss;
-        let body = document.getElementsByTagName('body')[0];
-        body.appendChild(context.root);
-
-        // Position it under the mouse (top left corner normally,
-        // or bottom right if that corner is out-of-viewport)
-        let parentRect = body.getBoundingClientRect();
-        let contextRect = context.root.getBoundingClientRect();
-        let xCoord = event.clientX - parentRect.x;
-        let yCoord = event.clientY - parentRect.y;
-        let spacing = 12;
-        if (xCoord + contextRect.width > window.innerWidth || yCoord + contextRect.height > window.innerHeight) {
-            // Context menu is cut off when positioned under mouse at top left corner,
-            // use the bottom right corner instead
-            xCoord -= contextRect.width;
-            yCoord -= contextRect.height;
-            // Shift the menu so the mouse is inside it, not at the corner/edge
-            xCoord += spacing;
-            yCoord += spacing;
-        } else {
-            // Shift the menu so the mouse is inside it, not at the corner/edge
-            xCoord -= spacing;
-            yCoord -= spacing;
-        }
-
-        context.root.style.left = `${xCoord}` + 'px';
-        context.root.style.top = `${yCoord}` + 'px';
+    // Position it under the mouse (top left corner normally,
+    // or bottom right if that corner is out-of-viewport)
+    const parentRect = body.getBoundingClientRect();
+    const contextRect = context.root.getBoundingClientRect();
+    let xCoord = event.clientX - parentRect.x;
+    let yCoord = event.clientY - parentRect.y;
+    const spacing = 12;
+    if (
+      xCoord + contextRect.width > window.innerWidth ||
+      yCoord + contextRect.height > window.innerHeight
+    ) {
+      // Context menu is cut off when positioned under mouse at top left corner,
+      // use the bottom right corner instead
+      xCoord -= contextRect.width;
+      yCoord -= contextRect.height;
+      // Shift the menu so the mouse is inside it, not at the corner/edge
+      xCoord += spacing;
+      yCoord += spacing;
+    } else {
+      // Shift the menu so the mouse is inside it, not at the corner/edge
+      xCoord -= spacing;
+      yCoord -= spacing;
     }
 
-    setMetadata(value: string) {
-      this.root.dataset.fss = value;
-    }
+    context.root.style.left = `${xCoord}` + 'px';
+    context.root.style.top = `${yCoord}` + 'px';
+  }
 
-    handleFsysHover(event: any) {
-      if (event.type == 'mouseenter') {
-        this.root.style.backgroundColor = 'var(--jp-layout-color3)';
-        this.root.style.backgroundColor = 'var(--jp-layout-color3)';
-      }
-      else {
-        this.root.style.backgroundColor = 'var(--jp-layout-color2)';
-        this.root.style.backgroundColor = 'var(--jp-layout-color2)';
-      }
-    }
+  setMetadata(value: string) {
+    this.root.dataset.fss = value;
+  }
 
-    handleClick(_event: any) {
-      for (const slot of this.clickSlots) {
-        slot(this.fsInfo);
+  set selected(value: boolean) {
+    this._selected = value;
+    if (value) {
+      this.root.style.backgroundColor = SELECTED;
+    } else {
+      this.hovered = this._hovered;
+    }
+  }
+
+  set hovered(state: boolean) {
+    this._hovered = state;
+    if (this._selected) {
+      this.root.style.backgroundColor = SELECTED;
+    } else {
+      if (state) {
+        this.root.style.backgroundColor = HOVER;
+      } else {
+        this.root.style.backgroundColor = UNHOVER;
       }
     }
   }
 
-  export { FssFilesysItem };
+  handleFsysHover(event: any) {
+    if (event.type === 'mouseenter') {
+      this.hovered = true;
+    } else {
+      this.hovered = false;
+    }
+  }
+
+  handleClick(_event: any) {
+    this.selected = true;
+    for (const slot of this.clickSlots) {
+      slot(this.fsInfo);
+    }
+  }
+}
+
+export { FssFilesysItem };

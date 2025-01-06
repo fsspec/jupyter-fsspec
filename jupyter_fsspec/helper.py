@@ -3,7 +3,6 @@
 
 import datetime
 from types import SimpleNamespace
-from urllib.parse import quote as urlescape  # TODO refactor
 
 from .file_manager import FileSystemManager
 from .exceptions import JupyterFsspecException
@@ -35,11 +34,11 @@ def _get_fs(fs_name):
     # Get an fsspec filesystem from the manager
     # The fs_name is url encoded, we handle that here...TODO refactor that
     mgr = _get_manager()
-    fs = mgr.get_filesystem(urlescape(fs_name))
-    if fs is not None and 'instance' in fs:
-        return fs['instance']  # TODO refactor
+    fs = mgr.get_filesystem(fs_name)
+    if fs is not None and "instance" in fs:
+        return fs["instance"]  # TODO refactor
     else:
-        raise JupyterFsspecException('Error, could not find specified filesystem')
+        raise JupyterFsspecException("Error, could not find specified filesystem")
 
 
 def reload():
@@ -89,7 +88,7 @@ def _get_active():
 def open(*args, **kwargs):
     # Get a file handle
     if not _active:
-        raise JupyterFsspecException('No active filesystem')
+        raise JupyterFsspecException("No active filesystem")
 
     fs = _get_active()
     return fs.open(*args, **kwargs)
@@ -98,10 +97,10 @@ def open(*args, **kwargs):
 def bytes(*args, **kwargs):
     # Get bytes from the specified path
     if not _active:
-        raise JupyterFsspecException('No active filesystem')
+        raise JupyterFsspecException("No active filesystem")
 
     fs = _get_active()
-    kwargs['mode'] = 'rb'
+    kwargs["mode"] = "rb"
 
     return fs.open(*args, **kwargs).read()
 
@@ -109,11 +108,11 @@ def bytes(*args, **kwargs):
 def utf8(*args, **kwargs):
     # Get utf8 text from the specified path (valid utf8 data is assumed)
     if not _active:
-        raise JupyterFsspecException('No active filesystem')
+        raise JupyterFsspecException("No active filesystem")
 
     fs = _get_active()
-    kwargs['mode'] = 'r'
-    kwargs['encoding'] = 'utf8'
+    kwargs["mode"] = "r"
+    kwargs["encoding"] = "utf8"
 
     return fs.open(*args, **kwargs).read()
 
@@ -121,7 +120,7 @@ def utf8(*args, **kwargs):
 def ls(*args, **kwargs):
     # Convenience/pass through call to fsspec ls
     if not _active:
-        raise JupyterFsspecException('No active filesystem')
+        raise JupyterFsspecException("No active filesystem")
 
     fs = _get_active()
     return fs.ls(*args, **kwargs)
@@ -130,7 +129,7 @@ def ls(*args, **kwargs):
 def stat(*args, **kwargs):
     # Convenience/pass through call to fsspec stat
     if not _active:
-        raise JupyterFsspecException('No active filesystem')
+        raise JupyterFsspecException("No active filesystem")
 
     fs = _get_active()
     return fs.stat(*args, **kwargs)

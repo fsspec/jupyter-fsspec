@@ -4,6 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jupyter_fsspec"
+authors = [
+    {name = "Jupyter Fsspec contributors"},
+]
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.8"
@@ -23,9 +26,10 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "fsspec"
+    "fsspec",
+    "jupyter_server>=2.4.0,<3"
 ]
-dynamic = ["version", "description", "authors", "urls", "keywords"]
+dynamic = ["version", "description", "urls", "keywords"]
 
 [tool.hatch.version]
 source = "nodejs"
@@ -40,6 +44,7 @@ exclude = [".github", "binder"]
 [tool.hatch.build.targets.wheel.shared-data]
 "jupyter_fsspec/labextension" = "share/jupyter/labextensions/jupyterFsspec"
 "install.json" = "share/jupyter/labextensions/jupyterFsspec/install.json"
+"jupyter-config/server-config" = "etc/jupyter/jupyter_server_config.d"
 
 [tool.hatch.build.hooks.version]
 path = "jupyter_fsspec/_version.py"
@@ -52,6 +57,7 @@ ensured-targets = [
     "jupyter_fsspec/labextension/package.json",
 ]
 skip-if-exists = ["jupyter_fsspec/labextension/static/style.js"]
+install-pre-commit-hook = true
 
 [tool.hatch.build.hooks.jupyter-builder.build-kwargs]
 build_cmd = "build:prod"
@@ -76,3 +82,28 @@ before-build-python = ["jlpm clean:all"]
 
 [tool.check-wheel-contents]
 ignore = ["W002"]
+
+[project.optional-dependencies]
+test = [
+    "coverage",
+    "pytest",
+    "pytest-cov",
+    "fsspec",
+    "aiobotocore>=2.5.4,<3.0.0",
+    "boto3",
+    "moto[server]>=5",
+    "pytest-jupyter",
+    "pytest-asyncio",
+    "s3fs"
+]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "myst-parser"
+]
+# Check ruff version is aligned with the one in .pre-commit-config.yaml
+dev = [
+    "pre-commit",
+    "hatch",
+    "ruff==0.7.2"
+]

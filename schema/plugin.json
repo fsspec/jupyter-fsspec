@@ -4,5 +4,22 @@
   "description": "jupyterFsspec settings.",
   "type": "object",
   "properties": {},
-  "additionalProperties": false
+  "additionalProperties": false,
+  "jupyter.lab.menus": {
+    "main": [
+      {
+        "id": "jp-mainmenu-view",
+        "items": [
+          {
+            "command": "jupyter_fsspec:open",
+            "rank": 0
+          },
+          {
+            "type": "separator",
+            "rank": 1
+          }
+        ]
+      }
+    ]
+  }
 }

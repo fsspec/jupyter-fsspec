@@ -1,6 +1,6 @@
 {
     "name": "jupyterFsspec",
-    "version": "0.1.0",
+    "version": "0.3.0",
     "description": "A Jupyter interface for fsspec.",
     "keywords": [
         "jupyter",
@@ -13,8 +13,7 @@
     },
     "license": "BSD-3-Clause",
     "author": {
-        "name": "Eric Gentry",
-        "email": "ericsnekbytes@gmail.com"
+        "name": "JupyterFsspec Contributors"
     },
     "files": [
         "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
@@ -43,22 +42,23 @@
         "clean:all": "jlpm clean:lib && jlpm clean:labextension && jlpm clean:lintcache",
         "eslint": "jlpm eslint:check --fix",
         "eslint:check": "eslint . --cache --ext .ts,.tsx",
+        "eslint:files": "eslint --fix",
         "install:extension": "jlpm build",
         "lint": "jlpm stylelint && jlpm prettier && jlpm eslint",
         "lint:check": "jlpm stylelint:check && jlpm prettier:check && jlpm eslint:check",
         "prettier": "jlpm prettier:base --write --list-different",
         "prettier:base": "prettier \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
         "prettier:check": "jlpm prettier:base --check",
+        "prettier:files": "prettier --write",
         "stylelint": "jlpm stylelint:check --fix",
         "stylelint:check": "stylelint --cache \"style/**/*.css\"",
+        "stylelint:files": "stylelint --fix",
         "test": "jest --coverage",
         "watch": "run-p watch:src watch:labextension",
         "watch:src": "tsc -w --sourceMap",
         "watch:labextension": "jupyter labextension watch ."
     },
     "dependencies": {
-        "@jupyter/react-components": "^0.15.0",
-        "@jupyter/web-components": "^0.15.0",
         "@jupyterlab/application": "^4.0.0",
         "@jupyterlab/apputils": "^4.0.0",
         "@jupyterlab/docregistry": "^4.3.0",
@@ -94,6 +94,10 @@
         "typescript": "~5.0.2",
         "yjs": "^13.5.0"
     },
+    "resolutions": {
+        "@jupyter/web-components": "^0.15.0",
+        "@microsoft/fast-foundation": "2.49.4"
+    },
     "sideEffects": [
         "style/*.css",
         "style/index.js"
@@ -105,7 +109,21 @@
     "jupyterlab": {
         "extension": true,
         "outputDir": "jupyter_fsspec/labextension",
-        "schemaDir": "schema"
+        "schemaDir": "schema",
+        "sharedPackages": {
+            "@jupyter/web-components": {
+                "bundled": true,
+                "singleton": true
+            },
+            "@microsoft/fast-foundation": {
+                "bundled": true,
+                "singleton": true
+            },
+            "@microsoft/fast-element": {
+                "bundled": true,
+                "singleton": true
+            }
+        }
     },
     "eslintIgnore": [
         "node_modules",
@@ -114,7 +132,9 @@
         "**/*.d.ts",
         "tests",
         "**/__tests__",
-        "ui-tests"
+        "ui-tests",
+        "*.config.js",
+        "style/**/*.js"
     ],
     "eslintConfig": {
         "extends": [

@@ -1,0 +1,71 @@
+name: Bump Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Enter the new version for the release e.g., 0.4.0"
+        required: true
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+
+      - name: Install Dependencies
+        run: |
+          pip install build hatch
+
+      - name: Validate Version
+        run: |
+          if [[ ! "${{ inputs.version }}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?([.-]?(a|b|rc)(0|[1-9][0-9]*))?$ ]]; then
+            echo "Invalid version format. Please use semantic versioning (e.g., 0.1.2 or 0.1.2a1)"
+            exit 1
+          fi
+
+      - name: Display version
+        run: |
+          echo "The entered version is: ${{ inputs.version }}"
+
+      - name: Bump package version
+        run: |
+          hatch version ${{ inputs.version }}
+
+      - name: Check only changes in package.json
+        run: |
+          git diff
+          git diff --exit-code -- . ':(exclude)package.json' || (
+            echo "Unexpected changes detected."
+            exit 1
+          )
+          echo "No unexpected changes detected."
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor}}@users.noreply.github.com"
+
+      - name: Commit and push version bump
+        run: |
+          git commit -am "Bump version to ${{ inputs.version }}" || (
+            echo "Error: git commit failed."
+            exit 1
+          )
+          git push || (
+            echo "Error: Failed to push changes. Check repo permissions."
+            exit 1
+          )
+
+      - name: Create and push tags
+        run: |
+          git tag -a "v${{ inputs.version }}" -m "Release version ${{ inputs.version }}"
+          git push origin "v${{ inputs.version }}"

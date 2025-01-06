@@ -6,39 +6,29 @@
 
 .jfss-root {
   box-sizing: border-box;
-
   width: 100%;
   height: 100%;
   min-width: 32px;
-
   color: var(--jp-ui-font-color0);
   background-color: var(--jp-layout-color1);
-
   font-size: var(--jp-ui-font-size1);
   font-family: var(--jp-ui-font-family);
 }
 
 .jfss-mainlabel {
-  margin: 0 0 .5rem 0;
-
+  margin: 0 0 0.5rem;
   font-size: var(--jp-ui-font-size2);
   font-weight: bold;
 }
 
 .jfss-sourcescontrols {
   display: flex;
-
-  height: 1.5rem;
-
-  margin: 0 0 .5rem 0;
-  padding: 0 0 0 .5rem;
-
-  background-color: var(--jp-layout-color1);
-
+  align-items: center;
+  margin: 0 0 0.5rem;
+  padding: 0 0 0 0.5rem;
   border: 1px solid var(--jp-layout-color2);
   border-radius: 2px;
-
-  align-items: center;
+  background-color: var(--jp-layout-color1);
 }
 
 .jfss-sourcesdivider {
@@ -46,53 +36,49 @@
 }
 
 .jfss-sourceslabel {
-  margin: 0 0 0 0;
-
+  margin: 0;
   font-size: var(--jp-ui-font-size2);
+
   /* font-weight: bold; */
 }
 
 .jfss-refreshconfig {
   display: flex;
-
   align-items: center;
   justify-content: space-evenly;
-
-  margin: 0 0 0 0;
-
+  margin: 0;
   width: 1.5rem;
   height: 1.5rem;
-
   border-radius: 0 2px 2px 0;
-
   background-color: var(--jp-layout-color2);
-
   font-weight: bold;
 }
 
 .jfss-primarydivider {
   box-sizing: border-box;
-
   width: 100%;
   height: 100%;
-
   padding: 1rem;
 
   /* background-color: purple; */
 }
 
 .jfss-upperarea {
-    box-sizing: border-box;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  width: 100%;
+  height: 40%;
 
-    display: flex;
-    flex-direction: column;
+  /* background-color: greenyellow; */
+}
 
-    overflow: auto;
-
-    width: 100%;
-    height: 40%;
-
-    /* background-color: greenyellow; */
+.jfss-emptysourceshint {
+  height: 3rem;
+  margin: 0.5rem 0;
+  color: var(--jp-content-link-color);
+  user-select: none;
 }
 
 .jfss-userfilesystems {
@@ -101,34 +87,32 @@
 
 .jfss-label {
   box-sizing: border-box;
-
-  margin-bottom: .5rem;
+  margin-bottom: 0.5rem;
 }
 
 .jfss-tree-item-container {
   box-sizing: border-box;
-
   display: flex;
+}
+
+.jfss-filesize-lbl {
+  margin-left: 0.5rem;
+  color: var(--jp-ui-font-color3);
 }
 
 .jfss-hseparator {
   box-sizing: border-box;
-
   width: 100%;
-  height: .1rem;
-
+  height: 0.1rem;
   background-color: var(--jp-border-color3);
 }
 
 .jfss-lowerarea {
   box-sizing: border-box;
-
   display: flex;
   flex-direction: column;
-
   width: 100%;
   height: 60%;
-
   margin-top: 1rem;
 
   /* background-color: orange; */
@@ -136,13 +120,11 @@
 
 .jfss-resultarea {
   box-sizing: border-box;
-
   width: 100%;
   height: calc(100% - 1.1rem);
-
   overflow: auto;
-
   border-radius: 2px;
+
   /* border: 1px solid var(--jp-layout-color2);
   border-top: 0; */
 
@@ -154,33 +136,32 @@
 }
 
 .jp-fsspec-widget {
-    height: 100%;
-    overflow-y: auto;
-    padding: 10px;
-    box-sizing: border-box;
+  height: 100%;
+  overflow-y: auto;
+  padding: 10px;
+  box-sizing: border-box;
 }
 
 .jfss-fsitem-root {
   /* box-sizing: border-box; */
 
   display: flex;
+  overflow: hidden;
   flex-direction: column;
   align-items: flex-start;
+  flex: 1 0 1.75rem;
 
-  flex: 1 0 2.25rem;
   /* font-weight: bold; */
 
-  margin: 0 .5rem .5rem 0;
-  padding: .5rem;
+  margin: 0 0.5rem 0.5rem 0;
+  padding: 0.5rem;
   border-radius: 2px;
-
   background-color: var(--jp-layout-color2);
 }
 
 .jfss-browseAreaLabel {
   width: 100%;
-
-  margin: 0 .5rem .5rem 0;
+  margin: 0 0.5rem 0.5rem 0;
 
   /* font-weight: bold; */
   font-size: var(--jp-ui-font-size2);
@@ -188,27 +169,28 @@
 
 .jfss-selectedFsLabel {
   /* width: 100%; */
-
-  margin: 0 0 .5rem 0;
-  padding: 0 0 0 0;
-
+  margin: 0 0 0.5rem;
+  padding: 0;
   border-radius: 2px;
+
   /* color: white; */
+
   /* background-color: var(--jp-layout-color2); */
 
   font-weight: bold;
 }
 
-.jfss-fsitem-type {
+.jfss-fsitem-protocol {
   box-sizing: border-box;
-
   align-self: flex-start;
 
-  height: 1.25rem;
+  /* height: 1.25rem; */
 
   /* padding: .25rem; */
+
   /* border-radius: 2px; */
   overflow: hidden;
+
   /* background-color: var(--jp-layout-color4); */
   white-space: nowrap;
 }
@@ -216,43 +198,37 @@
 .jfss-fsitem-name {
   box-sizing: border-box;
 
-  height: 1.25rem;
+  /* height: 1rem; */
 
   border-radius: 2px;
-
   font-weight: bold;
   white-space: nowrap;
 }
 
 .jfss-dir-symbol {
   box-sizing: border-box;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   min-width: 1.1rem;
   min-height: 1.1rem;
-
-  margin: 0 .5rem 0 0;
-
-  border-radius: .1rem;
-
+  margin: 0 0.5rem 0 0;
+  border-radius: 0.1rem;
   color: var(--jp-ui-inverse-font-color0);
+
   /* background-color: var(--jp-layout-color4); */
 }
 
 .jfss-tree-context-menu {
   position: absolute;
-
-  padding: .25rem;
-
+  padding: 0.25rem;
   border-width: var(--jp-border-width);
   border-color: var(--jp-border-color3);
   border-style: solid;
+  background-color: var(--jp-layout-color0);
 
   /* background-color: orange; */
-  background-color: var(--jp-layout-color0);
+
   /* width: 10rem;
   height: 200px; */
 
@@ -262,17 +238,17 @@
 .jfss-tree-context-item {
   display: flex;
   align-items: center;
-
   width: 10rem;
   height: 1.2rem;
-
-  padding: .25rem;
-
+  padding: 0.25rem;
   border-width: 0 0 var(--jp-border-width) 0;
   border-color: var(--jp-border-color3);
   border-style: solid;
-
   background-color: var(--jp-layout-color1);
+}
+
+.jfss-tree-context-item:hover {
+  background-color: var(--jp-layout-color2);
 }
 
 .jfss-filesys-item {

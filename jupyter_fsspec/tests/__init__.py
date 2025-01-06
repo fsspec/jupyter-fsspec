@@ -1,1 +1,1 @@
-"""Python tests for jupyter-fsspec."""
+"""Python tests for jupyter_fsspec."""
