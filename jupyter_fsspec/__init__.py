@@ -8,7 +8,7 @@ except ImportError:
 
     warnings.warn("Importing 'jupyter_fsspec' outside a proper installation.")
     __version__ = "dev"
-from . import helper
+from . import helper as helper
 from .handlers import setup_handlers
 
 

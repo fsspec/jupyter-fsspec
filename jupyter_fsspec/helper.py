@@ -12,10 +12,10 @@ from .exceptions import JupyterFsspecException
 _manager = None
 _active = None
 _EMPTY_RESULT = {
-    'ok': False,
-    'value': None,
-    'path': None,
-    'timestamp': None,
+    "ok": False,
+    "value": None,
+    "path": None,
+    "timestamp": None,
 }
 out = SimpleNamespace(_EMPTY_RESULT)
 
@@ -63,12 +63,14 @@ def _request_bytes(fs_name, path):
     out.timestamp = now
 
     filesys = filesystem(fs_name)
-    out = SimpleNamespace({
-        'ok': True,
-        'value': filesys.open(path, mode='rb').read(),
-        'path': path,
-        'timestamp': now,
-    })
+    out = SimpleNamespace(
+        {
+            "ok": True,
+            "value": filesys.open(path, mode="rb").read(),
+            "path": path,
+            "timestamp": now,
+        }
+    )
 
 
 def work_on(fs_name):
