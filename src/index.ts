@@ -40,14 +40,14 @@ class UniqueId {
   }
 }
 
-let CODE_GETBYTES = `
+const CODE_GETBYTES = `
 import jupyter_fsspec.helper as _jupyter_fsshelper
 try:
   _jupyter_fsshelper._request_bytes('FS_NAME', 'FILEPATH')
 except:
   pass  # TODO
 del _jupyter_fsshelper
-`
+`;
 
 class FsspecWidget extends Widget {
   upperArea: any;
@@ -71,7 +71,7 @@ class FsspecWidget extends Widget {
     this.model = model;
     this.notebookTracker = notebookTracker;
 
-    this.title.label = 'FSSpec'
+    this.title.label = 'FSSpec';
     this.node.classList.add('jfss-root');
 
     const primaryDivider = document.createElement('div');
@@ -190,10 +190,17 @@ class FsspecWidget extends Widget {
       //   `this.savedSnapshotPathField.value is : ${this.savedSnapshotPathField.value}`
       // );
       let getBytesCode = CODE_GETBYTES.replace(
-        'FS_NAME', (match, p1, p2, p3, offset, string) => {return this.model.activeFilesystem})
+        'FS_NAME',
+        (match, p1, p2, p3, offset, string) => {
+          return this.model.activeFilesystem;
+        }
+      );
       getBytesCode = getBytesCode.replace(
-        'FILEPATH', (match, p1, p2, p3, offset, string) => {return user_path}
-      )
+        'FILEPATH',
+        (match, p1, p2, p3, offset, string) => {
+          return user_path;
+        }
+      );
       console.log(getBytesCode);
       kernel
         .requestExecute({

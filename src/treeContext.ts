@@ -8,8 +8,12 @@ export class FssContextMenu {
   model: any;
   notebookTracker: any;
 
-  constructor(model: any, notebookTracker: INotebookTracker, parentControl: any) {
-    let root = document.createElement('div');
+  constructor(
+    model: any,
+    notebookTracker: INotebookTracker,
+    parentControl: any
+  ) {
+    const root = document.createElement('div');
     root.classList.add('jfss-tree-context-menu');
     this.root = root;
     this.model = model;
@@ -20,11 +24,14 @@ export class FssContextMenu {
 
     // TODO refactor this...add a second option for TreeItems
     if (parentControl) {
-      let menuItem2 = document.createElement('div');
+      const menuItem2 = document.createElement('div');
       menuItem2.classList.add('jfss-tree-context-item');
       menuItem2.innerText = 'Send Bytes to helper';
       menuItem2.addEventListener('mouseenter', this.handleItemHover.bind(this));
-      menuItem2.addEventListener('mouseleave', this.handleItemUnhover.bind(this));
+      menuItem2.addEventListener(
+        'mouseleave',
+        this.handleItemUnhover.bind(this)
+      );
       menuItem2.addEventListener('click', this.handleItemClick.bind(this));
       menuItem2.dataset.fssContextType = 'getBytes';
       root.appendChild(menuItem2);
@@ -78,8 +85,8 @@ export class FssContextMenu {
           console.log('Copy path failed: ' + path);
           this.root.remove();
         }
-      )
-    };
+      );
+    }
   }
 
   insertCodeBlock(codeBlock: string) {
@@ -125,7 +132,7 @@ export class FssContextMenu {
       this.copyPathToClipboard();
     } else if (event.target.dataset.fssContextType === 'copyOpenCodeBlock') {
       this.copyOpenCodeBlock();
-    } else if (event.target.dataset.fssContextType == 'getBytes') {
+    } else if (event.target.dataset.fssContextType === 'getBytes') {
       console.log('AAA ffoo');
       if (this.parentControl) {
         this.parentControl.handleRequestBytes();

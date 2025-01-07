@@ -49,7 +49,7 @@ export class FssTreeItem {
     this.root = root;
     this.model = model;
     this.clickSlots = clickSlots;
-    this.getBytesSlots = userGetBytesSlots;  // TODO fix its horrible
+    this.getBytesSlots = userGetBytesSlots; // TODO fix its horrible
     this.lazyLoadAutoExpand = autoExpand;
     this.clickAnywhereDoesAutoExpand = expandOnClickAnywhere;
     this.notebookTracker = notebookTracker;
