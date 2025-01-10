@@ -107,8 +107,9 @@ export class FssTreeItem {
   }
 
   handleRequestBytes() {
-    console.log('Treeitem get bytes');
+    Logger.debug('Treeitem get bytes');
     for (const slot of this.getBytesSlots) {
+      Logger.debug(slot);
       slot(this.root.dataset.fss);
     }
   }

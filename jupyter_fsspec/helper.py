@@ -1,8 +1,9 @@
 # Gives users access to filesystems defined in the jupyter_fsspec config file
 
 
+import copy
 import datetime
-from types import SimpleNamespace
+import traceback
 
 from .file_manager import FileSystemManager
 from .exceptions import JupyterFsspecException
@@ -16,8 +17,86 @@ _EMPTY_RESULT = {
     "value": None,
     "path": None,
     "timestamp": None,
+    "error": None,
 }
-out = SimpleNamespace(_EMPTY_RESULT)
+out = None  # Set below
+
+
+class HelperOutput:
+    """Jupyter FSSpec request output helper (read-only)"""
+
+    PREVIEW_LEN = 64
+
+    def __init__(self, data):
+        # if not (set(data) >= set(_EMPTY_RESULT)):
+        #     # Check for all needed keys
+        #     raise JupyterFsspecException('Invalid Jupyter FSSpec output!')
+
+        self._result = data
+
+    @property
+    def value(self):
+        """The value of the requested operation"""
+        return self._result["value"]
+
+    @property
+    def ok(self):
+        """The status of the request"""
+        return self._result["ok"]
+
+    @property
+    def path(self):
+        return self._result["path"]
+
+    @property
+    def timestamp(self):
+        return self._result["timestamp"]
+
+    @property
+    def timedelta(self):
+        time_delta = None
+        if self.timestamp:
+            time_delta = datetime.datetime.now() - self.timestamp
+        return time_delta
+
+    @property
+    def error(self):
+        return self._result["error"]
+
+    @property
+    def length(self):
+        return -1 if self.value is None else len(self.value)
+
+    def __repr__(self):
+        # Compile time info
+        timestamp = self.timestamp
+        # ....
+        time_delta_info = ""
+        if timestamp is not None:
+            delta = datetime.datetime.now() - datetime.datetime.fromisoformat(timestamp)
+            time_delta_info = f" made {delta}s ago"
+        # ....
+        timestamp_info = (
+            f'Timestamp {timestamp if timestamp is not None else "<None>"}\n'
+        )
+
+        # Compile value info
+        value = self.value
+        value_info = " <None>"
+        if value is not None:
+            value_info = f"\n\n{value[:HelperOutput.PREVIEW_LEN]}"
+
+        string_rep = (
+            '----------------\n'
+            f'Request [{"OK" if self.ok else "FAIL"}]{time_delta_info}\n'
+            f'{timestamp_info}'
+            '................\n'
+            f'Path: {"<None>" if self.path is None else self.path}\n'
+            f'Data preview [{HelperOutput.PREVIEW_LEN}]:{value_info}\n'
+            f'{"" if self.ok else "\n.... ERROR! ....\n" + str(self.error)}'
+            '----------------'
+        )
+        return string_rep
 
 
 def _get_manager(cached=True):
@@ -58,19 +137,26 @@ def _request_bytes(fs_name, path):
     global out
 
     # Empty results first
+    blank = copy.deepcopy(_EMPTY_RESULT)
     now = datetime.datetime.now().isoformat()
-    out = SimpleNamespace(_EMPTY_RESULT)
-    out.timestamp = now
+    blank["timestamp"] = now
+    blank["path"] = path
+    out = HelperOutput(blank)
 
     filesys = filesystem(fs_name)
-    out = SimpleNamespace(
-        {
-            "ok": True,
-            "value": filesys.open(path, mode="rb").read(),
-            "path": path,
-            "timestamp": now,
-        }
-    )
+    try:
+        out = HelperOutput(
+            {
+                "ok": True,
+                "value": filesys.open(path, mode="rb").read(),
+                "path": path,
+                "timestamp": now,
+                "error": None,
+            }
+        )
+    except Exception:
+        blank["error"] = traceback.format_exc()
+        out = HelperOutput(blank)
 
 
 def work_on(fs_name):

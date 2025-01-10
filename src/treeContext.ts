@@ -1,6 +1,8 @@
 // Right-click/context menu for file items
 import { INotebookTracker } from '@jupyterlab/notebook';
 
+import { Logger } from './logger';
+
 export class FssContextMenu {
   root: any;
   clicked = false;
@@ -133,7 +135,8 @@ export class FssContextMenu {
     } else if (event.target.dataset.fssContextType === 'copyOpenCodeBlock') {
       this.copyOpenCodeBlock();
     } else if (event.target.dataset.fssContextType === 'getBytes') {
-      console.log('AAA ffoo');
+      Logger.debug('Context item click');
+      Logger.debug(`${this.parentControl}`);
       if (this.parentControl) {
         this.parentControl.handleRequestBytes();
       }

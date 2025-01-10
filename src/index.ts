@@ -41,12 +41,11 @@ class UniqueId {
 }
 
 const CODE_GETBYTES = `
-import jupyter_fsspec.helper as _jupyter_fsshelper
+from jupyter_fsspec import helper as _jupyter_fsshelper
 try:
   _jupyter_fsshelper._request_bytes('FS_NAME', 'FILEPATH')
 except:
-  pass  # TODO
-del _jupyter_fsshelper
+  raise
 `;
 
 class FsspecWidget extends Widget {
@@ -173,20 +172,24 @@ class FsspecWidget extends Widget {
   // }
 
   handleContextGetBytes(user_path: string) {
-    const target = this.currentTarget;
+    const target = this.notebookTracker.currentWidget;
 
     if (!target || target.isDisposed) {
-      // console.log('Invalid target widget');
+      Logger.debug('Invalid target widget');
       return;
     }
 
-    console.log('INDEX handle context get bytes');
+    Logger.debug('INDEX handle context get bytes');
 
     // console.log('Session: ' + target.context.sessionContext.session);
     if (target?.context?.sessionContext?.session) {
       const kernel = target.context.sessionContext.session.kernel;
-      // console.log('Kernel: ' + kernel);
-      // console.log(
+      if (!kernel) {
+        Logger.error('Error fetching kernel from active widget!');
+        return;
+      }
+      Logger.debug('Kernel: ' + kernel);
+      // Logger.debug(
       //   `this.savedSnapshotPathField.value is : ${this.savedSnapshotPathField.value}`
       // );
       let getBytesCode = CODE_GETBYTES.replace(
@@ -201,17 +204,16 @@ class FsspecWidget extends Widget {
           return user_path;
         }
       );
-      console.log(getBytesCode);
+      Logger.debug(getBytesCode);
       kernel
         .requestExecute({
           code: getBytesCode,
           user_expressions: {
-            jfss_data: '_jupyter_fsshelper'
+            jfss_data: 'repr(_jupyter_fsshelper.out)'
           }
         })
         .done.then((message: any) => {
-          console.log(message);
-          console.log('xxYY');
+          Logger.error(message);
 
           // this.kernelOutput.innerText = ''; // Empty the summary box
           const raw_text_container = document.createElement('pre');
@@ -220,7 +222,7 @@ class FsspecWidget extends Widget {
           // this.kernelOutput.appendChild(raw_text_container);
         })
         .catch(() => {
-          console.log('Error loading on kernel');
+          Logger.error('Error loading on kernel');
         });
     }
   }
