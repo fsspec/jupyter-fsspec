@@ -92,7 +92,7 @@ class HelperOutput:
             f'{timestamp_info}'
             '................\n'
             f'Path: {"<None>" if self.path is None else self.path}\n'
-            f'Data[:{HelperOutput.PREVIEW_LEN}] preview (total {self.length}):{value_info}\n'
+            f'Data[:{HelperOutput.PREVIEW_LEN}] preview (total {self.length:,}):{value_info}\n'
             f'{"" if self.ok else "\n.... ERROR! ....\n" + str(self.error)}'
             '----------------'
         )
