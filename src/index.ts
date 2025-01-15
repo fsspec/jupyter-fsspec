@@ -215,10 +215,14 @@ class FsspecWidget extends Widget {
         })
         .done.then((message: any) => {
           Logger.debug(message);
+
+          // Grab the value (this is the python repr() of our user expression
+          // according to the jupyter messaging protocol, it will have quotes)
           const message_content =
             message.content.user_expressions.jfss_data.data['text/plain'];
+          // Strip out the quotes
           const userBase64 = message_content.replace(
-            /[\x27\x22]/g, // Add the g flag for replace-all
+            /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
             (
               match: any,
               p1: any,
@@ -227,7 +231,7 @@ class FsspecWidget extends Widget {
               offset: any,
               string: any
             ) => {
-              return 'foo';
+              return ''; // Removes matching chars
             }
           );
           Logger.debug(`User B64 ${userBase64}`);
