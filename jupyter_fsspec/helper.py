@@ -4,6 +4,7 @@
 import copy
 import datetime
 import traceback
+from base64 import standard_b64encode
 
 from .file_manager import FileSystemManager
 from .exceptions import JupyterFsspecException
@@ -12,6 +13,7 @@ from .exceptions import JupyterFsspecException
 # Global config manager for kernel-side jupyter-fsspec use
 _manager = None
 _active = None
+_user_data = None
 _EMPTY_RESULT = {
     "ok": False,
     "value": None,
@@ -157,6 +159,17 @@ def _request_bytes(fs_name, path):
     except Exception:
         blank["error"] = traceback.format_exc()
         out = HelperOutput(blank)
+
+
+def _get_user_data_string():
+    # TODO refactor/remove this later
+    # The web APIs use strings for base64 decoding, return an ascii/utf8 string
+    return standard_b64encode(_user_data).decode("utf8")
+
+
+def set_user_data(data):
+    global _user_data
+    _user_data = data
 
 
 def work_on(fs_name):

@@ -22,6 +22,7 @@ export class FssTreeItem {
   container: HTMLElement;
   clickSlots: any;
   getBytesSlots: any;
+  uploadUserDataSlots: any;
   isDir = false;
   treeItemObserver: MutationObserver;
   pendingExpandAction = false;
@@ -33,6 +34,7 @@ export class FssTreeItem {
     model: any,
     clickSlots: any,
     userGetBytesSlots: any,
+    uploadUserDataSlots: any,
     autoExpand: boolean,
     expandOnClickAnywhere: boolean,
     notebookTracker: INotebookTracker
@@ -50,6 +52,7 @@ export class FssTreeItem {
     this.model = model;
     this.clickSlots = clickSlots;
     this.getBytesSlots = userGetBytesSlots; // TODO fix its horrible
+    this.uploadUserDataSlots = uploadUserDataSlots;
     this.lazyLoadAutoExpand = autoExpand;
     this.clickAnywhereDoesAutoExpand = expandOnClickAnywhere;
     this.notebookTracker = notebookTracker;
@@ -109,6 +112,14 @@ export class FssTreeItem {
   handleRequestBytes() {
     Logger.debug('Treeitem get bytes');
     for (const slot of this.getBytesSlots) {
+      Logger.debug(slot);
+      slot(this.root.dataset.fss);
+    }
+  }
+
+  handleUploadUserData() {
+    Logger.debug('Treeitem get bytes');
+    for (const slot of this.uploadUserDataSlots) {
       Logger.debug(slot);
       slot(this.root.dataset.fss);
     }

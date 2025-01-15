@@ -48,6 +48,10 @@ except:
   raise
 `;
 
+const CODE_UPLOADUSERDATA = `
+from jupyter_fsspec import helper as _jupyter_fsshelper
+`;
+
 class FsspecWidget extends Widget {
   upperArea: any;
   model: any;
@@ -171,6 +175,71 @@ class FsspecWidget extends Widget {
   //   }
   // }
 
+  handleContextUploadUserData(user_path: string) {
+    const target = this.notebookTracker.currentWidget;
+
+    if (!target || target.isDisposed) {
+      Logger.debug('Invalid target widget');
+      return;
+    }
+
+    if (target?.context?.sessionContext?.session) {
+      const kernel = target.context.sessionContext.session.kernel;
+      if (!kernel) {
+        Logger.error('Error fetching kernel from active widget!');
+        return;
+      }
+      Logger.debug('Kernel: ' + kernel);
+      // Logger.debug(
+      //   `this.savedSnapshotPathField.value is : ${this.savedSnapshotPathField.value}`
+      // );
+      let getBytesCode = CODE_UPLOADUSERDATA.replace(
+        'FS_NAME',
+        (match, p1, p2, p3, offset, string) => {
+          return this.model.activeFilesystem;
+        }
+      );
+      getBytesCode = getBytesCode.replace(
+        'FILEPATH',
+        (match, p1, p2, p3, offset, string) => {
+          return user_path;
+        }
+      );
+      Logger.debug(getBytesCode);
+      kernel
+        .requestExecute({
+          code: getBytesCode,
+          user_expressions: {
+            jfss_data: '_jupyter_fsshelper._get_user_data_string()'
+          }
+        })
+        .done.then((message: any) => {
+          Logger.debug(message);
+          const message_content =
+            message.content.user_expressions.jfss_data.data['text/plain'];
+          const userBase64 = message_content.replace(
+            /[\x27\x22]/g, // Add the g flag for replace-all
+            (
+              match: any,
+              p1: any,
+              p2: any,
+              p3: any,
+              offset: any,
+              string: any
+            ) => {
+              return 'foo';
+            }
+          );
+          Logger.debug(`User B64 ${userBase64}`);
+          Logger.debug(`XX ${atob(userBase64)}`);
+        })
+        // temp1.content.user_expressions.jfss_data.data
+        .catch(() => {
+          Logger.error('Error loading on kernel');
+        });
+    }
+  }
+
   handleContextGetBytes(user_path: string) {
     const target = this.notebookTracker.currentWidget;
 
@@ -214,12 +283,6 @@ class FsspecWidget extends Widget {
         })
         .done.then((message: any) => {
           Logger.error(message);
-
-          // this.kernelOutput.innerText = ''; // Empty the summary box
-          const raw_text_container = document.createElement('pre');
-          raw_text_container.innerText = JSON.stringify(message, null, ' ');
-
-          // this.kernelOutput.appendChild(raw_text_container);
         })
         .catch(() => {
           Logger.error('Error loading on kernel');
@@ -410,6 +473,7 @@ class FsspecWidget extends Widget {
             this.model,
             [this.lazyLoad.bind(this)],
             [this.handleContextGetBytes.bind(this)],
+            [this.handleContextUploadUserData.bind(this)],
             true,
             true,
             this.notebookTracker

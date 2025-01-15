@@ -37,6 +37,18 @@ export class FssContextMenu {
       menuItem2.addEventListener('click', this.handleItemClick.bind(this));
       menuItem2.dataset.fssContextType = 'getBytes';
       root.appendChild(menuItem2);
+
+      const menuItem3 = document.createElement('div');
+      menuItem3.classList.add('jfss-tree-context-item');
+      menuItem3.innerText = 'Upload helper.user_data';
+      menuItem3.addEventListener('mouseenter', this.handleItemHover.bind(this));
+      menuItem3.addEventListener(
+        'mouseleave',
+        this.handleItemUnhover.bind(this)
+      );
+      menuItem3.addEventListener('click', this.handleItemClick.bind(this));
+      menuItem3.dataset.fssContextType = 'uploadUserData';
+      root.appendChild(menuItem3);
     }
 
     root.addEventListener('mouseleave', this.handleMouseExit.bind(this), false);
@@ -139,6 +151,10 @@ export class FssContextMenu {
       Logger.debug(`${this.parentControl}`);
       if (this.parentControl) {
         this.parentControl.handleRequestBytes();
+      }
+    } else if (event.target.dataset.fssContextType === 'uploadUserData') {
+      if (this.parentControl) {
+        this.parentControl.handleUploadUserData();
       }
     }
     this.root.remove();
