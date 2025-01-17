@@ -236,6 +236,23 @@ class FsspecWidget extends Widget {
           );
           Logger.debug(`User B64 ${userBase64}`);
           Logger.debug(`XX ${atob(userBase64)}`);
+
+          // TODO: This is a temporary solution for uploading bytes in a user's
+          // notebook kernel to a remote fsspec filesystem. This solution grabs
+          // serialized data from the kernel into the frontend, then passes it
+          // back to the server for eventual upload via an fsspec call. Right now,
+          // the server API assumes content is UTF8 encoded text, which prevents
+          // passing arbitrary binary data. We can make changes around the application
+          // to better handle the data crossing process/network boundaries, but
+          // likely the easiest quick/dirty solution is to make the server treat
+          // content as latin1 encoded text (which still needs to be done for
+          // this temp solution to work). We can rethink some of this once
+          // better backend APIs are available for some of these use cases.
+          this.model.post(
+            this.model.activeFilesystem,
+            user_path,
+            atob(userBase64)
+          );
         })
         // temp1.content.user_expressions.jfss_data.data
         .catch(() => {
