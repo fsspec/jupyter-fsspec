@@ -183,16 +183,21 @@ class FileTransferHandler(BaseFileSystemHandler):
         try:
             if action == "upload":
                 # upload     fs_instance.put(local_path, remote_path)
-                fs_instance.put(item_path, destination)
-                response["description"] = f"Uploaded {item_path} to {destination}."
+                local_path = item_path
+                remote_path = destination
+                fs_instance.put(local_path, remote_path, recursive=True)
+                response["description"] = f"Uploaded {local_path} to {remote_path}."
             else:  # download
                 # download   fs_instance.get(remote_path, local_path)
-                fs_instance.get(destination, item_path)
-                response["description"] = f"Downloaded {destination} to {item_path}."
+                local_path = destination
+                remote_path = item_path
+                fs_instance.get(remote_path, local_path, recursive=True)
+                response["description"] = f"Downloaded {remote_path} to {local_path}."
 
             response["status"] = "success"
             self.set_status(200)
         except Exception as e:
+            print(f"Error uploading/downloading file: {e}")
             self.set_status(500)
             response["status"] = "failed"
             response["description"] = str(e)

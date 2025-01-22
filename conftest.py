@@ -12,12 +12,26 @@ pytest_plugins = [
 ]
 
 
+@pytest.fixture(scope="function")
+def setup_tmp_local(tmp_path: Path):
+    local_root = tmp_path / "test"
+    local_root.mkdir()
+    local_file = local_root / "file_loc.txt"
+    local_file.touch()
+    local_empty_root = tmp_path / "empty"
+    local_empty_root.mkdir()
+
+    return [local_root, local_empty_root]
+
+
 @pytest.fixture(scope="function", autouse=True)
-def setup_config_file_fs(tmp_path: Path):
+def setup_config_file_fs(tmp_path: Path, setup_tmp_local):
+    tmp_local = setup_tmp_local[0]
+    empty_tmp_local = setup_tmp_local[1]
     config_dir = tmp_path / "config"
     config_dir.mkdir(exist_ok=True)
 
-    yaml_content = """sources:
+    yaml_content = f"""sources:
   - name: "TestSourceAWS"
     path: "s3://my-test-bucket/"
     additional_options:
@@ -25,10 +39,10 @@ def setup_config_file_fs(tmp_path: Path):
       key: "my-access-key"
       secret: "my-secret-key"
   - name: "TestDir"
-    path: "/Users/someuser/Desktop/test_fsspec"
+    path: "{tmp_local}"
     protocol: "local"
   - name: "TestEmptyLocalDir"
-    path: "/Users/someuser/Desktop/notebooks/sample/nothinghere"
+    path: "{empty_tmp_local}"
     protocol: "local"
   - name: "TestMem Source"
     path: "/my_mem_dir"
@@ -50,31 +64,31 @@ def setup_config_file_fs(tmp_path: Path):
 def fs_manager_instance(setup_config_file_fs):
     fs_manager = setup_config_file_fs
     fs_info = fs_manager.get_filesystem_by_protocol("memory")
-    fs = fs_info["info"]["instance"]
+    mem_fs = fs_info["info"]["instance"]
     mem_root_path = fs_info["info"]["path"]
 
-    if fs:
-        if fs.exists(f"{mem_root_path}/test_dir"):
-            fs.rm(f"{mem_root_path}/test_dir", recursive=True)
-        if fs.exists(f"{mem_root_path}/second_dir"):
-            fs.rm(f"{mem_root_path}/second_dir", recursive=True)
+    if mem_fs:
+        if mem_fs.exists(f"{mem_root_path}/test_dir"):
+            mem_fs.rm(f"{mem_root_path}/test_dir", recursive=True)
+        if mem_fs.exists(f"{mem_root_path}/second_dir"):
+            mem_fs.rm(f"{mem_root_path}/second_dir", recursive=True)
 
-        fs.touch(f"{mem_root_path}/file_in_root.txt")
-        with fs.open(f"{mem_root_path}/file_in_root.txt", "wb") as f:
+        mem_fs.touch(f"{mem_root_path}/file_in_root.txt")
+        with mem_fs.open(f"{mem_root_path}/file_in_root.txt", "wb") as f:
             f.write("Root file content".encode())
 
-        fs.mkdir(f"{mem_root_path}/test_dir", exist_ok=True)
-        fs.mkdir(f"{mem_root_path}/second_dir", exist_ok=True)
-        # fs.mkdir(f'{mem_root_path}/second_dir/subdir', exist_ok=True)
-        fs.touch(f"{mem_root_path}/test_dir/file1.txt")
-        with fs.open(f"{mem_root_path}/test_dir/file1.txt", "wb") as f:
+        mem_fs.mkdir(f"{mem_root_path}/test_dir", exist_ok=True)
+        mem_fs.mkdir(f"{mem_root_path}/second_dir", exist_ok=True)
+        # mem_fs.mkdir(f'{mem_root_path}/second_dir/subdir', exist_ok=True)
+        mem_fs.touch(f"{mem_root_path}/test_dir/file1.txt")
+        with mem_fs.open(f"{mem_root_path}/test_dir/file1.txt", "wb") as f:
             f.write("Test content".encode())
             f.close()
     else:
         print("In memory filesystem NOT FOUND")
 
-    if fs.exists(f"{mem_root_path}/test_dir/file1.txt"):
-        file_info = fs.info(f"{mem_root_path}/test_dir/file1.txt")
+    if mem_fs.exists(f"{mem_root_path}/test_dir/file1.txt"):
+        file_info = mem_fs.info(f"{mem_root_path}/test_dir/file1.txt")
         print(f"File exists. size: {file_info}")
     else:
         print("File does not exist!")

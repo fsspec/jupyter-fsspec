@@ -478,25 +478,130 @@ async def xtest___async_s3_file_operations(mock_s3_fs):
     print(f"contents: {contents}")
 
 
-# TODO: Test transfer endpoint
-async def xtest_file_transfer(fs_manager_instance_parameterized, jp_fetch):
-    fs_manager = fs_manager_instance_parameterized
-    fs_info = fs_manager.get_filesystem_by_protocol("memory")
-    fs = fs_info["info"]["instance"]
-    assert fs is not None
+# TODO: Update file paths from memory to remote; Update remote_key usage
+async def xtest_file_transfer(fs_manager_instance, jp_fetch):
+    fs_manager = fs_manager_instance
+    remote_fs_info = fs_manager.get_filesystem_by_protocol("s3")
+    remote_key = remote_fs_info["key"]
+    remote_fs = remote_fs_info["info"]["instance"]
+    remote_item_path = remote_fs_info["info"]["path"]
+    assert remote_fs is not None
+    assert remote_fs.exists(remote_item_path)
 
-    # # copy file
-    # copy_filepath = f'{fs_root_path}/test_dir/file1.txt'
-    # copy_file_payload = {"item_path": copy_filepath, "content": "/my_local_dir/", "destination_key": "", "action": "copy"}
-    # copy_file_res = await jp_fetch("jupyter_fsspec", "files", "transfer", method="POST", params={"key": mem_key}, body=json.dumps(copy_file_payload))
+    local_fs_info = fs_manager.get_filesystem_by_protocol("local")
+    local_key = local_fs_info["key"]
+    local_fs = local_fs_info["info"]["instance"]
+    local_item_path = local_fs_info["info"]["path"]
+    assert local_fs is not None
 
-    # cfile_body_json = copy_file_res.body.decode('utf-8')
-    # cfile_body = json.loads(cfile_body_json)
-    # assert cfile_body["status"] == 'success'
-    # assert cfile_body['description'] == f'Copied {fs_root_path}/test_dir/file1.txt to /my_local_dir/file1.txt'
+    # upload file [local to remote]
+    upload_filepath = f"{local_item_path}/file_loc.txt"
+    assert local_fs.exists(upload_filepath)
+    upload_file_payload = {
+        "item_path": upload_filepath,
+        "content": remote_item_path,
+        "destination_key": remote_key,
+        "action": "upload",
+    }
+    upload_file_res = await jp_fetch(
+        "jupyter_fsspec",
+        "files",
+        "transfer",
+        method="POST",
+        params={"key": local_key},
+        body=json.dumps(upload_file_payload),
+    )
 
-    # copy dir
+    upfile_body_json = upload_file_res.body.decode("utf-8")
+    upfile_body = json.loads(upfile_body_json)
 
-    # move file
+    assert upfile_body["status"] == "success"
+    assert upfile_body["description"] == f"Uploaded {upload_filepath} to /my_mem_dir."
 
-    # move dir
+    uploaded_filepath = remote_item_path + "/file_loc.txt"
+    assert remote_fs.exists(uploaded_filepath)
+
+    # upload dir [local to remote]
+    upload_dirpath = local_item_path
+    upload_dir_payload = {
+        "item_path": upload_dirpath,
+        "content": remote_item_path,
+        "destination_key": remote_key,
+        "action": "upload",
+    }
+    upload_dir_res = await jp_fetch(
+        "jupyter_fsspec",
+        "files",
+        "transfer",
+        method="POST",
+        params={"key": remote_key},
+        body=json.dumps(upload_dir_payload),
+    )
+
+    updir_body_json = upload_dir_res.body.decode("utf-8")
+    updir_body = json.loads(updir_body_json)
+    assert updir_body["status"] == "success"
+    assert updir_body["description"] == f"Uploaded {upload_dirpath} to /my_mem_dir."
+
+    # download file [other to remote]
+    download_filepath = "/my_mem_dir/test_dir/file1.txt"
+    download_file_payload = {
+        "item_path": download_filepath,
+        "content": local_item_path,
+        "destination_key": local_key,
+        "action": "download",
+    }
+    download_file_res = await jp_fetch(
+        "jupyter_fsspec",
+        "files",
+        "transfer",
+        method="POST",
+        params={"key": remote_key},
+        body=json.dumps(download_file_payload),
+    )
+
+    download_file_body_json = download_file_res.body.decode("utf-8")
+    download_file_body = json.loads(download_file_body_json)
+    assert download_file_body["status"] == "success"
+    assert (
+        download_file_body["description"]
+        == f"Downloaded {download_filepath} to {local_item_path}."
+    )
+
+    downloaded_filepath = local_item_path + "/file1.txt"
+    print("downloaded_filepath: ", downloaded_filepath)
+    assert local_fs.exists(downloaded_filepath)
+
+    # download dir [other to local]
+    download_dirpath = "/my_mem_dir/test_dir"
+    download_dir_payload = {
+        "item_path": download_dirpath,
+        "content": local_item_path,
+        "destination_key": local_key,
+        "action": "download",
+    }
+    download_dir_res = await jp_fetch(
+        "jupyter_fsspec",
+        "files",
+        "transfer",
+        method="POST",
+        params={"key": remote_key},
+        body=json.dumps(download_dir_payload),
+    )
+
+    download_dir_body_json = download_dir_res.body.decode("utf-8")
+    download_dir_body = json.loads(download_dir_body_json)
+    assert download_dir_body["status"] == "success"
+    assert (
+        download_dir_body["description"]
+        == f"Downloaded {download_dirpath} to {local_item_path}."
+    )
+
+    downloaded_dirpath = local_item_path + "/test_dir/"
+    print("downloaded_dirpath: ", downloaded_dirpath)
+    print("ls of downloaded_dirpath: ", local_fs.ls(local_item_path))
+    assert local_fs.exists(downloaded_dirpath)
+
+    downloaded_dir_asset_path = local_item_path + "/test_dir/file1.txt"
+    print("downloaded_dir_asset_path: ", downloaded_dir_asset_path)
+    assert local_fs.exists(downloaded_dir_asset_path)
