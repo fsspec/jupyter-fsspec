@@ -12,13 +12,14 @@ import {
 import { addJupyterLabThemeChangeListener } from '@jupyter/web-components';
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
-import { ICommandPalette } from '@jupyterlab/apputils';
+import { ICommandPalette, Dialog } from '@jupyterlab/apputils';
 
 import { INotebookTracker } from '@jupyterlab/notebook';
 
 import { FsspecModel } from './handler/fileOperations';
 import { FssFilesysItem } from './FssFilesysItem';
 import { FssTreeItem } from './FssTreeItem';
+import { FssFileUploadContextPopup } from './fileUploadContextPopup';
 
 import { Widget } from '@lumino/widgets';
 
@@ -68,6 +69,7 @@ class FsspecWidget extends Widget {
   getCurrentWidget: any;
   currentTarget: any = null;
   notebookTracker: INotebookTracker;
+  uploadDialog: any = null;
 
   constructor(model: any, notebookTracker: INotebookTracker) {
     super();
@@ -183,82 +185,102 @@ class FsspecWidget extends Widget {
       return;
     }
 
-    if (target?.context?.sessionContext?.session) {
-      const kernel = target.context.sessionContext.session.kernel;
-      if (!kernel) {
-        Logger.error('Error fetching kernel from active widget!');
-        return;
-      }
-      Logger.debug('Kernel: ' + kernel);
-      // Logger.debug(
-      //   `this.savedSnapshotPathField.value is : ${this.savedSnapshotPathField.value}`
-      // );
-      let getBytesCode = CODE_UPLOADUSERDATA.replace(
-        'FS_NAME',
-        (match, p1, p2, p3, offset, string) => {
-          return this.model.activeFilesystem;
-        }
-      );
-      getBytesCode = getBytesCode.replace(
-        'FILEPATH',
-        (match, p1, p2, p3, offset, string) => {
-          return user_path;
-        }
-      );
-      Logger.debug(getBytesCode);
-      kernel
-        .requestExecute({
-          code: getBytesCode,
-          user_expressions: {
-            jfss_data: '_jupyter_fsshelper._get_user_data_string()'
-          }
-        })
-        .done.then((message: any) => {
-          Logger.debug(message);
+    // Get the desired path for this upload from a dialog box
 
-          // Grab the value (this is the python repr() of our user expression
-          // according to the jupyter messaging protocol, it will have quotes)
-          const message_content =
-            message.content.user_expressions.jfss_data.data['text/plain'];
-          // Strip out the quotes
-          const userBase64 = message_content.replace(
-            /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
-            (
-              match: any,
-              p1: any,
-              p2: any,
-              p3: any,
-              offset: any,
-              string: any
-            ) => {
-              return ''; // Removes matching chars
-            }
-          );
-          Logger.debug(`User B64 ${userBase64}`);
-          Logger.debug(`XX ${atob(userBase64)}`);
+    const bodyWidget = new FssFileUploadContextPopup();
+    bodyWidget;
+    // Logger.debug('AAA');
+    // Logger.debug(`${JSON.stringify(wikrak.node)}`);
+    // Logger.debug(`${JSON.stringify(wikrak.isDisposed)}`);
+    // Logger.debug(`${JSON.stringify(wikrak.isAttached)}`);
+    // Logger.debug(`${JSON.stringify(wikrak.isHidden)}`);
+    this.uploadDialog = new Dialog({
+      body: bodyWidget,
+      title: 'Upload file'
+    });
+    // Logger.debug('BBB');
+    this.uploadDialog.launch();
 
-          // TODO: This is a temporary solution for uploading bytes in a user's
-          // notebook kernel to a remote fsspec filesystem. This solution grabs
-          // serialized data from the kernel into the frontend, then passes it
-          // back to the server for eventual upload via an fsspec call. Right now,
-          // the server API assumes content is UTF8 encoded text, which prevents
-          // passing arbitrary binary data. We can make changes around the application
-          // to better handle the data crossing process/network boundaries, but
-          // likely the easiest quick/dirty solution is to make the server treat
-          // content as latin1 encoded text (which still needs to be done for
-          // this temp solution to work). We can rethink some of this once
-          // better backend APIs are available for some of these use cases.
-          this.model.post(
-            this.model.activeFilesystem,
-            user_path,
-            atob(userBase64)
-          );
-        })
-        // temp1.content.user_expressions.jfss_data.data
-        .catch(() => {
-          Logger.error('Error loading on kernel');
-        });
-    }
+    // Logger.debug(`FOOBAR ${JSON.stringify(wikrak.node)}`);
+
+    CODE_UPLOADUSERDATA;
+
+    // if (target?.context?.sessionContext?.session) {
+    //   const kernel = target.context.sessionContext.session.kernel;
+    //   if (!kernel) {
+    //     Logger.error('Error fetching kernel from active widget!');
+    //     return;
+    //   }
+    //   Logger.debug('Kernel: ' + kernel);
+    //   // Logger.debug(
+    //   //   `this.savedSnapshotPathField.value is : ${this.savedSnapshotPathField.value}`
+    //   // );
+    //   let getBytesCode = CODE_UPLOADUSERDATA.replace(
+    //     'FS_NAME',
+    //     (match, p1, p2, p3, offset, string) => {
+    //       return this.model.activeFilesystem;
+    //     }
+    //   );
+    //   getBytesCode = getBytesCode.replace(
+    //     'FILEPATH',
+    //     (match, p1, p2, p3, offset, string) => {
+    //       return user_path;
+    //     }
+    //   );
+    //   Logger.debug(getBytesCode);
+    //   kernel
+    //     .requestExecute({
+    //       code: getBytesCode,
+    //       user_expressions: {
+    //         jfss_data: '_jupyter_fsshelper._get_user_data_string()'
+    //       }
+    //     })
+    //     .done.then((message: any) => {
+    //       Logger.debug(message);
+
+    //       // Grab the value (this is the python repr() of our user expression
+    //       // according to the jupyter messaging protocol, it will have quotes)
+    //       const message_content =
+    //         message.content.user_expressions.jfss_data.data['text/plain'];
+    //       // Strip out the quotes
+    //       const userBase64 = message_content.replace(
+    //         /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
+    //         (
+    //           match: any,
+    //           p1: any,
+    //           p2: any,
+    //           p3: any,
+    //           offset: any,
+    //           string: any
+    //         ) => {
+    //           return ''; // Removes matching chars
+    //         }
+    //       );
+    //       Logger.debug(`User B64 ${userBase64}`);
+    //       Logger.debug(`XX ${atob(userBase64)}`);
+
+    //       // TODO: This is a temporary solution for uploading bytes in a user's
+    //       // notebook kernel to a remote fsspec filesystem. This solution grabs
+    //       // serialized data from the kernel into the frontend, then passes it
+    //       // back to the server for eventual upload via an fsspec call. Right now,
+    //       // the server API assumes content is UTF8 encoded text, which prevents
+    //       // passing arbitrary binary data. We can make changes around the application
+    //       // to better handle the data crossing process/network boundaries, but
+    //       // likely the easiest quick/dirty solution is to make the server treat
+    //       // content as latin1 encoded text (which still needs to be done for
+    //       // this temp solution to work). We can rethink some of this once
+    //       // better backend APIs are available for some of these use cases.
+    //       this.model.post(
+    //         this.model.activeFilesystem,
+    //         user_path,
+    //         atob(userBase64)
+    //       );
+    //     })
+    //     // temp1.content.user_expressions.jfss_data.data
+    //     .catch(() => {
+    //       Logger.error('Error loading on kernel');
+    //     });
+    // }
   }
 
   handleContextGetBytes(user_path: string) {
