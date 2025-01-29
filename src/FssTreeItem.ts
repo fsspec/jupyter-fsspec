@@ -117,11 +117,11 @@ export class FssTreeItem {
     }
   }
 
-  handleUploadUserData() {
-    Logger.debug('Treeitem get bytes');
+  async handleUploadUserData() {
+    Logger.debug('Treeitem upload user data');
     for (const slot of this.uploadUserDataSlots) {
       Logger.debug(slot);
-      slot(this.root.dataset.fss);
+      await slot(this.root.dataset.fss);
     }
   }
 

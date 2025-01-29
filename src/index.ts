@@ -50,7 +50,7 @@ except:
 `;
 
 const CODE_UPLOADUSERDATA = `
-from jupyter_fsspec import helper as _jupyter_fsshelper
+from jupyter_fsspec import helper as _jupyter_fsshelper; _jupyter_fsshelper._get_user_data_tempfile_path()
 `;
 
 class FsspecWidget extends Widget {
@@ -70,6 +70,10 @@ class FsspecWidget extends Widget {
   currentTarget: any = null;
   notebookTracker: INotebookTracker;
   uploadDialog: any = null;
+  jobQueueControls: any;
+  jobQueue: any;
+  jobQueueContainer: any;
+  jobQueueExpander: any;
 
   constructor(model: any, notebookTracker: INotebookTracker) {
     super();
@@ -153,6 +157,49 @@ class FsspecWidget extends Widget {
     this.treeView.setAttribute('name', 'jfss-treeView');
     resultArea.appendChild(this.treeView);
 
+    // Add job queue bottom panel
+    this.jobQueueContainer = document.createElement('div');
+    this.jobQueueContainer.classList.add('jfss-job-queue-container');
+    // ....
+    this.jobQueueControls = document.createElement('div');
+    this.jobQueueControls.classList.add('jfss-job-queue-controls');
+    this.jobQueueContainer.appendChild(this.jobQueueControls);
+    // ....
+    this.jobQueueExpander = document.createElement('div');
+    this.jobQueueExpander.classList.add('jfss-job-queue-expander');
+    this.jobQueueExpander.innerText = '\u{25B6}';
+    this.jobQueueExpander.addEventListener(
+      'click',
+      this.handleJobQueueExpanderClick.bind(this)
+    );
+    this.jobQueueControls.appendChild(this.jobQueueExpander);
+    // ....
+    const controlLabel = document.createElement('div');
+    controlLabel.classList.add('jfss-job-queue-label');
+    controlLabel.innerText = 'Success: file:///Users/spam/eggs.txt';
+    this.jobQueueControls.appendChild(controlLabel);
+    // ....
+    this.jobQueue = document.createElement('div');
+    this.jobQueue.classList.add('jfss-job-queue');
+    this.jobQueueContainer.appendChild(this.jobQueue);
+    lowerArea.appendChild(this.jobQueueContainer);
+    // ....
+    for (let i = 0; i < 3; i++) {
+      const exampleJobItem = document.createElement('div');
+      exampleJobItem.classList.add('jfss-job-queue-item');
+      if (i === 0) {
+        exampleJobItem.innerText = 'Success: file:///Users/spam/eggs.txt';
+        exampleJobItem.style.backgroundColor = '#34cf00';
+      } else if (i === 1) {
+        exampleJobItem.innerText = 'Failed: file:///Users/wik/rak.txt';
+        exampleJobItem.style.backgroundColor = 'red';
+      } else if (i === 2) {
+        exampleJobItem.innerText = 'Failed: file:///etc/fstab';
+        exampleJobItem.style.backgroundColor = 'red';
+      }
+      this.jobQueue.appendChild(exampleJobItem);
+    }
+
     primaryDivider.appendChild(this.upperArea);
     primaryDivider.appendChild(hsep);
     primaryDivider.appendChild(lowerArea);
@@ -177,7 +224,17 @@ class FsspecWidget extends Widget {
   //   }
   // }
 
-  handleContextUploadUserData(user_path: string) {
+  handleJobQueueExpanderClick() {
+    if (this.jobQueueContainer.style.height === '17.75rem') {
+      this.jobQueueContainer.style.height = '1.75rem';
+      this.jobQueueExpander.innerText = '\u{25B6}';
+    } else {
+      this.jobQueueContainer.style.height = '17.75rem';
+      this.jobQueueExpander.innerText = '\u{25BC}';
+    }
+  }
+
+  async handleContextUploadUserData(user_path: string) {
     const target = this.notebookTracker.currentWidget;
 
     if (!target || target.isDisposed) {
@@ -186,101 +243,84 @@ class FsspecWidget extends Widget {
     }
 
     // Get the desired path for this upload from a dialog box
-
     const bodyWidget = new FssFileUploadContextPopup();
-    bodyWidget;
-    // Logger.debug('AAA');
-    // Logger.debug(`${JSON.stringify(wikrak.node)}`);
-    // Logger.debug(`${JSON.stringify(wikrak.isDisposed)}`);
-    // Logger.debug(`${JSON.stringify(wikrak.isAttached)}`);
-    // Logger.debug(`${JSON.stringify(wikrak.isHidden)}`);
     this.uploadDialog = new Dialog({
       body: bodyWidget,
       title: 'Upload file'
     });
-    // Logger.debug('BBB');
-    this.uploadDialog.launch();
+    const xpath = await this.uploadDialog.launch();
+    Logger.debug(`Popup path ${xpath}`);
 
-    // Logger.debug(`FOOBAR ${JSON.stringify(wikrak.node)}`);
+    if (target?.context?.sessionContext?.session) {
+      const kernel = target.context.sessionContext.session.kernel;
+      if (!kernel) {
+        Logger.error('Error fetching kernel from active widget!');
+        return;
+      }
+      Logger.debug('Kernel: ' + kernel);
+      // Logger.debug(
+      //   `this.savedSnapshotPathField.value is : ${this.savedSnapshotPathField.value}`
+      // );
+      const userCode = CODE_UPLOADUSERDATA;
+      Logger.debug(userCode);
+      kernel
+        .requestExecute({
+          code: 'pass',
+          user_expressions: {
+            jfss_data: userCode
+          }
+        })
+        .done.then((message: any) => {
+          Logger.debug(message);
 
-    CODE_UPLOADUSERDATA;
+          // Grab the value (this is the python repr() of our user expression
+          // according to the jupyter messaging protocol, it will have quotes)
+          const message_content =
+            message?.content?.user_expressions?.jfss_data.data;
+          if (message_content) {
+            const tempfilePath = message_content['text/plain'];
+            Logger.debug(`Tempfile path is ${tempfilePath}`);
+          }
 
-    // if (target?.context?.sessionContext?.session) {
-    //   const kernel = target.context.sessionContext.session.kernel;
-    //   if (!kernel) {
-    //     Logger.error('Error fetching kernel from active widget!');
-    //     return;
-    //   }
-    //   Logger.debug('Kernel: ' + kernel);
-    //   // Logger.debug(
-    //   //   `this.savedSnapshotPathField.value is : ${this.savedSnapshotPathField.value}`
-    //   // );
-    //   let getBytesCode = CODE_UPLOADUSERDATA.replace(
-    //     'FS_NAME',
-    //     (match, p1, p2, p3, offset, string) => {
-    //       return this.model.activeFilesystem;
-    //     }
-    //   );
-    //   getBytesCode = getBytesCode.replace(
-    //     'FILEPATH',
-    //     (match, p1, p2, p3, offset, string) => {
-    //       return user_path;
-    //     }
-    //   );
-    //   Logger.debug(getBytesCode);
-    //   kernel
-    //     .requestExecute({
-    //       code: getBytesCode,
-    //       user_expressions: {
-    //         jfss_data: '_jupyter_fsshelper._get_user_data_string()'
-    //       }
-    //     })
-    //     .done.then((message: any) => {
-    //       Logger.debug(message);
+          // // Strip out the quotes
+          // const userBase64 = message_content.replace(
+          //   /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
+          //   (
+          //     match: any,
+          //     p1: any,
+          //     p2: any,
+          //     p3: any,
+          //     offset: any,
+          //     string: any
+          //   ) => {
+          //     return ''; // Removes matching chars
+          //   }
+          // );
+          // Logger.debug(`User B64 ${userBase64}`);
+          // Logger.debug(`XX ${atob(userBase64)}`);
 
-    //       // Grab the value (this is the python repr() of our user expression
-    //       // according to the jupyter messaging protocol, it will have quotes)
-    //       const message_content =
-    //         message.content.user_expressions.jfss_data.data['text/plain'];
-    //       // Strip out the quotes
-    //       const userBase64 = message_content.replace(
-    //         /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
-    //         (
-    //           match: any,
-    //           p1: any,
-    //           p2: any,
-    //           p3: any,
-    //           offset: any,
-    //           string: any
-    //         ) => {
-    //           return ''; // Removes matching chars
-    //         }
-    //       );
-    //       Logger.debug(`User B64 ${userBase64}`);
-    //       Logger.debug(`XX ${atob(userBase64)}`);
-
-    //       // TODO: This is a temporary solution for uploading bytes in a user's
-    //       // notebook kernel to a remote fsspec filesystem. This solution grabs
-    //       // serialized data from the kernel into the frontend, then passes it
-    //       // back to the server for eventual upload via an fsspec call. Right now,
-    //       // the server API assumes content is UTF8 encoded text, which prevents
-    //       // passing arbitrary binary data. We can make changes around the application
-    //       // to better handle the data crossing process/network boundaries, but
-    //       // likely the easiest quick/dirty solution is to make the server treat
-    //       // content as latin1 encoded text (which still needs to be done for
-    //       // this temp solution to work). We can rethink some of this once
-    //       // better backend APIs are available for some of these use cases.
-    //       this.model.post(
-    //         this.model.activeFilesystem,
-    //         user_path,
-    //         atob(userBase64)
-    //       );
-    //     })
-    //     // temp1.content.user_expressions.jfss_data.data
-    //     .catch(() => {
-    //       Logger.error('Error loading on kernel');
-    //     });
-    // }
+          // // TODO: This is a temporary solution for uploading bytes in a user's
+          // // notebook kernel to a remote fsspec filesystem. This solution grabs
+          // // serialized data from the kernel into the frontend, then passes it
+          // // back to the server for eventual upload via an fsspec call. Right now,
+          // // the server API assumes content is UTF8 encoded text, which prevents
+          // // passing arbitrary binary data. We can make changes around the application
+          // // to better handle the data crossing process/network boundaries, but
+          // // likely the easiest quick/dirty solution is to make the server treat
+          // // content as latin1 encoded text (which still needs to be done for
+          // // this temp solution to work). We can rethink some of this once
+          // // better backend APIs are available for some of these use cases.
+          // this.model.post(
+          //   this.model.activeFilesystem,
+          //   user_path,
+          //   atob(userBase64)
+          // );
+        })
+        // temp1.content.user_expressions.jfss_data.data
+        .catch(() => {
+          Logger.error('Error loading on kernel');
+        });
+    }
   }
 
   handleContextGetBytes(user_path: string) {

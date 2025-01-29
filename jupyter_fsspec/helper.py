@@ -3,6 +3,7 @@
 
 import copy
 import datetime
+import tempfile
 import traceback
 from base64 import standard_b64encode
 
@@ -165,6 +166,12 @@ def _get_user_data_string():
     # TODO refactor/remove this later
     # The web APIs use strings for base64 decoding, return an ascii/utf8 string
     return standard_b64encode(_user_data).decode("utf8")
+
+
+def _get_user_data_tempfile_path():
+    tfile = tempfile.NamedTemporaryFile(delete=False)
+    tfile.write(_user_data)
+    return tfile.name
 
 
 def set_user_data(data):
