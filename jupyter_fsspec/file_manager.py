@@ -211,3 +211,8 @@ class FileSystemManager:
             if fs_info.get("protocol") == fs_protocol:
                 return {"key": encoded_key, "info": fs_info}
         return None
+
+    def get_filesystem_protocol(self, key):
+        filesystem_rep = self.filesystems.get(key)
+        print(f"filesystem_rep: {filesystem_rep}")
+        return filesystem_rep["protocol"] + "://"
