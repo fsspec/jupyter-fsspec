@@ -410,11 +410,11 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
     assert local_fs is not None
 
     # upload file [local to remote]
-    upload_filepath = f"{local_root_path}/file_loc.txt"
-    assert local_fs.exists(upload_filepath)
+    local_upload_filepath = f"{local_root_path}/file_loc.txt"
+    assert local_fs.exists(local_upload_filepath)
     upload_file_payload = {
-        "item_path": upload_filepath,
-        "content": remote_root_path,
+        "local_path": local_upload_filepath,
+        "remote_path": remote_root_path,
         "destination_key": remote_key,
         "action": "upload",
     }
@@ -433,7 +433,7 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
     assert upfile_body["status"] == "success"
     assert (
         upfile_body["description"]
-        == f"Uploaded {upload_filepath} to s3://{remote_root_path}/."
+        == f"Uploaded {local_upload_filepath} to s3://{remote_root_path}."
     )
 
     uploaded_filepath = remote_root_path + "/file_loc.txt"
@@ -445,8 +445,8 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
     upload_dirpath = local_root_path + "/nested/"
     assert local_fs.exists(upload_dirpath)
     upload_dir_payload = {
-        "item_path": upload_dirpath,
-        "content": remote_root_path,
+        "local_path": upload_dirpath,
+        "remote_path": remote_root_path,
         "destination_key": remote_key,
         "action": "upload",
     }
@@ -464,7 +464,7 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
     assert updir_body["status"] == "success"
     assert (
         updir_body["description"]
-        == f"Uploaded {upload_dirpath} to s3://{remote_root_path}/."
+        == f"Uploaded {upload_dirpath} to s3://{remote_root_path}."
     )
 
     remote_file_items = await remote_fs._ls(remote_root_path)
@@ -477,8 +477,8 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
     file_present = await remote_fs._exists(download_filepath)
     assert file_present
     download_file_payload = {
-        "item_path": download_filepath,
-        "content": local_root_path,
+        "remote_path": download_filepath,
+        "local_path": local_root_path,
         "destination_key": remote_key,
         "action": "download",
     }
@@ -506,8 +506,8 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
     # download dir [other to local]
     download_dirpath = f"{remote_root_path}/some/"
     download_dir_payload = {
-        "item_path": download_dirpath,
-        "content": local_root_path,
+        "remote_path": download_dirpath,
+        "local_path": local_root_path,
         "destination_key": remote_key,
         "action": "download",
     }

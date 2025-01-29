@@ -170,9 +170,9 @@ class FileTransferHandler(BaseFileSystemHandler):
         :rtype: dict
         """
         request_data = json.loads(self.request.body.decode("utf-8"))
-        req_item_path = request_data.get("item_path")
         action = request_data.get("action")
-        destination = request_data.get("content")
+        local_path = request_data.get("local_path")
+        remote_path = request_data.get("remote_path")
         dest_fs_key = request_data.get("destination_key")
         dest_fs_info = self.fs_manager.get_filesystem(dest_fs_key)
         dest_path = dest_fs_info["canonical_path"]
@@ -188,8 +188,9 @@ class FileTransferHandler(BaseFileSystemHandler):
             if action == "upload":
                 # upload     remote.put(local_path, remote_path)
                 logger.debug("Upload file")
-                local_path = req_item_path
-                remote_path = dest_path
+                protocol = self.fs_manager.get_filesystem_protocol(dest_fs_key)
+                if protocol not in remote_path:
+                    remote_path = protocol + remote_path
                 # TODO: handle creating directories? current: flat item upload
                 # remote_path = remote_path (root) + 'nested/'
                 await fs_instance._put(local_path, remote_path, recursive=True)
@@ -198,9 +199,8 @@ class FileTransferHandler(BaseFileSystemHandler):
                 # download   remote.get(remote_path, local_path)
                 logger.debug("Download file")
                 protocol = self.fs_manager.get_filesystem_protocol(dest_fs_key)
-                req_item_path = protocol + req_item_path
-                local_path = destination
-                remote_path = req_item_path
+                if protocol not in remote_path:
+                    remote_path = protocol + remote_path
                 await fs_instance._get(remote_path, local_path, recursive=True)
                 response["description"] = f"Downloaded {remote_path} to {local_path}."
 
