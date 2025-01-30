@@ -1,6 +1,5 @@
 import json
 import pytest
-import fsspec
 from tornado.httpclient import HTTPClientError
 # TODO: Testing: different file types, received expected errors
 
@@ -288,6 +287,7 @@ async def xtest_patch_file(fs_manager_instance, jp_fetch):
     assert file_res.code == 200
 
 
+# TODO:
 async def xtest_action_same_fs_files(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
     # get_filesystem_by_protocol(filesystem_protocol_string) returns first instance of that filesystem protocol
@@ -394,112 +394,27 @@ async def xtest_action_same_fs_files(fs_manager_instance, jp_fetch):
     )
 
 
-def get_boto3_client():
-    from botocore.session import Session
-
-    # NB: we use the sync botocore client for setup
-    session = Session()
-
-    endpoint_uri = "http://127.0.0.1:%s/" % "5555"
-    return session.create_client("s3", endpoint_url=endpoint_uri)
-
-
-@pytest.mark.asyncio
-async def xtest_async_s3_file_operations(s3_client, s3_fs_manager_instance, jp_fetch):
-    # s3_client = get_boto3_client()
-    s3_client = s3_client
-    # boto3.set_stream_logger('botocore', level='DEBUG')
-    # s3_client.create_bucket(Bucket='my-test-bucket')
-
-    # endpoint_uri = "http://127.0.0.1:%s/" % "5555"
-
-    # fs = fsspec.filesystem('s3', asynchronous=True, anon=False, client_kwargs={'endpoint_url': endpoint_uri})
-    fs = s3_fs_manager_instance
-
-    # ==================================================================
-    # contents = await fs._ls('s3://my-test-bucket/')
-    # print(f"contents: {contents}")
-    # await fs._pipe_file('s3://my-test-bucket/test.txt', b"Hi Test MOTO server!")
-    # content = await fs._cat_file('s3://my-test-bucket/test.txt')
-    # print(content)
-    # assert content == b'Hi Test MOTO server!'
-
-    # contents = await fs._ls('s3://my-test-bucket/')
-    # print(f"contents: {contents}")
-    # ==================================================================
-    fs_manager = s3_fs_manager_instance
-    print(f"fs_manager is: {fs_manager}")
-
-    fs_info = fs_manager.get_filesystem_by_protocol("s3")
-    key = fs_info["key"]
-    fs = fs_info["info"]["instance"]
-    item_path = fs_info["info"]["path"]
-    assert fs is not None
-
-    # Read directory
-    assert fs.exists(item_path)
-    dir_response = await jp_fetch(
-        "jupyter_fsspec",
-        "files",
-        method="GET",
-        params={"key": key, "item_path": item_path},
-    )
-
-    assert dir_response.code == 200
-    json_body = dir_response.body.decode("utf-8")
-    body = json.loads(json_body)
-    assert body["status"] == "success"
-
-
-@pytest.mark.asyncio
-async def xtest___async_s3_file_operations(mock_s3_fs):
-    # s3_client = boto3.client('s3', endpoint_url=os.getenv("AWS_S3_ENDPOINT_URL"))
-    s3_client = get_boto3_client()
-    # boto3.set_stream_logger('botocore', level='DEBUG')
-    s3_client.create_bucket(Bucket="my-test-bucket")
-
-    endpoint_uri = "http://127.0.0.1:%s/" % "5555"
-
-    fs = fsspec.filesystem(
-        "s3",
-        asynchronous=True,
-        anon=False,
-        client_kwargs={"endpoint_url": endpoint_uri},
-    )
-
-    contents = await fs._ls("s3://my-test-bucket/")
-    print(f"contents: {contents}")
-    await fs._pipe_file("s3://my-test-bucket/test.txt", b"Hi Test MOTO server!")
-    content = await fs._cat_file("s3://my-test-bucket/test.txt")
-    print(content)
-    assert content == b"Hi Test MOTO server!"
-
-    contents = await fs._ls("s3://my-test-bucket/")
-    print(f"contents: {contents}")
-
-
-# TODO: Update file paths from memory to remote; Update remote_key usage
-async def xtest_file_transfer(fs_manager_instance, jp_fetch):
+# TODO: Test count files; Upload/download no more than expected
+async def test_upload_download(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
     remote_fs_info = fs_manager.get_filesystem_by_protocol("s3")
     remote_key = remote_fs_info["key"]
     remote_fs = remote_fs_info["info"]["instance"]
-    remote_item_path = remote_fs_info["info"]["path"]
+    remote_root_path = remote_fs_info["info"]["path"]
     assert remote_fs is not None
-    assert remote_fs.exists(remote_item_path)
 
     local_fs_info = fs_manager.get_filesystem_by_protocol("local")
     local_key = local_fs_info["key"]
     local_fs = local_fs_info["info"]["instance"]
-    local_item_path = local_fs_info["info"]["path"]
+    local_root_path = local_fs_info["info"]["path"]
     assert local_fs is not None
 
     # upload file [local to remote]
-    upload_filepath = f"{local_item_path}/file_loc.txt"
-    assert local_fs.exists(upload_filepath)
+    local_upload_filepath = f"{local_root_path}/file_loc.txt"
+    assert local_fs.exists(local_upload_filepath)
     upload_file_payload = {
-        "item_path": upload_filepath,
-        "content": remote_item_path,
+        "local_path": local_upload_filepath,
+        "remote_path": remote_root_path,
         "destination_key": remote_key,
         "action": "upload",
     }
@@ -516,16 +431,22 @@ async def xtest_file_transfer(fs_manager_instance, jp_fetch):
     upfile_body = json.loads(upfile_body_json)
 
     assert upfile_body["status"] == "success"
-    assert upfile_body["description"] == f"Uploaded {upload_filepath} to /my_mem_dir."
+    assert (
+        upfile_body["description"]
+        == f"Uploaded {local_upload_filepath} to s3://{remote_root_path}."
+    )
 
-    uploaded_filepath = remote_item_path + "/file_loc.txt"
-    assert remote_fs.exists(uploaded_filepath)
+    uploaded_filepath = remote_root_path + "/file_loc.txt"
+
+    remote_file_items = await remote_fs._ls(remote_root_path)
+    assert uploaded_filepath in remote_file_items
 
     # upload dir [local to remote]
-    upload_dirpath = local_item_path
+    upload_dirpath = local_root_path + "/nested/"
+    assert local_fs.exists(upload_dirpath)
     upload_dir_payload = {
-        "item_path": upload_dirpath,
-        "content": remote_item_path,
+        "local_path": upload_dirpath,
+        "remote_path": remote_root_path,
         "destination_key": remote_key,
         "action": "upload",
     }
@@ -541,14 +462,24 @@ async def xtest_file_transfer(fs_manager_instance, jp_fetch):
     updir_body_json = upload_dir_res.body.decode("utf-8")
     updir_body = json.loads(updir_body_json)
     assert updir_body["status"] == "success"
-    assert updir_body["description"] == f"Uploaded {upload_dirpath} to /my_mem_dir."
+    assert (
+        updir_body["description"]
+        == f"Uploaded {upload_dirpath} to s3://{remote_root_path}."
+    )
 
-    # download file [other to remote]
-    download_filepath = "/my_mem_dir/test_dir/file1.txt"
+    remote_file_items = await remote_fs._ls(remote_root_path)
+    # TODO:  remote_root_path + "/nested"
+    assert "my-test-bucket/.keep" in remote_file_items
+    assert "my-test-bucket/.empty" in remote_file_items
+
+    # download file [other to remote] #remote_root_path that we want to download.
+    download_filepath = "my-test-bucket/bucket-filename1.txt"
+    file_present = await remote_fs._exists(download_filepath)
+    assert file_present
     download_file_payload = {
-        "item_path": download_filepath,
-        "content": local_item_path,
-        "destination_key": local_key,
+        "remote_path": download_filepath,
+        "local_path": local_root_path,
+        "destination_key": remote_key,
         "action": "download",
     }
     download_file_res = await jp_fetch(
@@ -565,19 +496,19 @@ async def xtest_file_transfer(fs_manager_instance, jp_fetch):
     assert download_file_body["status"] == "success"
     assert (
         download_file_body["description"]
-        == f"Downloaded {download_filepath} to {local_item_path}."
+        == f"Downloaded s3://{download_filepath} to {local_root_path}."
     )
 
-    downloaded_filepath = local_item_path + "/file1.txt"
-    print("downloaded_filepath: ", downloaded_filepath)
-    assert local_fs.exists(downloaded_filepath)
+    downloaded_filepath = local_root_path + "/bucket-filename1.txt"
+    local_file_list = local_fs.ls(local_root_path)
+    assert downloaded_filepath in local_file_list
 
     # download dir [other to local]
-    download_dirpath = "/my_mem_dir/test_dir"
+    download_dirpath = f"{remote_root_path}/some/"
     download_dir_payload = {
-        "item_path": download_dirpath,
-        "content": local_item_path,
-        "destination_key": local_key,
+        "remote_path": download_dirpath,
+        "local_path": local_root_path,
+        "destination_key": remote_key,
         "action": "download",
     }
     download_dir_res = await jp_fetch(
@@ -594,14 +525,17 @@ async def xtest_file_transfer(fs_manager_instance, jp_fetch):
     assert download_dir_body["status"] == "success"
     assert (
         download_dir_body["description"]
-        == f"Downloaded {download_dirpath} to {local_item_path}."
+        == f"Downloaded s3://{download_dirpath} to {local_root_path}."
     )
 
-    downloaded_dirpath = local_item_path + "/test_dir/"
-    print("downloaded_dirpath: ", downloaded_dirpath)
-    print("ls of downloaded_dirpath: ", local_fs.ls(local_item_path))
-    assert local_fs.exists(downloaded_dirpath)
-
-    downloaded_dir_asset_path = local_item_path + "/test_dir/file1.txt"
-    print("downloaded_dir_asset_path: ", downloaded_dir_asset_path)
-    assert local_fs.exists(downloaded_dir_asset_path)
+    files_in_local = local_fs.ls(local_root_path)
+    local_flat_file1 = local_root_path + "/bucket-filename1.txt"
+    local_flat_file2 = local_root_path + "/bucket-filename2.txt"
+    local_flat_file3 = local_root_path + "/bucket-filename3.txt"
+    assert local_flat_file1 in files_in_local
+    assert local_flat_file2 in files_in_local
+    assert local_flat_file3 in files_in_local
+    # TODO: subdir creation in local
+    # downloaded_dirpath = local_root_path + '/some'
+    # new_local_items = local_fs.ls(downloaded_dirpath)
+    # assert downloaded_dirpath in new_local_items
