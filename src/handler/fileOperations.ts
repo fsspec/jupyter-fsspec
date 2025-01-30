@@ -366,6 +366,52 @@ export class FsspecModel {
     }
   }
 
+  async sync_push(
+    key: string,
+    remote_path: string,
+    local_path: string
+  ): Promise<any> {
+    try {
+      const reqBody = JSON.stringify({
+        key: key,
+        remote_path,
+        local_path
+      });
+      await requestAPI<any>('sync', {
+        method: 'POST',
+        body: reqBody,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+    } catch (error) {
+      console.error('Failed to sync local to remote: ', error);
+    }
+  }
+
+  async sync_pull(
+    key: string,
+    remote_path: string,
+    local_path: string
+  ): Promise<any> {
+    try {
+      const reqBody = JSON.stringify({
+        key: key,
+        remote_path,
+        local_path
+      });
+      await requestAPI<any>('sync', {
+        method: 'GET',
+        body: reqBody,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+    } catch (error) {
+      console.error('Failed to sync remote to local: ', error);
+    }
+  }
+
   // async update(
   //   key: any = 'local%7CSourceDisk%7C.',
   //   item_path = '',

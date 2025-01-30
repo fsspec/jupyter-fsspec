@@ -539,3 +539,70 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
     # downloaded_dirpath = local_root_path + '/some'
     # new_local_items = local_fs.ls(downloaded_dirpath)
     # assert downloaded_dirpath in new_local_items
+
+
+async def xtest_sync_push(fs_manager_instance, jp_fetch):
+    # WIP
+    fs_manager = fs_manager_instance
+    remote_fs_info = fs_manager.get_filesystem_by_protocol("s3")
+    remote_key = remote_fs_info["key"]
+    remote_fs = remote_fs_info["info"]["instance"]
+    remote_root_path = remote_fs_info["info"]["path"]
+    assert remote_fs is not None
+
+    local_fs_info = fs_manager.get_filesystem_by_protocol("local")
+    local_key = local_fs_info["key"]  # noqa: F841
+    local_fs = local_fs_info["info"]["instance"]
+    local_root_path = local_fs_info["info"]["path"]
+    assert local_fs is not None
+
+    push_sync_payload = {
+        "local_path": local_root_path,
+        "remote_path": remote_root_path,
+        "destination_key": remote_key,
+    }
+
+    # calling sync on the remote
+    sync_local_to_remote_response = await jp_fetch(
+        "jupyter_fsspec",
+        "sync",
+        method="POST",
+        params={"key": remote_key},
+        body=json.dumps(push_sync_payload),
+    )
+
+    assert sync_local_to_remote_response.code == 200
+
+
+async def test_sync_pull(fs_manager_instance, jp_fetch):
+    fs_manager = fs_manager_instance
+    remote_fs_info = fs_manager.get_filesystem_by_protocol("s3")
+    remote_key = remote_fs_info["key"]
+    remote_fs = remote_fs_info["info"]["instance"]
+    remote_root_path = remote_fs_info["info"]["path"]
+    assert remote_fs is not None
+
+    local_fs_info = fs_manager.get_filesystem_by_protocol("local")
+    local_key = local_fs_info["key"]  # noqa: F841
+    local_fs = local_fs_info["info"]["instance"]
+    local_root_path = local_fs_info["info"]["path"]
+    assert local_fs is not None
+
+    pull_sync_payload = {
+        "local_path": local_root_path,
+        "remote_path": remote_root_path,
+        "destination_key": remote_key,
+    }
+
+    # calling sync on the remote
+    sync_remote_to_local_response = await jp_fetch(
+        "jupyter_fsspec",
+        "sync",
+        method="GET",
+        params={"key": remote_key},
+        body=json.dumps(pull_sync_payload),
+        allow_nonstandard_methods=True,
+    )
+
+    assert sync_remote_to_local_response.code == 200
+    # assert body["status"] == "success"

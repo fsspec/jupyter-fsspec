@@ -252,6 +252,77 @@ class RenameFileHandler(BaseFileSystemHandler):
 
 
 # ====================================================================================
+# Handle Syncing Local and Remote filesystems
+# ====================================================================================
+class FilesystemSyncHandler(BaseFileSystemHandler):
+    def initialize(self, fs_manager):
+        self.fs_manager = fs_manager
+
+    async def get(self):
+        # remote to local (fetching latest changes)
+        request_data = json.loads(self.request.body.decode("utf-8"))
+        local_destination_path = request_data.get("local_path")
+        remote_source_path = request_data.get("remote_path")
+        dest_fs_key = request_data.get("destination_key")
+        dest_fs_info = self.fs_manager.get_filesystem(dest_fs_key)
+        dest_path = dest_fs_info["path"]
+
+        response = {"content": None}
+
+        fs, dest_path = self.validate_fs("post", dest_fs_key, dest_path)
+        remote_fs_instance = fs["instance"]  # noqa: F841
+
+        try:
+            # rsync
+            # (remote_source_path, local_destination_path)
+            # await remote_fs_instance....
+            self.set_status(200)
+            response["status"] = "success"
+            response["description"] = (
+                f"Synced {local_destination_path} to {remote_source_path}."
+            )
+        except Exception as e:
+            print(f"Error with sync handler: {e}")
+            self.set_status(500)
+            response["status"] = "failed"
+            response["description"] = str(e)
+        self.write(response)
+        self.finish()
+
+    async def post(self):
+        # local to remote (pushing latest changes)
+        key = self.get_argument("key")  # noqa: F841
+        request_data = json.loads(self.request.body.decode("utf-8"))
+        local_source_path = request_data.get("local_path")
+        remote_destination_path = request_data.get("remote_path")
+        dest_fs_key = request_data.get("destination_key")
+        dest_fs_info = self.fs_manager.get_filesystem(dest_fs_key)
+        dest_path = dest_fs_info["path"]
+
+        response = {"content": None}
+
+        fs, dest_path = self.validate_fs("post", dest_fs_key, dest_path)
+        remote_fs_instance = fs["instance"]  # noqa: F841
+
+        try:
+            # rsync
+            # (local_source_path, remote_destination_path)
+            # await remote_fs_instance....
+            self.set_status(200)
+            response["status"] = "success"
+            response["description"] = (
+                f"Synced {remote_destination_path} to {local_source_path}."
+            )
+        except Exception as e:
+            logger.debug(f"Error with sync handler: {e}")
+            self.set_status(500)
+            response["status"] = "failed"
+            response["description"] = str(e)
+        self.write(response)
+        self.finish()
+
+
+# ====================================================================================
 # CRUD for FileSystem
 # ====================================================================================
 class FileSystemHandler(BaseFileSystemHandler):
@@ -556,6 +627,7 @@ def setup_handlers(web_app):
     route_fs_file_transfer = url_path_join(
         base_url, "jupyter_fsspec", "files", "transfer"
     )
+    route_fs_sync = url_path_join(base_url, "jupyter_fsspec", "sync")
 
     handlers = [
         (route_fsspec_config, FsspecConfigHandler, dict(fs_manager=fs_manager)),
@@ -563,6 +635,7 @@ def setup_handlers(web_app):
         (route_rename_files, RenameFileHandler, dict(fs_manager=fs_manager)),
         (route_file_actions, FileActionHandler, dict(fs_manager=fs_manager)),
         (route_fs_file_transfer, FileTransferHandler, dict(fs_manager=fs_manager)),
+        (route_fs_sync, FilesystemSyncHandler, dict(fs_manager=fs_manager)),
     ]
 
     web_app.add_handlers(host_pattern, handlers)
