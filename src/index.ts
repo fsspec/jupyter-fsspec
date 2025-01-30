@@ -195,13 +195,13 @@ class FsspecWidget extends Widget {
       jobItemLabel.classList.add('jfss-job-item-label');
       exampleJobItem.appendChild(jobItemLabel);
       if (i === 0) {
-        jobItemLabel.innerText = 'OK: file:///Users/spam/eggs.txt';
+        jobItemLabel.innerText = '\u{2B61}OK: file:///Users/spam/eggs.txt';
         statusIndicator.style.backgroundColor = '#34cf00';
       } else if (i === 1) {
-        jobItemLabel.innerText = 'FAIL: file:///Users/wik/rak.txt';
+        jobItemLabel.innerText = '\u{2B63}FAIL: file:///Users/wik/rak.txt';
         statusIndicator.style.backgroundColor = 'red';
       } else if (i === 2) {
-        jobItemLabel.innerText = 'OK: file:///etc/fstab';
+        jobItemLabel.innerText = '\u{2B61}OK: file:///etc/fstab';
         statusIndicator.style.backgroundColor = '#34cf00';
       }
       this.jobQueue.appendChild(exampleJobItem);
