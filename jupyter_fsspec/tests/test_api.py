@@ -11,6 +11,11 @@ async def test_get_config(jp_fetch):
     json_body = response.body.decode("utf-8")
     body = json.loads(json_body)
     assert body["status"] == "success"
+    assert (
+        body["description"]
+        == "Retrieved available filesystems from configuration file."
+    )
+    assert body["content"] != []
 
 
 async def test_get_files_memory(fs_manager_instance, jp_fetch):
