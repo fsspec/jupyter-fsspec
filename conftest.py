@@ -35,7 +35,87 @@ def setup_tmp_local(tmp_path: Path):
     yield [local_root, local_empty_root]
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="function")
+def no_config_permission(tmp_path: Path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir(exist_ok=True)
+    os.chmod(config_dir, 0o44)
+
+    with patch(
+        "jupyter_fsspec.file_manager.jupyter_config_dir", return_value=str(config_dir)
+    ):
+        print(f"Patching jupyter_config_dir to: {config_dir}")
+    yield config_dir
+
+    os.chmod(config_dir, 0o755)
+    config_dir.rmdir()
+
+
+@pytest.fixture(scope="function")
+def malformed_config(tmp_path: Path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir(exist_ok=True)
+
+    yaml_content = f"""sources:
+  - name: "TestSourceAWS"
+    path: "s3://my-test-bucket/"
+        kwargs:
+      anon: false
+      key: "my-access-key"
+      secret: "my-secret-key"
+      client_kwargs:
+        endpoint_url: "{ENDPOINT_URI}"
+    """
+    yaml_file = config_dir / "jupyter-fsspec.yaml"
+    yaml_file.write_text(yaml_content)
+
+    with patch(
+        "jupyter_fsspec.file_manager.jupyter_config_dir", return_value=str(config_dir)
+    ):
+        print(f"Patching jupyter_config_dir to: {config_dir}")
+
+
+@pytest.fixture(scope="function")
+def bad_info_config(tmp_path: Path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir(exist_ok=True)
+
+    yaml_content = f"""sources:
+  - nme: "TestSourceAWS"
+    path: s3://my-test-bucket/"
+    kwargs:
+      anon: false
+      key: "my-access-key"
+      secret: "my-secret-key"
+      client_kwargs:
+        endpoint_url: "{ENDPOINT_URI}"
+    """
+    yaml_file = config_dir / "jupyter-fsspec.yaml"
+    yaml_file.write_text(yaml_content)
+
+    with patch(
+        "jupyter_fsspec.file_manager.jupyter_config_dir", return_value=str(config_dir)
+    ):
+        print(f"Patching jupyter_config_dir to: {config_dir}")
+
+
+@pytest.fixture(scope="function")
+def empty_config(tmp_path: Path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir(exist_ok=True)
+
+    yaml_content = """ """
+    yaml_file = config_dir / "jupyter-fsspec.yaml"
+    yaml_file.write_text(yaml_content)
+
+    with patch(
+        "jupyter_fsspec.file_manager.jupyter_config_dir", return_value=str(config_dir)
+    ):
+        print(f"Patching jupyter_config_dir to: {config_dir}")
+
+
+# TODO: split?
+@pytest.fixture(scope="function")
 def setup_config_file_fs(tmp_path: Path, setup_tmp_local):
     tmp_local = setup_tmp_local[0]
     items_tmp_local = list(tmp_local.iterdir())

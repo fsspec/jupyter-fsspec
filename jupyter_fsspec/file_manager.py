@@ -46,7 +46,7 @@ def handle_exception(default_return=None):
     default_return={"operation_success": False, "error": "Error validating config"}
 )
 def validate_config(config_loaded):
-    Config.parse_obj(config_loaded)
+    Config.model_validate(config_loaded)
     return {"operation_success": True, "validated_config": config_loaded}
 
 

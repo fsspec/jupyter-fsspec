@@ -60,9 +60,13 @@ class FsspecConfigHandler(APIHandler):
         :rtype: dict
         """
         try:
-            check = self.fs_manager.check_reload_config()
+            config = self.fs_manager.check_reload_config()
 
-            if not check.get("operation_success") and not check.get("sources"):
+            if (
+                not config.get("operation_success")
+                and "sources" not in config
+                and config
+            ):
                 raise Exception
 
             file_systems = []
@@ -89,10 +93,10 @@ class FsspecConfigHandler(APIHandler):
         except Exception:
             err_mgs = ""
 
-            if check.get("operation_success", True):
+            if config.get("operation_success", True):
                 err_mgs = "FileNotFound"
             else:
-                err_mgs = check["error"]
+                err_mgs = config["error"]
 
             self.set_status(404)
             self.write(
