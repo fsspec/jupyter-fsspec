@@ -4,7 +4,6 @@ from jupyter_server.utils import url_path_join
 from .utils import parse_range
 import tornado
 import json
-import traceback
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -61,7 +60,11 @@ class FsspecConfigHandler(APIHandler):
         :rtype: dict
         """
         try:
-            self.fs_manager.check_reload_config()
+            check = self.fs_manager.check_reload_config()
+
+            if not check.get("operation_success") and not check.get("sources"):
+                raise Exception
+
             file_systems = []
 
             for fs in self.fs_manager.filesystems:
@@ -83,15 +86,21 @@ class FsspecConfigHandler(APIHandler):
                 }
             )
             self.finish()
-        except Exception as e:
-            traceback.print_exc()
+        except Exception:
+            err_mgs = ""
+
+            if check.get("operation_success", True):
+                err_mgs = "FileNotFound"
+            else:
+                err_mgs = check["error"]
+
             self.set_status(404)
             self.write(
                 {
                     "response": {
                         "status": "failed",
-                        "error": "FILE_NOT_FOUND",
-                        "description": f"Error loading config: {str(e)}",
+                        "error": err_mgs,
+                        "description": "Error retrieving config.",
                     }
                 }
             )

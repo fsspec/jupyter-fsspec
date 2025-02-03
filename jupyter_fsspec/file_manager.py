@@ -1,13 +1,14 @@
 from jupyter_core.paths import jupyter_config_dir
-import fsspec
+from pydantic import BaseModel
+from typing import Optional, Dict, List
 from fsspec.utils import infer_storage_options
 from fsspec.registry import known_implementations
+import fsspec
 import os
 import sys
 import yaml
 import hashlib
 import urllib.parse
-import traceback
 import logging
 
 logging.basicConfig(level=logging.WARNING, stream=sys.stdout)
@@ -15,15 +16,50 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+class Source(BaseModel):
+    name: str
+    path: str
+    protocol: Optional[str] = None
+    args: Optional[List] = None
+    kwargs: Optional[Dict] = None
+
+
+class Config(BaseModel):
+    sources: List[Source]
+
+
+def handle_exception(default_return=None):
+    def decorator(func):
+        def closure(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                logger.error(f"Error : {func.__name__}: {e}.")
+                return default_return
+
+        return closure
+
+    return decorator
+
+
+@handle_exception(
+    default_return={"operation_success": False, "error": "Error validating config"}
+)
+def validate_config(config_loaded):
+    Config.parse_obj(config_loaded)
+    return {"operation_success": True, "validated_config": config_loaded}
+
+
 class FileSystemManager:
     def __init__(self, config_file):
         self.filesystems = {}
         self.base_dir = jupyter_config_dir()
-        logger.debug(f"Using Jupyter config directory: {self.base_dir}")
-        os.makedirs(self.base_dir, exist_ok=True)
+        logger.info(f"Using Jupyter config directory: {self.base_dir}")
         self.config_path = os.path.join(self.base_dir, config_file)
 
-        self.config = self.load_config()
+        config = self.load_config()
+        self.config = config.get("config_content", {})
+
         self.async_implementations = self._asynchronous_implementations()
         self.initialize_filesystems()
 
@@ -46,45 +82,54 @@ class FileSystemManager:
     def create_default():
         return FileSystemManager(config_file="jupyter-fsspec.yaml")
 
-    # os.path.exists(config_path)
+    @handle_exception(
+        default_return={"operation_success": False, "error": "Error reading config."}
+    )
+    def retrieve_config_content(self, config_path):
+        with open(config_path, "r") as file:
+            config_content = yaml.safe_load(file)
+
+        if not config_content:
+            return {"operation_success": True, "config_content": {}}
+
+        validation_result = validate_config(config_content)
+        if not validation_result.get("operation_success"):
+            raise ValueError(validation_result["error"])
+
+        config_validated = validation_result.get("validated_config", {})
+        return {"operation_success": True, "config_content": config_validated}
+
+    @handle_exception(
+        default_return={"operation_success": False, "error": "Error loading config."}
+    )
     def load_config(self):
         config_path = self.config_path
-        result = {"sources": []}
+        config_content = {"sources": []}
 
-        try:
-            if not os.path.exists(config_path):
-                logger.debug(
-                    f"Config file not found at {config_path}. Creating default file."
-                )
-                self.create_config_file()
-
-            with open(config_path, "r") as file:
-                config_loaded = yaml.safe_load(file)
-            if config_loaded is not None and "sources" in config_loaded:
-                result = config_loaded
-        except FileNotFoundError:
-            logger.error(
-                f"Config file was not found and could not be created at {config_path}."
+        if not os.path.exists(config_path):
+            logger.debug(
+                f"Config file not found at {config_path}. Creating default file."
             )
-        except yaml.YAMLError as e:
-            logger.error(f"Error parsing configuration file: {e}")
-        # TODO: Check for permissions / handle case for OSError
-        # except OSError as oserr:
-        except Exception:
-            traceback.print_exc()
-            logger.error("Error occured when loading the config file.")
 
-        return result
+            file_creation_result = self.create_config_file()
+
+            if not file_creation_result.get("operation_success"):
+                print(f"inner file_creation_result: {file_creation_result}")
+                return file_creation_result
+
+        config_content = self.retrieve_config_content(config_path)
+
+        return config_content
 
     def hash_config(self, config_content):
         yaml_str = yaml.dump(config_content)
         hash = hashlib.md5(yaml_str.encode("utf-8")).hexdigest()
         return hash
 
-    def create_config_file(self):
-        config_path = self.config_path
-        os.makedirs(os.path.dirname(config_path), exist_ok=True)
-
+    @handle_exception(
+        default_return={"operation_success": False, "error": "Error writing config."}
+    )
+    def write_default_config(self, path):
         placeholder_config = {
             "sources": [
                 {"name": "test", "path": "memory://mytests"},
@@ -94,19 +139,40 @@ class FileSystemManager:
 
         config_documentation = """# This file is in you JUPYTER_CONFIG_DIR.\n# Multiple filesystem sources can be configured\n# with a unique `name` field, the `path` which\n# can include the protocol, or can omit it and\n# provide it as a seperate field `protocol`. \n# You can also provide `args` such as `key` \n# and `kwargs` such as `client_kwargs` to\n# the filesystem. More details can be found at https://jupyter-fsspec.readthedocs.io/en/latest/#config-file."""
 
-        try:
-            yaml_content = yaml.dump(placeholder_config, default_flow_style=False)
-            commented_yaml = "\n".join(
-                f"# {line}" for line in yaml_content.splitlines()
-            )
+        yaml_content = yaml.dump(placeholder_config, default_flow_style=False)
+        commented_yaml = "\n".join(f"# {line}" for line in yaml_content.splitlines())
 
-            full_content = config_documentation + "\n\n" + commented_yaml
-            with open(config_path, "w") as config_file:
-                config_file.write(full_content)
+        full_content = config_documentation + "\n\n" + commented_yaml
+        with open(path, "w") as config_file:
+            config_file.write(full_content)
 
-            logger.debug(f"Configuration file created at {config_path}")
-        except Exception as e:
-            logger.error("Error creating configuration file: ", e)
+        logger.info(f"Configuration file created at {path}")
+        return {"operation_success": True, "message": "Wrote default config."}
+
+    @handle_exception(
+        default_return={
+            "operation_success": False,
+            "error": "Error creating config file.",
+        }
+    )
+    def create_config_file(self):
+        config_path = self.config_path
+        config_dir = os.path.dirname(config_path)
+
+        logger.debug(f"Ensuring config directory exists: {config_dir}.")
+        os.makedirs(config_dir, exist_ok=True)
+
+        if not os.access(config_dir, os.W_OK):
+            raise PermissionError(f"Config directory was not writable: {config_dir}")
+
+        write_result = self.write_default_config(config_path)
+        if not write_result.get("operation_success"):
+            raise IOError(f"{write_result.get('error', 'Unkown error')}.")
+
+        return {
+            "operation_success": True,
+            "message": f"Config file created at {config_path}",
+        }
 
     def _get_protocol_from_path(self, path):
         storage_options = infer_storage_options(path)
@@ -126,73 +192,76 @@ class FileSystemManager:
         return async_filesystems
 
     def _async_available(self, protocol):
-        if protocol in self.async_implementations:
-            return True
-        else:
-            return False
+        return protocol in self.async_implementations
 
+    @handle_exception(
+        default_return={
+            "operation_success": False,
+            "error": "Error initializing filesystems.",
+        }
+    )
     def initialize_filesystems(self):
         new_filesystems = {}
+        config = self.config
+
+        if config == {}:
+            self.filesystems = new_filesystems
+            return
 
         # Init filesystem
-        try:
-            for fs_config in self.config["sources"]:
-                fs_name = fs_config.get("name", None)
-                fs_path = fs_config.get("path", None)
-                fs_protocol = fs_config.get("protocol", None)
-                args = fs_config.get("args", [])
-                kwargs = fs_config.get("kwargs", {})
+        for fs_config in config.get("sources", []):
+            fs_name = fs_config.get("name", None)
+            fs_path = fs_config.get("path", None)
+            fs_protocol = fs_config.get("protocol", None)
+            args = fs_config.get("args", [])
+            kwargs = fs_config.get("kwargs", {})
 
-                if not fs_name:
-                    logger.error("Skipping configuration: Missing 'name'")
-                    continue
-                if fs_protocol is None:
-                    if fs_path:
-                        fs_protocol = self._get_protocol_from_path(fs_path)
-                    else:
-                        logger.error(
-                            f"Skipping '{fs_name}': Missing 'protocol' and 'path' to infer it from"
-                        )
-                        continue
-
-                # TODO: support for case no path
-                if not fs_path:
+            if fs_protocol is None:
+                if fs_path:
+                    fs_protocol = self._get_protocol_from_path(fs_path)
+                else:
                     logger.error(
-                        f"Filesystem '{fs_name}' with protocol 'fs_protocol' requires 'path'"
+                        f"Skipping '{fs_name}': Missing 'protocol' and 'path' to infer it from"
                     )
+                    continue
 
-                key = self._encode_key(fs_config)
+            # TODO: support for case no path
+            # if not fs_path:
+            #     logger.error(
+            #         f"Filesystem '{fs_name}' with protocol 'fs_protocol' requires 'path'"
+            #     )
 
-                # Add: _is_protocol_supported? Or rely on fsspec?
-                fs_async = self._async_available(fs_protocol)
-                fs = fsspec.filesystem(
-                    fs_protocol, asynchronous=fs_async, *args, **kwargs
-                )
+            key = self._encode_key(fs_config)
 
-                if fs_protocol == "memory":
-                    if not fs.exists(fs_path):
-                        fs.mkdir(fs_path)
+            # Add: _is_protocol_supported? Or rely on fsspec?
+            fs_async = self._async_available(fs_protocol)
+            fs = fsspec.filesystem(fs_protocol, asynchronous=fs_async, *args, **kwargs)
 
-                # Store the filesystem instance
-                new_filesystems[key] = {
-                    "instance": fs,
-                    "name": fs_name,
-                    "protocol": fs_protocol,
-                    "path": fs._strip_protocol(fs_path),
-                    "canonical_path": fs.unstrip_protocol(fs_path),
-                }
-                logger.debug(
-                    f"Initialized filesystem '{fs_name}' with protocol '{fs_protocol}'"
-                )
+            if fs_protocol == "memory" and not fs.exists(fs_path):
+                fs.mkdir(fs_path, exists_ok=True)
 
-        except Exception as e:
-            traceback.print_exc()
-            print(f"Error initializing filesystems: {e}")
+            # Store the filesystem instance
+            new_filesystems[key] = {
+                "instance": fs,
+                "name": fs_name,
+                "protocol": fs_protocol,
+                "path": fs._strip_protocol(fs_path),
+                "canonical_path": fs.unstrip_protocol(fs_path),
+            }
+            logger.debug(
+                f"Initialized filesystem '{fs_name}' with protocol '{fs_protocol}' at path '{fs_path}'"
+            )
 
         self.filesystems = new_filesystems
 
     def check_reload_config(self):
-        new_content = self.load_config()
+        load_config = self.load_config()
+
+        if not load_config.get("operation_success"):
+            print(f"load_config was not succes but is: {load_config}")
+            return load_config
+
+        new_content = load_config.get("config_content", {})
         hash_new_content = self.hash_config(new_content)
         current_config_hash = self.hash_config(self.config)
 
@@ -200,12 +269,12 @@ class FileSystemManager:
             self.config = new_content
             self.initialize_filesystems()
 
-    def get_all_filesystems(self):
-        self._initialize_filesystems()
+        return new_content
 
     def get_filesystem(self, key):
         return self.filesystems.get(key)
 
+    # TODO: Update to pull full dict with all filesystems
     def get_filesystem_by_protocol(self, fs_protocol):
         for encoded_key, fs_info in self.filesystems.items():
             if fs_info.get("protocol") == fs_protocol:
@@ -214,5 +283,6 @@ class FileSystemManager:
 
     def get_filesystem_protocol(self, key):
         filesystem_rep = self.filesystems.get(key)
-        print(f"filesystem_rep: {filesystem_rep}")
+        if not filesystem_rep:
+            return None
         return filesystem_rep["protocol"] + "://"
