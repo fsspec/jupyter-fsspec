@@ -89,12 +89,9 @@ export class FsspecModel {
   async refreshConfig() {
     // TODO fix/refactor
     this.userFilesystems = {};
-    Logger.debug('aaa');
     Logger.debug('[FSSpec] Refresh config requested');
     try {
-      Logger.debug('bbb');
       for (let i = 0; i < this.retry; i++) {
-        Logger.debug('ccc');
         Logger.info('[FSSpec] Attempting to read config file...');
         const result = await this.getStoredFilesystems(); // This is a result dict, not a response
         if (result?.status === 'success') {
@@ -107,16 +104,13 @@ export class FsspecModel {
           // Set active filesystem to first
           if (Object.keys(result).length > 0) {
             this.activeFilesystem = Object.keys(this.userFilesystems)[0];
-            Logger.debug('ddd');
           }
           break;
         } else {
-          Logger.debug('eee');
           // TODO handle no config file
           Logger.error('[FSSpec] Error fetching filesystems from user config');
           if (i + 1 < this.retry) {
             Logger.info('[FSSpec]   retrying...');
-            Logger.debug('fffr');
           }
         }
       }
@@ -125,7 +119,6 @@ export class FsspecModel {
         `[FSSpec] Error: Unknown error initializing fsspec model:\n${error}`
       );
     }
-    Logger.debug('zzz');
   }
 
   async getStoredFilesystems(): Promise<any> {
@@ -225,26 +218,6 @@ export class FsspecModel {
 
   async delete(key: string, item_path: string): Promise<any> {
     try {
-      const reqBody = JSON.stringify({
-        key,
-        item_path
-      });
-      const response = await requestAPI<any>('fsspec', {
-        method: 'DELETE',
-        body: reqBody,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      console.log('response is: ', response);
-    } catch (error) {
-      console.error('Failed to delete: ', error);
-      return null;
-    }
-  }
-
-  async delete_refactored(key: string, item_path: string): Promise<any> {
-    try {
       const query = new URLSearchParams({
         key,
         item_path
@@ -334,6 +307,62 @@ export class FsspecModel {
     } catch (error) {
       console.error('Failed to post: ', error);
       return null;
+    }
+  }
+
+  async upload(
+    key: string,
+    local_path: string,
+    remote_path: string,
+    action: 'upload'
+  ): Promise<any> {
+    try {
+      const query = new URLSearchParams({ action: action });
+      const reqBody = JSON.stringify({
+        key: key,
+        local_path,
+        remote_path
+      });
+
+      const response = await requestAPI<any>(
+        `files/transfer?${query.toString()}`,
+        {
+          method: 'POST',
+          body: reqBody,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      console.log('response: ', response);
+    } catch (error) {
+      console.error('Failed to upload: ', error);
+      return null;
+    }
+  }
+
+  async download(
+    key: string,
+    remote_path: string,
+    local_path: string,
+    action: 'download'
+  ): Promise<any> {
+    try {
+      const query = new URLSearchParams({ action: action });
+      const reqBody = JSON.stringify({
+        key: key,
+        remote_path,
+        local_path
+      });
+      await requestAPI<any>(`files/transfer?${query.toString()}`, {
+        method: 'POST',
+        body: reqBody,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+    } catch (error) {
+      console.error('Failed to download: ', error);
     }
   }
 

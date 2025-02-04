@@ -1,11 +1,14 @@
+from .file_manager import FileSystemManager
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
+from .utils import parse_range
 import tornado
 import json
 import traceback
+import logging
 
-from .file_manager import FileSystemManager
-from .utils import parse_range
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class BaseFileSystemHandler(APIHandler):
@@ -155,7 +158,7 @@ class FileTransferHandler(BaseFileSystemHandler):
         self.fs_manager = fs_manager
 
     # POST /jupyter_fsspec/files/action?key=my-key&item_path=/some_directory/file.txt
-    def post(self):
+    async def post(self):
         """Upload/Download the resource at the input path to destination path.
 
         :param [key]: [Query arg string used to retrieve the appropriate filesystem instance]
@@ -166,33 +169,45 @@ class FileTransferHandler(BaseFileSystemHandler):
         :return: dict with a status, description and (optionally) error
         :rtype: dict
         """
-        key = self.get_argument("key")
         request_data = json.loads(self.request.body.decode("utf-8"))
-        req_item_path = request_data.get("item_path")
         action = request_data.get("action")
-        destination = request_data.get("content")
-        # dest_fs_key = request_data.get('destination_key')
-        # dest_fs_info = self.fs_manager.get_filesystem(dest_fs_key)
-        # dest_path = dest_fs_info["path"]
+        local_path = request_data.get("local_path")
+        remote_path = request_data.get("remote_path")
+        dest_fs_key = request_data.get("destination_key")
+        dest_fs_info = self.fs_manager.get_filesystem(dest_fs_key)
+        dest_path = dest_fs_info["canonical_path"]
+        # if destination is subfolder, need to parse canonical_path for protocol?
 
         response = {"content": None}
 
-        fs, item_path = self.validate_fs("post", key, req_item_path)
+        fs, dest_path = self.validate_fs("post", dest_fs_key, dest_path)
         fs_instance = fs["instance"]
+        print(f"fs_instance: {fs_instance}")
 
         try:
             if action == "upload":
-                # upload     fs_instance.put(local_path, remote_path)
-                fs_instance.put(item_path, destination)
-                response["description"] = f"Uploaded {item_path} to {destination}."
-            else:  # download
-                # download   fs_instance.get(remote_path, local_path)
-                fs_instance.get(destination, item_path)
-                response["description"] = f"Downloaded {destination} to {item_path}."
+                # upload     remote.put(local_path, remote_path)
+                logger.debug("Upload file")
+                protocol = self.fs_manager.get_filesystem_protocol(dest_fs_key)
+                if protocol not in remote_path:
+                    remote_path = protocol + remote_path
+                # TODO: handle creating directories? current: flat item upload
+                # remote_path = remote_path (root) + 'nested/'
+                await fs_instance._put(local_path, remote_path, recursive=True)
+                response["description"] = f"Uploaded {local_path} to {remote_path}."
+            else:
+                # download   remote.get(remote_path, local_path)
+                logger.debug("Download file")
+                protocol = self.fs_manager.get_filesystem_protocol(dest_fs_key)
+                if protocol not in remote_path:
+                    remote_path = protocol + remote_path
+                await fs_instance._get(remote_path, local_path, recursive=True)
+                response["description"] = f"Downloaded {remote_path} to {local_path}."
 
             response["status"] = "success"
             self.set_status(200)
         except Exception as e:
+            print(f"Error uploading/downloading file: {e}")
             self.set_status(500)
             response["status"] = "failed"
             response["description"] = str(e)
