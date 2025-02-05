@@ -98,7 +98,7 @@ class FsspecConfigHandler(APIHandler):
             else:
                 err_mgs = config["error"]
 
-            self.set_status(404)
+            self.set_status(500)
             self.write(
                 {
                     "response": {

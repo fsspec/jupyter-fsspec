@@ -15,28 +15,28 @@ async def test_get_config(setup_config_file_fs, jp_fetch):
         body["description"]
         == "Retrieved available filesystems from configuration file."
     )
-    assert body["content"] != []
+    assert len(body["content"]) == 4
 
 
 @pytest.mark.no_setup_config_file_fs
 async def test_no_config(no_config_permission, jp_fetch):
     with pytest.raises(HTTPClientError) as exc_info:
         await jp_fetch("jupyter_fsspec", "config", method="GET")
-    assert exc_info.value.code == 404
+    assert exc_info.value.code == 500
 
 
 @pytest.mark.no_setup_config_file_fs
 async def test_malformed_config(malformed_config, jp_fetch):
     with pytest.raises(HTTPClientError) as exc_info:
         await jp_fetch("jupyter_fsspec", "config", method="GET")
-    assert exc_info.value.code == 404
+    assert exc_info.value.code == 500
 
 
 @pytest.mark.no_setup_config_file_fs
 async def test_bad_config_info(bad_info_config, jp_fetch):
     with pytest.raises(HTTPClientError) as exc_info:
         await jp_fetch("jupyter_fsspec", "config", method="GET")
-    assert exc_info.value.code == 404
+    assert exc_info.value.code == 500
 
 
 @pytest.mark.no_setup_config_file_fs
@@ -47,7 +47,7 @@ async def test_empty_config(empty_config, jp_fetch):
     json_body = fetch_config.body.decode("utf-8")
     body = json.loads(json_body)
     assert body["status"] == "success"
-    assert body["content"] == []
+    assert len(body["content"]) == 0
 
 
 async def test_get_files_memory(fs_manager_instance, jp_fetch):

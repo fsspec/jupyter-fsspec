@@ -202,14 +202,12 @@ class FileSystemManager:
     )
     def initialize_filesystems(self):
         new_filesystems = {}
-        config = self.config
 
-        if config == {}:
-            self.filesystems = new_filesystems
+        if self.config == {}:
             return
 
         # Init filesystem
-        for fs_config in config.get("sources", []):
+        for fs_config in self.config.get("sources", []):
             fs_name = fs_config.get("name", None)
             fs_path = fs_config.get("path", None)
             fs_protocol = fs_config.get("protocol", None)
@@ -236,9 +234,6 @@ class FileSystemManager:
             # Add: _is_protocol_supported? Or rely on fsspec?
             fs_async = self._async_available(fs_protocol)
             fs = fsspec.filesystem(fs_protocol, asynchronous=fs_async, *args, **kwargs)
-
-            if fs_protocol == "memory" and not fs.exists(fs_path):
-                fs.mkdir(fs_path, exists_ok=True)
 
             # Store the filesystem instance
             new_filesystems[key] = {
