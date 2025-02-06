@@ -4,6 +4,7 @@ from jupyter_server.utils import url_path_join
 from .utils import parse_range
 from .exceptions import ConfigFileException
 from contextlib import contextmanager
+from pydantic import ValidationError
 import yaml
 import tornado
 import json
@@ -46,69 +47,48 @@ class BaseFileSystemHandler(APIHandler):
 
 
 @contextmanager
-def handle_exception(
-    handler, default_response={"error": "Error handling request."}, status_code=500
-):
+def handle_exception(handler, status_code=500):
     try:
         yield
     except yaml.YAMLError as e:
-        logger.error(f"YAMLError: {default_response['error']}")
-        logger.error(f"YAMLError: {str(e)}")
+        error_message = {
+            "error": "YAMLError",
+            "details": getattr(e, "problem", str(e)),
+            "line": getattr(e, "problem_mark", None).line + 1
+            if getattr(e, "problem_mark", None)
+            else None,
+        }
 
-        if handler._finished:
-            return
+        logger.error(error_message)
 
-        try:
-            handler.set_status(status_code)
-            handler.write({"status": "failed", "description": str(e), "content": []})
-        except Exception as response_e:
-            logger.error(f"Error writing handler response: {response_e}")
-
-        handler.finish()
-        raise ConfigFileException
-    except PermissionError as e:
-        logger.error(f"PermissionError: {default_response['error']}")
-        logger.error(f"PermissionError: {str(e)}")
-
-        if handler._finished:
-            return
-
-        try:
-            handler.set_status(status_code)
-            handler.write({"status": "failed", "description": str(e), "content": []})
-        except Exception as response_e:
-            logger.error(f"Error writing handler response: {response_e}")
+        handler.set_status(status_code)
+        handler.write({"status": "failed", "description": error_message, "content": []})
 
         handler.finish()
         raise ConfigFileException
-    except FileNotFoundError as e:
-        logger.error(f"FileNotFoundError: {default_response['error']}")
-        logger.error(f"FileNotFoundError: {str(e)}")
+    except ValidationError as e:
+        error_message = []
+        for err in e.errors():
+            error = f"{err['msg']}: {err['type']} {err['loc']}"
+            error_message.append(error)
+        logger.error(error_message)
 
-        if handler._finished:
-            return
+        handler.set_status(status_code)
+        handler.write(
+            {
+                "status": "failed",
+                "description": {error: "ValidationError", "details": error_message},
+                "content": [],
+            }
+        )
 
-        try:
-            handler.set_status(status_code)
-            handler.write({"status": "failed", "description": str(e), "content": []})
-        except Exception as response_e:
-            logger.error(f"Error writing handler response: {response_e}")
-
-        handler.finish()
         raise ConfigFileException
     except Exception as e:
-        # TODO: remove default_response?
-        logger.error(f"UnkownError: {default_response['error']}")
-        logger.error(f"UnkownException: {str(e)}")
+        error_message = f"{type(e).__name__}: {str(e)}"
+        logger.error(error_message)
 
-        if handler._finished:
-            return
-
-        try:
-            handler.set_status(status_code)
-            handler.write({"status": "failed", "description": str(e), "content": []})
-        except Exception as response_e:
-            logger.error(f"Error writing handler response: {response_e}")
+        handler.set_status(status_code)
+        handler.write({"status": "failed", "description": error_message, "content": []})
 
         handler.finish()
         raise ConfigFileException
@@ -134,9 +114,7 @@ class FsspecConfigHandler(APIHandler):
         file_systems = []
 
         try:
-            with handle_exception(
-                self, default_response={"error": "Error retrieving config file."}
-            ):
+            with handle_exception(self):
                 self.fs_manager.check_reload_config()
         except ConfigFileException:
             return
