@@ -2,6 +2,9 @@ from .file_manager import FileSystemManager
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 from .utils import parse_range
+from .exceptions import ConfigFileException
+from contextlib import contextmanager
+import yaml
 import tornado
 import json
 import logging
@@ -42,6 +45,75 @@ class BaseFileSystemHandler(APIHandler):
         return fs, item_path
 
 
+@contextmanager
+def handle_exception(
+    handler, default_response={"error": "Error handling request."}, status_code=500
+):
+    try:
+        yield
+    except yaml.YAMLError as e:
+        logger.error(f"YAMLError: {default_response['error']}")
+        logger.error(f"YAMLError: {str(e)}")
+
+        if handler._finished:
+            return
+
+        try:
+            handler.set_status(status_code)
+            handler.write({"status": "failed", "description": str(e), "content": []})
+        except Exception as response_e:
+            logger.error(f"Error writing handler response: {response_e}")
+
+        handler.finish()
+        raise ConfigFileException
+    except PermissionError as e:
+        logger.error(f"PermissionError: {default_response['error']}")
+        logger.error(f"PermissionError: {str(e)}")
+
+        if handler._finished:
+            return
+
+        try:
+            handler.set_status(status_code)
+            handler.write({"status": "failed", "description": str(e), "content": []})
+        except Exception as response_e:
+            logger.error(f"Error writing handler response: {response_e}")
+
+        handler.finish()
+        raise ConfigFileException
+    except FileNotFoundError as e:
+        logger.error(f"FileNotFoundError: {default_response['error']}")
+        logger.error(f"FileNotFoundError: {str(e)}")
+
+        if handler._finished:
+            return
+
+        try:
+            handler.set_status(status_code)
+            handler.write({"status": "failed", "description": str(e), "content": []})
+        except Exception as response_e:
+            logger.error(f"Error writing handler response: {response_e}")
+
+        handler.finish()
+        raise ConfigFileException
+    except Exception as e:
+        # TODO: remove default_response?
+        logger.error(f"UnkownError: {default_response['error']}")
+        logger.error(f"UnkownException: {str(e)}")
+
+        if handler._finished:
+            return
+
+        try:
+            handler.set_status(status_code)
+            handler.write({"status": "failed", "description": str(e), "content": []})
+        except Exception as response_e:
+            logger.error(f"Error writing handler response: {response_e}")
+
+        handler.finish()
+        raise ConfigFileException
+
+
 class FsspecConfigHandler(APIHandler):
     """
 
@@ -59,56 +131,36 @@ class FsspecConfigHandler(APIHandler):
         :return: dict with filesystems key and list of filesystem information objects
         :rtype: dict
         """
+        file_systems = []
+
         try:
-            config = self.fs_manager.check_reload_config()
-
-            if (
-                not config.get("operation_success")
-                and "sources" not in config
-                and config
+            with handle_exception(
+                self, default_response={"error": "Error retrieving config file."}
             ):
-                raise Exception
+                self.fs_manager.check_reload_config()
+        except ConfigFileException:
+            return
 
-            file_systems = []
+        for fs in self.fs_manager.filesystems:
+            fs_info = self.fs_manager.filesystems[fs]
+            instance = {
+                "key": fs,
+                "name": fs_info["name"],
+                "protocol": fs_info["protocol"],
+                "path": fs_info["path"],
+                "canonical_path": fs_info["canonical_path"],
+            }
+            file_systems.append(instance)
 
-            for fs in self.fs_manager.filesystems:
-                fs_info = self.fs_manager.filesystems[fs]
-                instance = {
-                    "key": fs,
-                    "name": fs_info["name"],
-                    "protocol": fs_info["protocol"],
-                    "path": fs_info["path"],
-                    "canonical_path": fs_info["canonical_path"],
-                }
-                file_systems.append(instance)
-            self.set_status(200)
-            self.write(
-                {
-                    "status": "success",
-                    "description": "Retrieved available filesystems from configuration file.",
-                    "content": file_systems,
-                }
-            )
-            self.finish()
-        except Exception:
-            err_mgs = ""
-
-            if config.get("operation_success", True):
-                err_mgs = "FileNotFound"
-            else:
-                err_mgs = config["error"]
-
-            self.set_status(500)
-            self.write(
-                {
-                    "response": {
-                        "status": "failed",
-                        "error": err_mgs,
-                        "description": "Error retrieving config.",
-                    }
-                }
-            )
-            self.finish()
+        self.set_status(200)
+        self.write(
+            {
+                "status": "success",
+                "description": "Retrieved available filesystems from configuration file.",
+                "content": file_systems,
+            }
+        )
+        self.finish()
 
 
 # ====================================================================================

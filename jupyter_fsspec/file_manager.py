@@ -13,7 +13,7 @@ import logging
 
 logging.basicConfig(level=logging.WARNING, stream=sys.stdout)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 class Source(BaseModel):
@@ -28,39 +28,14 @@ class Config(BaseModel):
     sources: List[Source]
 
 
-def handle_exception(default_return=None):
-    def decorator(func):
-        def closure(*args, **kwargs):
-            try:
-                return func(*args, **kwargs)
-            except Exception as e:
-                logger.error(f"Error : {func.__name__}: {e}.")
-                return default_return
-
-        return closure
-
-    return decorator
-
-
-@handle_exception(
-    default_return={"operation_success": False, "error": "Error validating config"}
-)
-def validate_config(config_loaded):
-    Config.model_validate(config_loaded)
-    return {"operation_success": True, "validated_config": config_loaded}
-
-
 class FileSystemManager:
     def __init__(self, config_file):
         self.filesystems = {}
         self.base_dir = jupyter_config_dir()
         logger.info(f"Using Jupyter config directory: {self.base_dir}")
         self.config_path = os.path.join(self.base_dir, config_file)
-
-        config = self.load_config()
-        self.config = config.get("config_content", {})
-
         self.async_implementations = self._asynchronous_implementations()
+        self.config = self.load_config(handle_errors=True)
         self.initialize_filesystems()
 
     def _encode_key(self, fs_config):
@@ -82,54 +57,48 @@ class FileSystemManager:
     def create_default():
         return FileSystemManager(config_file="jupyter-fsspec.yaml")
 
-    @handle_exception(
-        default_return={"operation_success": False, "error": "Error reading config."}
-    )
-    def retrieve_config_content(self, config_path):
+    @staticmethod
+    def validate_config(config_loaded):
+        Config.model_validate(config_loaded)
+
+    def retrieve_config_content(self):
+        config_path = self.config_path
+
         with open(config_path, "r") as file:
             config_content = yaml.safe_load(file)
 
         if not config_content:
-            return {"operation_success": True, "config_content": {}}
+            return {}
 
-        validation_result = validate_config(config_content)
-        if not validation_result.get("operation_success"):
-            raise ValueError(validation_result["error"])
-
-        config_validated = validation_result.get("validated_config", {})
-        return {"operation_success": True, "config_content": config_validated}
-
-    @handle_exception(
-        default_return={"operation_success": False, "error": "Error loading config."}
-    )
-    def load_config(self):
-        config_path = self.config_path
-        config_content = {"sources": []}
-
-        if not os.path.exists(config_path):
-            logger.debug(
-                f"Config file not found at {config_path}. Creating default file."
-            )
-
-            file_creation_result = self.create_config_file()
-
-            if not file_creation_result.get("operation_success"):
-                print(f"inner file_creation_result: {file_creation_result}")
-                return file_creation_result
-
-        config_content = self.retrieve_config_content(config_path)
+        self.validate_config(config_content)
 
         return config_content
 
-    def hash_config(self, config_content):
+    def load_config(self, handle_errors=False):
+        config_path = self.config_path
+
+        try:
+            if not os.path.exists(config_path):
+                logger.debug(
+                    f"Config file not found at {config_path}. Creating default file."
+                )
+                self.create_config_file()
+            config_content = self.retrieve_config_content()
+            return config_content
+        except Exception as e:
+            if handle_errors:
+                logger.error(f"Error loading configuration file: {e}")
+                return {}
+            raise
+
+    @staticmethod
+    def hash_config(config_content):
         yaml_str = yaml.dump(config_content)
         hash = hashlib.md5(yaml_str.encode("utf-8")).hexdigest()
         return hash
 
-    @handle_exception(
-        default_return={"operation_success": False, "error": "Error writing config."}
-    )
-    def write_default_config(self, path):
+    def write_default_config(self):
+        config_path = self.config_path
         placeholder_config = {
             "sources": [
                 {"name": "test", "path": "memory://mytests"},
@@ -143,18 +112,12 @@ class FileSystemManager:
         commented_yaml = "\n".join(f"# {line}" for line in yaml_content.splitlines())
 
         full_content = config_documentation + "\n\n" + commented_yaml
-        with open(path, "w") as config_file:
+        with open(config_path, "w") as config_file:
             config_file.write(full_content)
 
-        logger.info(f"Configuration file created at {path}")
-        return {"operation_success": True, "message": "Wrote default config."}
+        logger.info(f"Configuration file created at {config_path}")
+        return
 
-    @handle_exception(
-        default_return={
-            "operation_success": False,
-            "error": "Error creating config file.",
-        }
-    )
     def create_config_file(self):
         config_path = self.config_path
         config_dir = os.path.dirname(config_path)
@@ -165,21 +128,18 @@ class FileSystemManager:
         if not os.access(config_dir, os.W_OK):
             raise PermissionError(f"Config directory was not writable: {config_dir}")
 
-        write_result = self.write_default_config(config_path)
-        if not write_result.get("operation_success"):
-            raise IOError(f"{write_result.get('error', 'Unkown error')}.")
+        self.write_default_config()
 
-        return {
-            "operation_success": True,
-            "message": f"Config file created at {config_path}",
-        }
+        return
 
-    def _get_protocol_from_path(self, path):
+    @staticmethod
+    def _get_protocol_from_path(path):
         storage_options = infer_storage_options(path)
         protocol = storage_options.get("protocol", "file")
         return protocol
 
-    def _asynchronous_implementations(self):
+    @staticmethod
+    def _asynchronous_implementations():
         async_filesystems = []
 
         for protocol, impl in known_implementations.items():
@@ -194,16 +154,11 @@ class FileSystemManager:
     def _async_available(self, protocol):
         return protocol in self.async_implementations
 
-    @handle_exception(
-        default_return={
-            "operation_success": False,
-            "error": "Error initializing filesystems.",
-        }
-    )
     def initialize_filesystems(self):
         new_filesystems = {}
 
-        if self.config == {}:
+        if not self.config:
+            self.config = {}
             return
 
         # Init filesystem
@@ -250,21 +205,15 @@ class FileSystemManager:
         self.filesystems = new_filesystems
 
     def check_reload_config(self):
-        load_config = self.load_config()
-
-        if not load_config.get("operation_success"):
-            print(f"load_config was not succes but is: {load_config}")
-            return load_config
-
-        new_content = load_config.get("config_content", {})
-        hash_new_content = self.hash_config(new_content)
+        new_config_content = self.load_config()
+        hash_new_content = self.hash_config(new_config_content)
         current_config_hash = self.hash_config(self.config)
 
         if current_config_hash != hash_new_content:
-            self.config = new_content
+            self.config = new_config_content
             self.initialize_filesystems()
 
-        return new_content
+        return new_config_content
 
     def get_filesystem(self, key):
         return self.filesystems.get(key)
