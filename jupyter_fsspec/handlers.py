@@ -174,6 +174,8 @@ class FileTransferHandler(BaseFileSystemHandler):
         local_path = request_data.get("local_path")
         remote_path = request_data.get("remote_path")
         dest_fs_key = request_data.get("destination_key")
+        print(f"xDEBUG {request_data}")
+        print(f"yDEBUG {self.fs_manager.filesystems}")
         dest_fs_info = self.fs_manager.get_filesystem(dest_fs_key)
         dest_path = dest_fs_info["canonical_path"]
         # if destination is subfolder, need to parse canonical_path for protocol?
@@ -189,11 +191,15 @@ class FileTransferHandler(BaseFileSystemHandler):
                 # upload     remote.put(local_path, remote_path)
                 logger.debug("Upload file")
                 protocol = self.fs_manager.get_filesystem_protocol(dest_fs_key)
+                print(f"zDEBUG {protocol} // {remote_path}")
                 if protocol not in remote_path:
                     remote_path = protocol + remote_path
                 # TODO: handle creating directories? current: flat item upload
                 # remote_path = remote_path (root) + 'nested/'
-                await fs_instance._put(local_path, remote_path, recursive=True)
+                if fs_instance.async_impl:
+                    await fs_instance._put(local_path, remote_path, recursive=True)
+                else:
+                    fs_instance.put(local_path, remote_path, recursive=True)
                 response["description"] = f"Uploaded {local_path} to {remote_path}."
             else:
                 # download   remote.get(remote_path, local_path)
@@ -201,13 +207,16 @@ class FileTransferHandler(BaseFileSystemHandler):
                 protocol = self.fs_manager.get_filesystem_protocol(dest_fs_key)
                 if protocol not in remote_path:
                     remote_path = protocol + remote_path
-                await fs_instance._get(remote_path, local_path, recursive=True)
+                if fs_instance.async_impl:
+                    await fs_instance._get(remote_path, local_path, recursive=True)
+                else:
+                    fs_instance.get(remote_path, local_path, recursive=True)
                 response["description"] = f"Downloaded {remote_path} to {local_path}."
 
             response["status"] = "success"
             self.set_status(200)
         except Exception as e:
-            print(f"Error uploading/downloading file: {e}")
+            print(f"Error uploading/downloading file: {traceback.format_exc()}")
             self.set_status(500)
             response["status"] = "failed"
             response["description"] = str(e)

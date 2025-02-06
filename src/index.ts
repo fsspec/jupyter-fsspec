@@ -50,7 +50,7 @@ except:
 `;
 
 const CODE_UPLOADUSERDATA = `
-from jupyter_fsspec import helper as _jupyter_fsshelper; _jupyter_fsshelper._get_user_data_tempfile_path()
+from jupyter_fsspec import helper as _jupyter_fsshelper
 `;
 
 class FsspecWidget extends Widget {
@@ -255,8 +255,10 @@ class FsspecWidget extends Widget {
       body: bodyWidget,
       title: 'Upload file'
     });
-    const xpath = await this.uploadDialog.launch();
-    Logger.debug(`Popup path ${xpath}`);
+    const result = await this.uploadDialog.launch();
+    Logger.debug(`Upath ${user_path}`);
+    Logger.debug(`Popup path ${result?.value}`);
+    // TODO cancel when no path provided, IF user specified upload to folder
 
     if (target?.context?.sessionContext?.session) {
       const kernel = target.context.sessionContext.session.kernel;
@@ -272,9 +274,9 @@ class FsspecWidget extends Widget {
       Logger.debug(userCode);
       kernel
         .requestExecute({
-          code: 'pass',
+          code: 'from jupyter_fsspec import helper as _jupyter_fsshelper',
           user_expressions: {
-            jfss_data: userCode
+            jfss_data: '_jupyter_fsshelper._get_user_data_tempfile_path()'
           }
         })
         .done.then((message: any) => {
@@ -282,46 +284,44 @@ class FsspecWidget extends Widget {
 
           // Grab the value (this is the python repr() of our user expression
           // according to the jupyter messaging protocol, it will have quotes)
+          let tempfilePath = '';
           const message_content =
             message?.content?.user_expressions?.jfss_data.data;
           if (message_content) {
-            const tempfilePath = message_content['text/plain'];
+            tempfilePath = message_content['text/plain'];
             Logger.debug(`Tempfile path is ${tempfilePath}`);
+          } else {
+            Logger.error('Error uploading data');
+            return;
+          }
+          if (!tempfilePath) {
+            Logger.error('Error ');
+            return;
           }
 
-          // // Strip out the quotes
-          // const userBase64 = message_content.replace(
-          //   /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
-          //   (
-          //     match: any,
-          //     p1: any,
-          //     p2: any,
-          //     p3: any,
-          //     offset: any,
-          //     string: any
-          //   ) => {
-          //     return ''; // Removes matching chars
-          //   }
-          // );
+          // Strip out the quotes
+          tempfilePath = tempfilePath.replace(
+            /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
+            (
+              match: any,
+              p1: any,
+              p2: any,
+              p3: any,
+              offset: any,
+              string: any
+            ) => {
+              return ''; // Removes matching chars
+            }
+          );
           // Logger.debug(`User B64 ${userBase64}`);
           // Logger.debug(`XX ${atob(userBase64)}`);
 
-          // // TODO: This is a temporary solution for uploading bytes in a user's
-          // // notebook kernel to a remote fsspec filesystem. This solution grabs
-          // // serialized data from the kernel into the frontend, then passes it
-          // // back to the server for eventual upload via an fsspec call. Right now,
-          // // the server API assumes content is UTF8 encoded text, which prevents
-          // // passing arbitrary binary data. We can make changes around the application
-          // // to better handle the data crossing process/network boundaries, but
-          // // likely the easiest quick/dirty solution is to make the server treat
-          // // content as latin1 encoded text (which still needs to be done for
-          // // this temp solution to work). We can rethink some of this once
-          // // better backend APIs are available for some of these use cases.
-          // this.model.post(
-          //   this.model.activeFilesystem,
-          //   user_path,
-          //   atob(userBase64)
-          // );
+          this.model.upload(
+            this.model.activeFilesystem,
+            tempfilePath,
+            user_path,
+            'upload'
+          );
         })
         // temp1.content.user_expressions.jfss_data.data
         .catch(() => {

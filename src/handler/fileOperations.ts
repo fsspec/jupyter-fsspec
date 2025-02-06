@@ -321,7 +321,9 @@ export class FsspecModel {
       const reqBody = JSON.stringify({
         key: key,
         local_path,
-        remote_path
+        remote_path,
+        destination_key: key, // TODO fix this, need to specify source and dest fs keys, AND paths for each
+        action: action
       });
 
       const response = await requestAPI<any>(
