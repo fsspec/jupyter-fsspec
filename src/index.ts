@@ -241,30 +241,50 @@ class FsspecWidget extends Widget {
     }
   }
 
-  async handleContextUploadUserData(user_path: string) {
-    const target = this.notebookTracker.currentWidget;
+  navigateToPath(userPath:  string) {
+    // TODO subdirs need to be lazy loaded individually to avoid inaccurate/unpopulated subdir contents in browser view
+    Logger.debug(`Navigate to path ${userPath}`);
+    // let currentNode = this.dirTree;
+    // for (const segment of userPath
+    //   .split('/')
+    //   .filter((c: any) => c.length > 0)) {
+    //     Logger.debug(`  segment: ${segment}`);
+    // }
 
-    if (!target || target.isDisposed) {
-      Logger.debug('Invalid target widget');
-      return;
-    }
+    this.lazyLoad(userPath);
+    let node = this.getNodeForPath(userPath);
+    Logger.debug(`Nav to: ${node}`);
+    return node;
+  }
 
-    // Get the desired path for this upload from a dialog box
+  async promptForFilename() {
     const bodyWidget = new FssFileUploadContextPopup();
     this.uploadDialog = new Dialog({
       body: bodyWidget,
       title: 'Upload file'
     });
     const result = await this.uploadDialog.launch();
-    Logger.debug(`Upath ${user_path}`);
+    if (result?.value) {
+      return result;
+    }
+    return null;
     Logger.debug(`Popup path ${result?.value}`);
     // TODO cancel when no path provided, IF user specified upload to folder
+  }
+
+  getKernelUserBytesTempfilePath() {
+    const target = this.notebookTracker.currentWidget;
+
+    if (!target || target.isDisposed) {
+      Logger.error('Invalid target widget');
+      return null;
+    }
 
     if (target?.context?.sessionContext?.session) {
       const kernel = target.context.sessionContext.session.kernel;
       if (!kernel) {
         Logger.error('Error fetching kernel from active widget!');
-        return;
+        return null;
       }
       Logger.debug('Kernel: ' + kernel);
       // Logger.debug(
@@ -313,21 +333,57 @@ class FsspecWidget extends Widget {
               return ''; // Removes matching chars
             }
           );
-          // Logger.debug(`User B64 ${userBase64}`);
-          // Logger.debug(`XX ${atob(userBase64)}`);
+          if (!tempfilePath) {  // TODO yuck
+            Logger.error('Error ');
+            return null;
+          }
 
-          this.model.upload(
-            this.model.activeFilesystem,
-            tempfilePath,
-            user_path,
-            'upload'
-          );
+          return tempfilePath;
         })
         // temp1.content.user_expressions.jfss_data.data
         .catch(() => {
           Logger.error('Error loading on kernel');
         });
     }
+    return null;
+  }
+
+  async handleContextUploadUserData(user_path: string, is_dir: boolean) {
+    const target = this.notebookTracker.currentWidget;
+
+    if (!target || target.isDisposed) {
+      Logger.error('Invalid target widget');
+      return;
+    }
+
+    // Get the desired path for this upload from a dialog box
+    if (is_dir) {  // TODO make dialog box and grab filename when uploading to folder
+      let result: any = await this.promptForFilename();
+      if (result?.value) {
+        user_path += '/' + result.value;
+      } else {
+        Logger.error('Error, no filename provided!')
+        return;
+      }
+      Logger.debug(`Upath ${user_path}`);
+      Logger.debug(`Popup path ${result?.value}`);
+    }
+
+    let tempfilePath = this.getKernelUserBytesTempfilePath();
+    if (!tempfilePath) {
+      Logger.error('Error fetching serialized user_data!');
+      return;
+    }
+
+    // TODO error handling
+    this.model.upload(
+      this.model.activeFilesystem,
+      tempfilePath,
+      user_path,
+      'upload'
+    );
+    let foo = this.navigateToPath(user_path);
+    Logger.debug(`Finish upload to ${foo}`);
   }
 
   handleContextGetBytes(user_path: string) {
