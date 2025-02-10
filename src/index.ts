@@ -241,21 +241,21 @@ class FsspecWidget extends Widget {
     }
   }
 
-  navigateToPath(userPath:  string) {
-    // TODO subdirs need to be lazy loaded individually to avoid inaccurate/unpopulated subdir contents in browser view
-    Logger.debug(`Navigate to path ${userPath}`);
-    // let currentNode = this.dirTree;
-    // for (const segment of userPath
-    //   .split('/')
-    //   .filter((c: any) => c.length > 0)) {
-    //     Logger.debug(`  segment: ${segment}`);
-    // }
+  // navigateToPath(userPath:  string) {
+  //   // TODO subdirs need to be lazy loaded individually to avoid inaccurate/unpopulated subdir contents in browser view
+  //   Logger.debug(`Navigate to path ${userPath}`);
+  //   // let currentNode = this.dirTree;
+  //   for (const segment of userPath
+  //     .split('/')
+  //     .filter((c: any) => c.length > 0)) {
+  //       Logger.debug(`  segment: ${segment}`);
+  //   }
 
-    this.lazyLoad(userPath);
-    let node = this.getNodeForPath(userPath);
-    Logger.debug(`Nav to: ${node}`);
-    return node;
-  }
+  //   this.lazyLoad(userPath);
+  //   let node = this.getNodeForPath(userPath);
+  //   Logger.debug(`Nav to: ${node}`);
+  //   return node;
+  // }
 
   async promptForFilename() {
     const bodyWidget = new FssFileUploadContextPopup();
@@ -272,7 +272,7 @@ class FsspecWidget extends Widget {
     // TODO cancel when no path provided, IF user specified upload to folder
   }
 
-  getKernelUserBytesTempfilePath() {
+  async getKernelUserBytesTempfilePath() {
     const target = this.notebookTracker.currentWidget;
 
     if (!target || target.isDisposed) {
@@ -292,58 +292,88 @@ class FsspecWidget extends Widget {
       // );
       const userCode = CODE_UPLOADUSERDATA;
       Logger.debug(userCode);
-      kernel
-        .requestExecute({
-          code: 'from jupyter_fsspec import helper as _jupyter_fsshelper',
-          user_expressions: {
-            jfss_data: '_jupyter_fsshelper._get_user_data_tempfile_path()'
+      const shellFuture = kernel.requestExecute({
+        code: 'from jupyter_fsspec import helper as _jupyter_fsshelper',
+        user_expressions: {
+          jfss_data: '_jupyter_fsshelper._get_user_data_tempfile_path()'
+        }
+      });
+      try {
+        const reply: any = await shellFuture.done;
+        Logger.debug(`DEBUGx1 ${JSON.stringify(reply.content)}`);
+        let tempfilePath =
+          reply.content.user_expressions.jfss_data.data['text/plain'];
+        Logger.debug(`AA1 ${tempfilePath}`);
+        // Strip out the quotes
+        tempfilePath = tempfilePath.replace(
+          /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
+          (match: any, p1: any, p2: any, p3: any, offset: any, string: any) => {
+            return ''; // Removes matching chars
           }
-        })
-        .done.then((message: any) => {
-          Logger.debug(message);
+        );
+        Logger.debug(`AA2 "${tempfilePath}"`);
+        if (!tempfilePath) {
+          // TODO yuck
+          Logger.error('Error obtaining tempfile path!');
+          return null;
+        }
+        return tempfilePath;
+      } catch (e) {
+        Logger.debug(`${e}\nError on kernel execution, read more above.`);
+        return null;
+      }
+      // kernel
+      //   .requestExecute({
+      //     code: 'from jupyter_fsspec import helper as _jupyter_fsshelper',
+      //     user_expressions: {
+      //       jfss_data: '_jupyter_fsshelper._get_user_data_tempfile_path()'
+      //     }
+      //   })
+      //   .done.then((message: any) => {
+      //     Logger.debug(message);
 
-          // Grab the value (this is the python repr() of our user expression
-          // according to the jupyter messaging protocol, it will have quotes)
-          let tempfilePath = '';
-          const message_content =
-            message?.content?.user_expressions?.jfss_data.data;
-          if (message_content) {
-            tempfilePath = message_content['text/plain'];
-            Logger.debug(`Tempfile path is ${tempfilePath}`);
-          } else {
-            Logger.error('Error uploading data');
-            return;
-          }
-          if (!tempfilePath) {
-            Logger.error('Error ');
-            return;
-          }
+      //     // Grab the value (this is the python repr() of our user expression
+      //     // according to the jupyter messaging protocol, it will have quotes)
+      //     let tempfilePath = '';
+      //     const message_content =
+      //       message?.content?.user_expressions?.jfss_data.data;
+      //     if (message_content) {
+      //       tempfilePath = message_content['text/plain'];
+      //       Logger.debug(`Tempfile path is ${tempfilePath}`);
+      //     } else {
+      //       Logger.error('Error uploading data');
+      //       return;
+      //     }
+      //     if (!tempfilePath) {
+      //       Logger.error('Error ');
+      //       return;
+      //     }
 
-          // Strip out the quotes
-          tempfilePath = tempfilePath.replace(
-            /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
-            (
-              match: any,
-              p1: any,
-              p2: any,
-              p3: any,
-              offset: any,
-              string: any
-            ) => {
-              return ''; // Removes matching chars
-            }
-          );
-          if (!tempfilePath) {  // TODO yuck
-            Logger.error('Error ');
-            return null;
-          }
+      //     // Strip out the quotes
+      //     tempfilePath = tempfilePath.replace(
+      //       /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
+      //       (
+      //         match: any,
+      //         p1: any,
+      //         p2: any,
+      //         p3: any,
+      //         offset: any,
+      //         string: any
+      //       ) => {
+      //         return ''; // Removes matching chars
+      //       }
+      //     );
+      //     if (!tempfilePath) {  // TODO yuck
+      //       Logger.error('Error ');
+      //       return null;
+      //     }
 
-          return tempfilePath;
-        })
-        // temp1.content.user_expressions.jfss_data.data
-        .catch(() => {
-          Logger.error('Error loading on kernel');
-        });
+      //     return tempfilePath;
+      //   })
+      //   // temp1.content.user_expressions.jfss_data.data
+      //   .catch(() => {
+      //     Logger.error('Error loading on kernel');
+      //   });
     }
     return null;
   }
@@ -357,19 +387,23 @@ class FsspecWidget extends Widget {
     }
 
     // Get the desired path for this upload from a dialog box
-    if (is_dir) {  // TODO make dialog box and grab filename when uploading to folder
-      let result: any = await this.promptForFilename();
+    Logger.debug(`Upath ${user_path}`);
+    if (is_dir) {
+      // TODO make dialog box and grab filename when uploading to folder
+      const result: any = await this.promptForFilename();
+      Logger.debug(`Resultvalue ${result?.value}`);
       if (result?.value) {
         user_path += '/' + result.value;
       } else {
-        Logger.error('Error, no filename provided!')
+        Logger.error('Error, no filename provided!');
         return;
       }
-      Logger.debug(`Upath ${user_path}`);
       Logger.debug(`Popup path ${result?.value}`);
     }
+    Logger.debug(`Upath2 ${user_path}`);
 
-    let tempfilePath = this.getKernelUserBytesTempfilePath();
+    const tempfilePath = await this.getKernelUserBytesTempfilePath();
+    Logger.debug(`Debugx2: ${tempfilePath}`);
     if (!tempfilePath) {
       Logger.error('Error fetching serialized user_data!');
       return;
@@ -382,8 +416,9 @@ class FsspecWidget extends Widget {
       user_path,
       'upload'
     );
-    let foo = this.navigateToPath(user_path);
-    Logger.debug(`Finish upload to ${foo}`);
+    // let foo = this.navigateToPath(user_path);
+    // Logger.debug(`Finish upload to ${foo}`);
+    this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
   }
 
   handleContextGetBytes(user_path: string) {
