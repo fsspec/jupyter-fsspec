@@ -40,7 +40,7 @@ export class FssContextMenu {
 
       const menuItem3 = document.createElement('div');
       menuItem3.classList.add('jfss-tree-context-item');
-      menuItem3.innerText = 'Upload helper.user_data';
+      menuItem3.innerText = 'Upload to path (helper.user_data)';
       menuItem3.addEventListener('mouseenter', this.handleItemHover.bind(this));
       menuItem3.addEventListener(
         'mouseleave',

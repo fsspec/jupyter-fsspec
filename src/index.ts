@@ -241,30 +241,50 @@ class FsspecWidget extends Widget {
     }
   }
 
-  async handleContextUploadUserData(user_path: string) {
-    const target = this.notebookTracker.currentWidget;
+  // navigateToPath(userPath:  string) {
+  //   // TODO subdirs need to be lazy loaded individually to avoid inaccurate/unpopulated subdir contents in browser view
+  //   Logger.debug(`Navigate to path ${userPath}`);
+  //   // let currentNode = this.dirTree;
+  //   for (const segment of userPath
+  //     .split('/')
+  //     .filter((c: any) => c.length > 0)) {
+  //       Logger.debug(`  segment: ${segment}`);
+  //   }
 
-    if (!target || target.isDisposed) {
-      Logger.debug('Invalid target widget');
-      return;
-    }
+  //   this.lazyLoad(userPath);
+  //   let node = this.getNodeForPath(userPath);
+  //   Logger.debug(`Nav to: ${node}`);
+  //   return node;
+  // }
 
-    // Get the desired path for this upload from a dialog box
+  async promptForFilename() {
     const bodyWidget = new FssFileUploadContextPopup();
     this.uploadDialog = new Dialog({
       body: bodyWidget,
       title: 'Upload file'
     });
     const result = await this.uploadDialog.launch();
-    Logger.debug(`Upath ${user_path}`);
+    if (result?.value) {
+      return result;
+    }
+    return null;
     Logger.debug(`Popup path ${result?.value}`);
     // TODO cancel when no path provided, IF user specified upload to folder
+  }
+
+  async getKernelUserBytesTempfilePath() {
+    const target = this.notebookTracker.currentWidget;
+
+    if (!target || target.isDisposed) {
+      Logger.error('Invalid target widget');
+      return null;
+    }
 
     if (target?.context?.sessionContext?.session) {
       const kernel = target.context.sessionContext.session.kernel;
       if (!kernel) {
         Logger.error('Error fetching kernel from active widget!');
-        return;
+        return null;
       }
       Logger.debug('Kernel: ' + kernel);
       // Logger.debug(
@@ -272,62 +292,133 @@ class FsspecWidget extends Widget {
       // );
       const userCode = CODE_UPLOADUSERDATA;
       Logger.debug(userCode);
-      kernel
-        .requestExecute({
-          code: 'from jupyter_fsspec import helper as _jupyter_fsshelper',
-          user_expressions: {
-            jfss_data: '_jupyter_fsshelper._get_user_data_tempfile_path()'
+      const shellFuture = kernel.requestExecute({
+        code: 'from jupyter_fsspec import helper as _jupyter_fsshelper',
+        user_expressions: {
+          jfss_data: '_jupyter_fsshelper._get_user_data_tempfile_path()'
+        }
+      });
+      try {
+        const reply: any = await shellFuture.done;
+        Logger.debug(`DEBUGx1 ${JSON.stringify(reply.content)}`);
+        let tempfilePath =
+          reply.content.user_expressions.jfss_data.data['text/plain'];
+        Logger.debug(`AA1 ${tempfilePath}`);
+        // Strip out the quotes
+        tempfilePath = tempfilePath.replace(
+          /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
+          (match: any, p1: any, p2: any, p3: any, offset: any, string: any) => {
+            return ''; // Removes matching chars
           }
-        })
-        .done.then((message: any) => {
-          Logger.debug(message);
+        );
+        Logger.debug(`AA2 "${tempfilePath}"`);
+        if (!tempfilePath) {
+          // TODO yuck
+          Logger.error('Error obtaining tempfile path!');
+          return null;
+        }
+        return tempfilePath;
+      } catch (e) {
+        Logger.debug(`${e}\nError on kernel execution, read more above.`);
+        return null;
+      }
+      // kernel
+      //   .requestExecute({
+      //     code: 'from jupyter_fsspec import helper as _jupyter_fsshelper',
+      //     user_expressions: {
+      //       jfss_data: '_jupyter_fsshelper._get_user_data_tempfile_path()'
+      //     }
+      //   })
+      //   .done.then((message: any) => {
+      //     Logger.debug(message);
 
-          // Grab the value (this is the python repr() of our user expression
-          // according to the jupyter messaging protocol, it will have quotes)
-          let tempfilePath = '';
-          const message_content =
-            message?.content?.user_expressions?.jfss_data.data;
-          if (message_content) {
-            tempfilePath = message_content['text/plain'];
-            Logger.debug(`Tempfile path is ${tempfilePath}`);
-          } else {
-            Logger.error('Error uploading data');
-            return;
-          }
-          if (!tempfilePath) {
-            Logger.error('Error ');
-            return;
-          }
+      //     // Grab the value (this is the python repr() of our user expression
+      //     // according to the jupyter messaging protocol, it will have quotes)
+      //     let tempfilePath = '';
+      //     const message_content =
+      //       message?.content?.user_expressions?.jfss_data.data;
+      //     if (message_content) {
+      //       tempfilePath = message_content['text/plain'];
+      //       Logger.debug(`Tempfile path is ${tempfilePath}`);
+      //     } else {
+      //       Logger.error('Error uploading data');
+      //       return;
+      //     }
+      //     if (!tempfilePath) {
+      //       Logger.error('Error ');
+      //       return;
+      //     }
 
-          // Strip out the quotes
-          tempfilePath = tempfilePath.replace(
-            /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
-            (
-              match: any,
-              p1: any,
-              p2: any,
-              p3: any,
-              offset: any,
-              string: any
-            ) => {
-              return ''; // Removes matching chars
-            }
-          );
-          // Logger.debug(`User B64 ${userBase64}`);
-          // Logger.debug(`XX ${atob(userBase64)}`);
+      //     // Strip out the quotes
+      //     tempfilePath = tempfilePath.replace(
+      //       /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
+      //       (
+      //         match: any,
+      //         p1: any,
+      //         p2: any,
+      //         p3: any,
+      //         offset: any,
+      //         string: any
+      //       ) => {
+      //         return ''; // Removes matching chars
+      //       }
+      //     );
+      //     if (!tempfilePath) {  // TODO yuck
+      //       Logger.error('Error ');
+      //       return null;
+      //     }
 
-          this.model.upload(
-            this.model.activeFilesystem,
-            tempfilePath,
-            user_path,
-            'upload'
-          );
-        })
-        // temp1.content.user_expressions.jfss_data.data
-        .catch(() => {
-          Logger.error('Error loading on kernel');
-        });
+      //     return tempfilePath;
+      //   })
+      //   // temp1.content.user_expressions.jfss_data.data
+      //   .catch(() => {
+      //     Logger.error('Error loading on kernel');
+      //   });
     }
+    return null;
+  }
+
+  async handleContextUploadUserData(user_path: string, is_dir: boolean) {
+    const target = this.notebookTracker.currentWidget;
+
+    if (!target || target.isDisposed) {
+      Logger.error('Invalid target widget');
+      return;
+    }
+
+    // Get the desired path for this upload from a dialog box
+    Logger.debug(`Upath ${user_path}`);
+    if (is_dir) {
+      // TODO make dialog box and grab filename when uploading to folder
+      const result: any = await this.promptForFilename();
+      Logger.debug(`Resultvalue ${result?.value}`);
+      if (result?.value) {
+        user_path += '/' + result.value;
+      } else {
+        Logger.error('Error, no filename provided!');
+        return;
+      }
+      Logger.debug(`Popup path ${result?.value}`);
+    }
+    Logger.debug(`Upath2 ${user_path}`);
+
+    const tempfilePath = await this.getKernelUserBytesTempfilePath();
+    Logger.debug(`Debugx2: ${tempfilePath}`);
+    if (!tempfilePath) {
+      Logger.error('Error fetching serialized user_data!');
+      return;
+    }
+
+    // TODO error handling
+    this.model.upload(
+      this.model.activeFilesystem,
+      tempfilePath,
+      user_path,
+      'upload'
+    );
+    // let foo = this.navigateToPath(user_path);
+    // Logger.debug(`Finish upload to ${foo}`);
+    this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
   }
 
   handleContextGetBytes(user_path: string) {

@@ -121,7 +121,7 @@ export class FssTreeItem {
     Logger.debug('Treeitem upload user data');
     for (const slot of this.uploadUserDataSlots) {
       Logger.debug(slot);
-      await slot(this.root.dataset.fss);
+      await slot(this.root.dataset.fss, this.isDir);
     }
   }
 
