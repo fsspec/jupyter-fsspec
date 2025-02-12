@@ -203,6 +203,23 @@ class FileSystemManager:
     def get_all_filesystems(self):
         self._initialize_filesystems()
 
+    def validate_fs(self, request_type, key, item_path):
+        if not key:
+            raise ValueError("Missing required parameter `key`")
+
+        fs = self.get_filesystem(key)
+
+        if not item_path:
+            if str(type) != "range" and request_type == "get":
+                item_path = self.fs_manager.filesystems[key]["path"]
+            else:
+                raise ValueError("Missing required parameter `item_path`")
+
+        if fs is None:
+            raise ValueError(f"No filesystem found for key: {key}")
+
+        return fs, item_path
+
     def get_filesystem(self, key):
         return self.filesystems.get(key)
 

@@ -11,38 +11,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class BaseFileSystemHandler(APIHandler):
-    def initialize(self, fs_manager):
-        self.fs_manager = fs_manager
-
-    def validate_fs(self, request_type, key, item_path):
-        """Retrieve the filesystem instance and path of the item
-
-        :raises [ValueError]: [Missing required key parameter]
-        :raises [ValueError]: [Missing required parameter item_path]
-        :raises [ValueError]: [No filesystem identified for provided key]
-
-        :return: filesystem instance and item_path
-        :rtype: fsspec filesystem instance and string
-        """
-
-        if not key:
-            raise ValueError("Missing required parameter `key`")
-
-        fs = self.fs_manager.get_filesystem(key)
-
-        if not item_path:
-            if str(type) != "range" and request_type == "get":
-                item_path = self.fs_manager.filesystems[key]["path"]
-            else:
-                raise ValueError("Missing required parameter `item_path`")
-
-        if fs is None:
-            raise ValueError(f"No filesystem found for key: {key}")
-
-        return fs, item_path
-
-
 class FsspecConfigHandler(APIHandler):
     """
 
@@ -101,7 +69,7 @@ class FsspecConfigHandler(APIHandler):
 # ====================================================================================
 # Handle Move and Copy Requests
 # ====================================================================================
-class FileActionHandler(BaseFileSystemHandler):
+class FileActionHandler(APIHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
@@ -124,7 +92,7 @@ class FileActionHandler(BaseFileSystemHandler):
         destination = request_data.get("content")
         response = {"content": None}
 
-        fs, item_path = self.validate_fs("post", key, req_item_path)
+        fs, item_path = self.fs_manager.validate_fs("post", key, req_item_path)
         fs_instance = fs["instance"]
 
         try:
@@ -153,7 +121,7 @@ class FileActionHandler(BaseFileSystemHandler):
 # ====================================================================================
 # Handle Move and Copy Requests Across filesystems
 # ====================================================================================
-class FileTransferHandler(BaseFileSystemHandler):
+class FileTransferHandler(APIHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
@@ -180,7 +148,7 @@ class FileTransferHandler(BaseFileSystemHandler):
 
         response = {"content": None}
 
-        fs, dest_path = self.validate_fs("post", dest_fs_key, dest_path)
+        fs, dest_path = self.fs_manager.validate_fs("post", dest_fs_key, dest_path)
         fs_instance = fs["instance"]
         print(f"fs_instance: {fs_instance}")
 
@@ -219,7 +187,7 @@ class FileTransferHandler(BaseFileSystemHandler):
 # ====================================================================================
 # Handle Rename requests (?seperate or not?)
 # ====================================================================================
-class RenameFileHandler(BaseFileSystemHandler):
+class RenameFileHandler(APIHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
@@ -231,7 +199,7 @@ class RenameFileHandler(BaseFileSystemHandler):
         content = request_data.get("content")
         response = {"content": None}
 
-        fs, item_path = self.validate_fs("post", key, req_item_path)
+        fs, item_path = self.fs_manager.validate_fs("post", key, req_item_path)
         fs_instance = fs["instance"]
         # expect item path to end with `/` for directories
         # expect content to be the FULL new path
@@ -254,7 +222,7 @@ class RenameFileHandler(BaseFileSystemHandler):
 # ====================================================================================
 # Handle Syncing Local and Remote filesystems
 # ====================================================================================
-class FilesystemSyncHandler(BaseFileSystemHandler):
+class FilesystemSyncHandler(APIHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
@@ -269,7 +237,7 @@ class FilesystemSyncHandler(BaseFileSystemHandler):
 
         response = {"content": None}
 
-        fs, dest_path = self.validate_fs("post", dest_fs_key, dest_path)
+        fs, dest_path = self.fs_manager.validate_fs("post", dest_fs_key, dest_path)
         remote_fs_instance = fs["instance"]  # noqa: F841
 
         try:
@@ -308,6 +276,13 @@ class FilesystemSyncHandler(BaseFileSystemHandler):
             # rsync
             # (local_source_path, remote_destination_path)
             # await remote_fs_instance....
+            if remote_fs_instance.async_impl:
+                # async
+                pass
+            else:
+                # Non-async
+                pass
+
             self.set_status(200)
             response["status"] = "success"
             response["description"] = (
@@ -325,7 +300,7 @@ class FilesystemSyncHandler(BaseFileSystemHandler):
 # ====================================================================================
 # CRUD for FileSystem
 # ====================================================================================
-class FileSystemHandler(BaseFileSystemHandler):
+class FileSystemHandler(APIHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
@@ -354,7 +329,7 @@ class FileSystemHandler(BaseFileSystemHandler):
         req_item_path = self.get_argument("item_path")
         type = self.get_argument("type", default="default")
 
-        fs, item_path = self.validate_fs("get", key, req_item_path)
+        fs, item_path = self.fs_manager.validate_fs("get", key, req_item_path)
 
         fs_instance = fs["instance"]
         response = {"content": None}
@@ -440,7 +415,7 @@ class FileSystemHandler(BaseFileSystemHandler):
         req_item_path = request_data.get("item_path")
         content = request_data.get("content")
 
-        fs, item_path = self.validate_fs("post", key, req_item_path)
+        fs, item_path = self.fs_manager.validate_fs("post", key, req_item_path)
         fs_instance = fs["instance"]
         response = {"content": None}
 
@@ -495,7 +470,7 @@ class FileSystemHandler(BaseFileSystemHandler):
         req_item_path = request_data.get("item_path")
         content = request_data.get("content")
 
-        fs, item_path = self.validate_fs("put", key, req_item_path)
+        fs, item_path = self.fs_manager.validate_fs("put", key, req_item_path)
         fs_instance = fs["instance"]
         response = {"content": None}
 
@@ -537,7 +512,7 @@ class FileSystemHandler(BaseFileSystemHandler):
         offset = request_data.get("offset")
         content = request_data.get("content")
 
-        fs, item_path = self.validate_fs("patch", key, req_item_path)
+        fs, item_path = self.fs_manager.validate_fs("patch", key, req_item_path)
         fs_instance = fs["instance"]
 
         # TODO: offset
@@ -592,7 +567,7 @@ class FileSystemHandler(BaseFileSystemHandler):
         request_data = json.loads(self.request.body.decode("utf-8"))
         req_item_path = request_data.get("item_path")
 
-        fs, item_path = self.validate_fs("delete", key, req_item_path)
+        fs, item_path = self.fs_manager.validate_fs("delete", key, req_item_path)
         fs_instance = fs["instance"]
         response = {"content": None}
 
