@@ -65,6 +65,7 @@ class FsspecWidget extends Widget {
   sourcesHeap: any = {}; // Holds FssFilesysItem's keyed by name
   emptySourcesHint: any;
   filesysContainer: any;
+  openInputHidden: any;
   dirTree: any = {};
   getCurrentWidget: any;
   currentTarget: any = null;
@@ -74,8 +75,12 @@ class FsspecWidget extends Widget {
   jobQueue: any;
   jobQueueContainer: any;
   jobQueueExpander: any;
+  queuedPickerUploadInfo: any;
 
-  constructor(model: any, notebookTracker: INotebookTracker) {
+  constructor(model: any, notebookTracker: INotebookTracker, app: any) {
+    Logger.debug(`DEBUGax1 ${app.serviceManager}`);
+    Logger.debug(`  ${app.serviceManager}`);
+
     super();
     this.model = model;
     this.notebookTracker = notebookTracker;
@@ -88,6 +93,16 @@ class FsspecWidget extends Widget {
 
     this.upperArea = document.createElement('div');
     this.upperArea.classList.add('jfss-upperarea');
+
+    // Use a hiden input element to spawn the browser file picker dialog
+    this.openInputHidden = document.createElement('input');
+    this.openInputHidden.setAttribute('type', 'file');
+    this.openInputHidden.addEventListener(
+      'input',
+      this.handleFilePickerChange.bind(this),
+      { passive: true }
+    );
+    this.upperArea.appendChild(this.openInputHidden);
 
     const mainLabel = document.createElement('div');
     mainLabel.classList.add('jfss-mainlabel');
@@ -378,7 +393,38 @@ class FsspecWidget extends Widget {
     return null;
   }
 
-  async handleContextUploadUserData(user_path: string, is_dir: boolean) {
+  // handleContextUploadFilePicker(user_path: string, is_dir: boolean, is_browser_file_picker: boolean) {
+  //   this.queuedPickerUploadInfo = {
+  //     user_path: user_path,
+  //     is_dir: is_dir,
+  //     is_browser_file_picker: is_browser_file_picker,
+  //   }
+  //   this.openInputHidden.click();
+  // }
+
+  handleFilePickerChange() {
+    let fileData: any = null;
+    if (this.openInputHidden.files.length > 0) {
+      fileData = this.openInputHidden.files[0];
+      this.queuedPickerUploadInfo['fileData'] = fileData;
+      Logger.debug(`FData ${fileData}`);
+      this.handleContextUploadUserData(
+        this.queuedPickerUploadInfo.user_path,
+        this.queuedPickerUploadInfo.is_dir,
+        this.queuedPickerUploadInfo.is_browser_file_picker
+      );
+    } else {
+      console.log('[FSSpec] No file selected!');
+      this.queuedPickerUploadInfo = {};
+      return;
+    }
+  }
+
+  async handleContextUploadUserData(
+    user_path: string,
+    is_dir: boolean,
+    is_browser_file_picker: boolean
+  ) {
     const target = this.notebookTracker.currentWidget;
 
     if (!target || target.isDisposed) {
@@ -402,8 +448,47 @@ class FsspecWidget extends Widget {
     }
     Logger.debug(`Upath2 ${user_path}`);
 
-    const tempfilePath = await this.getKernelUserBytesTempfilePath();
-    Logger.debug(`Debugx2: ${tempfilePath}`);
+    // Get the path of the file to upload
+    let tempfilePath: any = '';
+    if (is_browser_file_picker) {
+      if (!this.queuedPickerUploadInfo) {
+        this.queuedPickerUploadInfo = {
+          user_path: user_path,
+          is_dir: is_dir,
+          is_browser_file_picker: is_browser_file_picker,
+          fileData: null
+        };
+        this.openInputHidden.click();
+        Logger.debug('WAIT FOR FILE PICKER');
+        return;
+      } else {
+        Logger.debug('File Result get!');
+        Logger.debug(`File ${this.queuedPickerUploadInfo.fileData.name}`);
+        Logger.debug(
+          `File ${this.queuedPickerUploadInfo.fileData.webkitRelativePath}`
+        );
+
+        const binRaw = await this.queuedPickerUploadInfo.fileData.arrayBuffer();
+        const binData: any = new Uint8Array(binRaw);
+        const latin1String = new TextDecoder('latin1').decode(binData);
+        Logger.debug(`Latin1:\n\n${latin1String}\n\n`);
+
+        await this.model.post(
+          this.model.activeFilesystem,
+          user_path,
+          latin1String
+        );
+        Logger.debug('Finish upload');
+
+        return;
+      }
+    } else {
+      // We are obtaining bytes from the user's kernel, get a
+      // serialized tempfile path from the server
+      tempfilePath = await this.getKernelUserBytesTempfilePath();
+      Logger.debug(`Debugx2: ${tempfilePath}`);
+    }
+
     if (!tempfilePath) {
       Logger.error('Error fetching serialized user_data!');
       return;
@@ -813,7 +898,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       await fsspecModel.initialize();
 
       // Use the model to initialize the widget and add to the UI
-      const fsspec_widget = new FsspecWidget(fsspecModel, notebookTracker);
+      const fsspec_widget = new FsspecWidget(fsspecModel, notebookTracker, app);
       fsspec_widget.id = 'jupyterFsspec:widget';
 
       app.shell.add(fsspec_widget, 'right');
@@ -842,7 +927,11 @@ const plugin: JupyterFrontEndPlugin<void> = {
           const fsspecModel = new FsspecModel();
           await fsspecModel.initialize();
           // Use the model to initialize the widget and add to the UI
-          const fsspec_widget = new FsspecWidget(fsspecModel, notebookTracker);
+          const fsspec_widget = new FsspecWidget(
+            fsspecModel,
+            notebookTracker,
+            app
+          );
           fsspec_widget.id = 'jupyter_fsspec:widget';
 
           // Add the widget to the top area

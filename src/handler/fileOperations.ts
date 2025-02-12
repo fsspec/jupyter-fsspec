@@ -264,7 +264,8 @@ export class FsspecModel {
       const reqBody = JSON.stringify({
         key,
         item_path,
-        content
+        content,
+        action: 'write'
       });
       const response = await requestAPI<any>(`fsspec?${query.toString()}`, {
         method: 'POST',

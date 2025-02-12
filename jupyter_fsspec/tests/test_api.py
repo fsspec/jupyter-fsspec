@@ -71,6 +71,53 @@ async def test_get_files_memory(fs_manager_instance, jp_fetch):
     assert range_file_body["content"] == "Test con"
 
 
+async def test_ecg(fs_manager_instance, jp_fetch):
+    fs_manager = fs_manager_instance
+    mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
+    mem_key = mem_fs_info["key"]
+    mem_fs = mem_fs_info["info"]["instance"]
+    assert mem_fs is not None
+
+    # Post new file with content
+    filepath = "/my_mem_dir/test_dir/file2.txt"
+    # File does not already exist
+    assert not mem_fs.exists(filepath)
+    file_payload = {"item_path": filepath, "content": "This is test file2 content"}
+    file_response = await jp_fetch(
+        "jupyter_fsspec",
+        "files",
+        method="POST",
+        params={"key": mem_key},
+        body=json.dumps(file_payload),
+    )
+    assert file_response.code == 200
+
+    file_json_body = file_response.body.decode("utf-8")
+    file_body = json.loads(file_json_body)
+    assert file_body["status"] == "success"
+    assert file_body["description"] == "Wrote /my_mem_dir/test_dir/file2.txt."
+    assert mem_fs.exists(filepath)
+
+    # Post directory
+    newdirpath = "/my_mem_dir/test_dir/subdir/"
+    # Directory does not already exist
+    assert not mem_fs.exists(newdirpath)
+    dir_payload = {"item_path": newdirpath}
+    dir_response = await jp_fetch(
+        "jupyter_fsspec",
+        "files",
+        method="POST",
+        params={"key": mem_key},
+        body=json.dumps(dir_payload),
+    )
+    assert dir_response.code == 200
+    dir_body_json = dir_response.body.decode("utf-8")
+    dir_body = json.loads(dir_body_json)
+
+    assert dir_body["status"] == "success"
+    assert dir_body["description"] == "Wrote /my_mem_dir/test_dir/subdir/."
+
+
 async def test_post_files(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
     mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")

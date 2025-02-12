@@ -1,3 +1,5 @@
+import base64
+
 from .file_manager import FileSystemManager
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
@@ -377,6 +379,10 @@ class FileSystemHandler(BaseFileSystemHandler):
         request_data = json.loads(self.request.body.decode("utf-8"))
         req_item_path = request_data.get("item_path")
         content = request_data.get("content")
+        content = base64.decode(
+            content
+        )  # Frontend sends arbitrary binary data as b64 always
+        print(f"Handler post b64 ({len(content)})\n\n{content}")
 
         fs, item_path = self.validate_fs("post", key, req_item_path)
         fs_instance = fs["instance"]
@@ -395,14 +401,14 @@ class FileSystemHandler(BaseFileSystemHandler):
                 if fs_instance.async_impl:
                     await fs_instance._touch(item_path)
                     if content:
-                        if not isinstance(content, bytes):
-                            content = str.encode(content)
+                        # if not isinstance(content, bytes):
+                        #     content = str.encode(content)
                         await fs_instance._pipe(item_path, content)
                 else:
                     fs_instance.touch(item_path)
                     if content:
-                        if not isinstance(content, bytes):
-                            content = str.encode(content)
+                        # if not isinstance(content, bytes):
+                        #     content = str.encode(content)
                         fs_instance.pipe(item_path, content)
 
             self.set_status(200)

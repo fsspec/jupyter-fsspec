@@ -49,6 +49,18 @@ export class FssContextMenu {
       menuItem3.addEventListener('click', this.handleItemClick.bind(this));
       menuItem3.dataset.fssContextType = 'uploadUserData';
       root.appendChild(menuItem3);
+
+      const menuItem4 = document.createElement('div');
+      menuItem4.classList.add('jfss-tree-context-item');
+      menuItem4.innerText = 'Pick a file to upload';
+      menuItem4.addEventListener('mouseenter', this.handleItemHover.bind(this));
+      menuItem4.addEventListener(
+        'mouseleave',
+        this.handleItemUnhover.bind(this)
+      );
+      menuItem4.addEventListener('click', this.handleItemClick.bind(this));
+      menuItem4.dataset.fssContextType = 'uploadBrowserFile';
+      root.appendChild(menuItem4);
     }
 
     root.addEventListener('mouseleave', this.handleMouseExit.bind(this), false);
@@ -156,7 +168,14 @@ export class FssContextMenu {
       if (this.parentControl) {
         this.parentControl.handleUploadUserData();
       }
+    } else if (event.target.dataset.fssContextType === 'uploadBrowserFile') {
+      if (this.parentControl) {
+        this.parentControl.handleUploadUserData({
+          is_browser_file_picker: true
+        });
+      }
     }
+
     this.root.remove();
   }
 
