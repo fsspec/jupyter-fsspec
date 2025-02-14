@@ -186,17 +186,6 @@ def test_error_validate_config(invalid_mock_config):
     assert "sources.0.path" in exc_msg
 
 
-def test_error_initialize_filesystems(caplog):
-    with patch.object(FileSystemManager, "__init__", lambda self: None):
-        fs_manager = FileSystemManager()
-        fs_manager.config = {"sources": [{"name": "inmem"}]}
-        fs_manager.async_implementations = fs_manager._asynchronous_implementations()
-        fs_manager.initialize_filesystems()
-
-    expected_msg = "Skipping 'inmem': Missing 'protocol' and 'path' to infer it from"
-    assert expected_msg in caplog.text
-
-
 def test_empty_initialize_filesystems(caplog):
     with patch.object(FileSystemManager, "__init__", lambda self: None):
         fs_manager = FileSystemManager()

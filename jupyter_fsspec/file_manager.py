@@ -151,10 +151,6 @@ class FileSystemManager:
     def initialize_filesystems(self):
         new_filesystems = {}
 
-        if not self.config:
-            self.config = {}
-            return
-
         # Init filesystem
         for fs_config in self.config.get("sources", []):
             fs_name = fs_config.get("name", None)
@@ -166,11 +162,6 @@ class FileSystemManager:
             if fs_protocol is None:
                 if fs_path:
                     fs_protocol = self._get_protocol_from_path(fs_path)
-                else:
-                    logger.error(
-                        f"Skipping '{fs_name}': Missing 'protocol' and 'path' to infer it from"
-                    )
-                    continue
 
             # TODO: support for case no path
             # if not fs_path:
