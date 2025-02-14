@@ -1,6 +1,7 @@
 from .file_manager import FileSystemManager
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
+from .schemas import GetRequest, PostRequest, DeleteRequest, TransferRequest, Direction
 from .utils import parse_range
 import tornado
 import json
@@ -85,11 +86,13 @@ class FileActionHandler(APIHandler):
         :return: dict with a status, description and (optionally) error
         :rtype: dict
         """
-        key = self.get_argument("key")
         request_data = json.loads(self.request.body.decode("utf-8"))
-        req_item_path = request_data.get("item_path")
-        action = request_data.get("action")
-        destination = request_data.get("content")
+        post_request = PostRequest(**request_data)
+        key = post_request.key
+        req_item_path = post_request.item_path
+        action = post_request.action
+        destination = post_request.content
+
         response = {"content": None}
 
         fs, item_path = self.fs_manager.validate_fs("post", key, req_item_path)
@@ -130,46 +133,50 @@ class FileTransferHandler(APIHandler):
         """Upload/Download the resource at the input path to destination path.
 
         :param [key]: [Query arg string used to retrieve the appropriate filesystem instance]
-        :param [item_path]: [Query arg string path to file or directory to be retrieved]
-        :param [action]: [Request body string move or copy]
-        :param [content]: [Request body property file or directory path]
+        :param [local_path]: [Request body string path to file/directory to be retrieved]
+        :param [remote_path]: [Request body string path to file/directory to be modified]
+        :param [action]: [Request body string upload or download]
 
         :return: dict with a status, description and (optionally) error
         :rtype: dict
         """
         request_data = json.loads(self.request.body.decode("utf-8"))
-        action = request_data.get("action")
-        local_path = request_data.get("local_path")
-        remote_path = request_data.get("remote_path")
-        dest_fs_key = request_data.get("destination_key")
+        transfer_request = TransferRequest(**request_data)
+        key = transfer_request.key
+        local_path = transfer_request.local_path
+        remote_path = transfer_request.remote_path
+        dest_fs_key = transfer_request.destination_key
         dest_fs_info = self.fs_manager.get_filesystem(dest_fs_key)
         dest_path = dest_fs_info["canonical_path"]
-        # if destination is subfolder, need to parse canonical_path for protocol?
+        fs_info = self.fs_manager.get_filesystem(key)
+        path = fs_info["canonical_path"]
 
         response = {"content": None}
 
-        fs, dest_path = self.fs_manager.validate_fs("post", dest_fs_key, dest_path)
-        fs_instance = fs["instance"]
-        print(f"fs_instance: {fs_instance}")
-
         try:
-            if action == "upload":
-                # upload     remote.put(local_path, remote_path)
+            if transfer_request.action == Direction.UPLOAD:
                 logger.debug("Upload file")
-                protocol = self.fs_manager.get_filesystem_protocol(dest_fs_key)
-                if protocol not in remote_path:
-                    remote_path = protocol + remote_path
-                # TODO: handle creating directories? current: flat item upload
-                # remote_path = remote_path (root) + 'nested/'
-                await fs_instance._put(local_path, remote_path, recursive=True)
+                fs, dest_path = self.fs_manager.validate_fs(
+                    "post", dest_fs_key, dest_path
+                )
+                fs_instance = fs["instance"]
+
+                if fs_instance.async_impl:
+                    await fs_instance._put(local_path, remote_path, recursive=True)
+                else:
+                    fs_instance.put(local_path, remote_path, recursive=True)
+
                 response["description"] = f"Uploaded {local_path} to {remote_path}."
             else:
-                # download   remote.get(remote_path, local_path)
                 logger.debug("Download file")
-                protocol = self.fs_manager.get_filesystem_protocol(dest_fs_key)
-                if protocol not in remote_path:
-                    remote_path = protocol + remote_path
-                await fs_instance._get(remote_path, local_path, recursive=True)
+                fs, dest_path = self.fs_manager.validate_fs("post", key, path)
+                fs_instance = fs["instance"]
+
+                if fs_instance.async_impl:
+                    await fs_instance._get(remote_path, local_path, recursive=True)
+                else:
+                    fs_instance.get(remote_path, local_path, recursive=True)
+
                 response["description"] = f"Downloaded {remote_path} to {local_path}."
 
             response["status"] = "success"
@@ -192,11 +199,11 @@ class RenameFileHandler(APIHandler):
         self.fs_manager = fs_manager
 
     def post(self):
-        key = self.get_argument("key")
-
         request_data = json.loads(self.request.body.decode("utf-8"))
-        req_item_path = request_data.get("item_path")
-        content = request_data.get("content")
+        post_request = PostRequest(**request_data)
+        key = post_request.key
+        req_item_path = post_request.item_path
+        content = post_request.content
         response = {"content": None}
 
         fs, item_path = self.fs_manager.validate_fs("post", key, req_item_path)
@@ -215,84 +222,6 @@ class RenameFileHandler(APIHandler):
             response["status"] = "failed"
             response["description"] = str(e)
 
-        self.write(response)
-        self.finish()
-
-
-# ====================================================================================
-# Handle Syncing Local and Remote filesystems
-# ====================================================================================
-class FilesystemSyncHandler(APIHandler):
-    def initialize(self, fs_manager):
-        self.fs_manager = fs_manager
-
-    async def get(self):
-        # remote to local (fetching latest changes)
-        request_data = json.loads(self.request.body.decode("utf-8"))
-        local_destination_path = request_data.get("local_path")
-        remote_source_path = request_data.get("remote_path")
-        dest_fs_key = request_data.get("destination_key")
-        dest_fs_info = self.fs_manager.get_filesystem(dest_fs_key)
-        dest_path = dest_fs_info["path"]
-
-        response = {"content": None}
-
-        fs, dest_path = self.fs_manager.validate_fs("post", dest_fs_key, dest_path)
-        remote_fs_instance = fs["instance"]  # noqa: F841
-
-        try:
-            # rsync
-            # (remote_source_path, local_destination_path)
-            # await remote_fs_instance....
-            self.set_status(200)
-            response["status"] = "success"
-            response["description"] = (
-                f"Synced {local_destination_path} to {remote_source_path}."
-            )
-        except Exception as e:
-            print(f"Error with sync handler: {e}")
-            self.set_status(500)
-            response["status"] = "failed"
-            response["description"] = str(e)
-        self.write(response)
-        self.finish()
-
-    async def post(self):
-        # local to remote (pushing latest changes)
-        key = self.get_argument("key")  # noqa: F841
-        request_data = json.loads(self.request.body.decode("utf-8"))
-        local_source_path = request_data.get("local_path")
-        remote_destination_path = request_data.get("remote_path")
-        dest_fs_key = request_data.get("destination_key")
-        dest_fs_info = self.fs_manager.get_filesystem(dest_fs_key)
-        dest_path = dest_fs_info["path"]
-
-        response = {"content": None}
-
-        fs, dest_path = self.validate_fs("post", dest_fs_key, dest_path)
-        remote_fs_instance = fs["instance"]  # noqa: F841
-
-        try:
-            # rsync
-            # (local_source_path, remote_destination_path)
-            # await remote_fs_instance....
-            if remote_fs_instance.async_impl:
-                # async
-                pass
-            else:
-                # Non-async
-                pass
-
-            self.set_status(200)
-            response["status"] = "success"
-            response["description"] = (
-                f"Synced {remote_destination_path} to {local_source_path}."
-            )
-        except Exception as e:
-            logger.debug(f"Error with sync handler: {e}")
-            self.set_status(500)
-            response["status"] = "failed"
-            response["description"] = str(e)
         self.write(response)
         self.finish()
 
@@ -325,9 +254,10 @@ class FileSystemHandler(APIHandler):
         #  item_path: /some_directory/file.txt
         # GET /jupyter_fsspec/files?key=my-key&item_path=/some_directory/file.txt&type=range
         # content header specifying the byte range
-        key = self.get_argument("key")
-        req_item_path = self.get_argument("item_path")
-        type = self.get_argument("type", default="default")
+        request_data = {k: self.get_argument(k) for k in self.request.arguments}
+        get_request = GetRequest(**request_data)
+        key = get_request.key
+        req_item_path = get_request.item_path
 
         fs, item_path = self.fs_manager.validate_fs("get", key, req_item_path)
 
@@ -340,7 +270,7 @@ class FileSystemHandler(APIHandler):
             else:
                 isdir = fs_instance.isdir(item_path)
 
-            if type == "range":
+            if get_request.type == "range":
                 range_header = self.request.headers.get("Range")
                 start, end = parse_range(range_header)
                 if fs_instance.async_impl:
@@ -410,10 +340,11 @@ class FileSystemHandler(APIHandler):
         :return: dict with a status, description and (optionally) error
         :rtype: dict
         """
-        key = self.get_argument("key")
         request_data = json.loads(self.request.body.decode("utf-8"))
-        req_item_path = request_data.get("item_path")
-        content = request_data.get("content")
+        post_request = PostRequest(**request_data)
+        key = post_request.key
+        req_item_path = post_request.item_path
+        content = post_request.content
 
         fs, item_path = self.fs_manager.validate_fs("post", key, req_item_path)
         fs_instance = fs["instance"]
@@ -465,10 +396,11 @@ class FileSystemHandler(APIHandler):
         :return: dict with a status, description and (optionally) error
         :rtype: dict
         """
-        key = self.get_argument("key")
         request_data = json.loads(self.request.body.decode("utf-8"))
-        req_item_path = request_data.get("item_path")
-        content = request_data.get("content")
+        post_request = PostRequest(**request_data)
+        key = post_request.key
+        req_item_path = post_request.item_path
+        content = post_request.content
 
         fs, item_path = self.fs_manager.validate_fs("put", key, req_item_path)
         fs_instance = fs["instance"]
@@ -563,9 +495,10 @@ class FileSystemHandler(APIHandler):
         :return: dict with a status, description and (optionally) error
         :rtype: dict
         """
-        key = self.get_argument("key")
         request_data = json.loads(self.request.body.decode("utf-8"))
-        req_item_path = request_data.get("item_path")
+        delete_request = DeleteRequest(**request_data)
+        key = delete_request.key
+        req_item_path = delete_request.item_path
 
         fs, item_path = self.fs_manager.validate_fs("delete", key, req_item_path)
         fs_instance = fs["instance"]
@@ -602,7 +535,6 @@ def setup_handlers(web_app):
     route_fs_file_transfer = url_path_join(
         base_url, "jupyter_fsspec", "files", "transfer"
     )
-    route_fs_sync = url_path_join(base_url, "jupyter_fsspec", "sync")
 
     handlers = [
         (route_fsspec_config, FsspecConfigHandler, dict(fs_manager=fs_manager)),
@@ -610,7 +542,6 @@ def setup_handlers(web_app):
         (route_rename_files, RenameFileHandler, dict(fs_manager=fs_manager)),
         (route_file_actions, FileActionHandler, dict(fs_manager=fs_manager)),
         (route_fs_file_transfer, FileTransferHandler, dict(fs_manager=fs_manager)),
-        (route_fs_sync, FilesystemSyncHandler, dict(fs_manager=fs_manager)),
     ]
 
     web_app.add_handlers(host_pattern, handlers)

@@ -223,12 +223,6 @@ class FileSystemManager:
     def get_filesystem(self, key):
         return self.filesystems.get(key)
 
-    def get_filesystem_by_protocol(self, fs_protocol):
-        for encoded_key, fs_info in self.filesystems.items():
-            if fs_info.get("protocol") == fs_protocol:
-                return {"key": encoded_key, "info": fs_info}
-        return None
-
     def get_filesystem_protocol(self, key):
         filesystem_rep = self.filesystems.get(key)
         print(f"filesystem_rep: {filesystem_rep}")

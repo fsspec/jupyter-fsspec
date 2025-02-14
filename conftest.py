@@ -35,11 +35,9 @@ def setup_tmp_local(tmp_path: Path):
     yield [local_root, local_empty_root]
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="function")
 def setup_config_file_fs(tmp_path: Path, setup_tmp_local):
     tmp_local = setup_tmp_local[0]
-    items_tmp_local = list(tmp_local.iterdir())
-    print(f"items_tmp_local: {items_tmp_local}")
     empty_tmp_local = setup_tmp_local[1]
     config_dir = tmp_path / "config"
     config_dir.mkdir(exist_ok=True)
@@ -121,7 +119,7 @@ def get_boto3_client():
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def s3_base():
     server = ThreadedMotoServer(ip_address="127.0.0.1", port=PORT)
     server.start()
@@ -136,21 +134,24 @@ def s3_base():
     server.stop()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def s3_client(s3_base):
     client = get_boto3_client()
-    client.create_bucket(Bucket="my-test-bucket", ACL="public-read")
+
+    bucket_name = "my-test-bucket"
+    client.create_bucket(Bucket=bucket_name, ACL="public-read")
     client.put_object(
-        Body=b"Hello, World1!", Bucket="my-test-bucket", Key="bucket-filename1.txt"
+        Body=b"Hello, World1!", Bucket=bucket_name, Key="bucket-filename1.txt"
     )
     client.put_object(
-        Body=b"Hello, World2!", Bucket="my-test-bucket", Key="some/bucket-filename2.txt"
+        Body=b"Hello, World2!", Bucket=bucket_name, Key="some/bucket-filename2.txt"
     )
     client.put_object(
-        Body=b"Hello, World3!", Bucket="my-test-bucket", Key="some/bucket-filename3.txt"
+        Body=b"Hello, World3!", Bucket=bucket_name, Key="some/bucket-filename3.txt"
     )
 
     yield client
+    client.close()
 
 
 @pytest.fixture

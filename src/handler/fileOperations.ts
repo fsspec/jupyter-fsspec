@@ -222,8 +222,13 @@ export class FsspecModel {
         key,
         item_path
       });
+      const reqBody = JSON.stringify({
+        key: key,
+        item_path
+      });
       const response = await requestAPI<any>(`files?${query.toString()}`, {
         method: 'DELETE',
+        body: reqBody,
         headers: {
           'Content-Type': 'application/json'
         }
