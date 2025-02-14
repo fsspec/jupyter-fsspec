@@ -97,7 +97,16 @@ class FileSystemManager:
         hash = hashlib.md5(yaml_str.encode("utf-8")).hexdigest()
         return hash
 
-    def write_default_config(self):
+    def create_config_file(self):
+        config_path = self.config_path
+        config_dir = os.path.dirname(config_path)
+
+        logger.debug(f"Ensuring config directory exists: {config_dir}.")
+        os.makedirs(config_dir, exist_ok=True)
+
+        if not os.access(config_dir, os.W_OK):
+            raise PermissionError(f"Config directory was not writable: {config_dir}")
+
         config_path = self.config_path
         placeholder_config = {
             "sources": [
@@ -116,19 +125,6 @@ class FileSystemManager:
             config_file.write(full_content)
 
         logger.info(f"Configuration file created at {config_path}")
-
-    def create_config_file(self):
-        config_path = self.config_path
-        config_dir = os.path.dirname(config_path)
-
-        logger.debug(f"Ensuring config directory exists: {config_dir}.")
-        os.makedirs(config_dir, exist_ok=True)
-
-        if not os.access(config_dir, os.W_OK):
-            raise PermissionError(f"Config directory was not writable: {config_dir}")
-
-        self.write_default_config()
-
 
     @staticmethod
     def _get_protocol_from_path(path):
