@@ -15,10 +15,10 @@ async def test_get_config(jp_fetch):
 
 async def test_get_files_memory(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem("TestMem Source")
-    mem_key = mem_fs_info["key"]
-    mem_fs = mem_fs_info["info"]["instance"]
-    mem_item_path = mem_fs_info["info"]["path"]
+    mem_key = "TestMem Source"
+    mem_fs_info = fs_manager.get_filesystem(mem_key)
+    mem_fs = mem_fs_info["instance"]
+    mem_item_path = mem_fs_info["path"]
     assert mem_fs is not None
 
     # Read directory
@@ -73,9 +73,9 @@ async def test_get_files_memory(fs_manager_instance, jp_fetch):
 
 async def test_post_files(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem("TestMem Source")
-    mem_key = mem_fs_info["key"]
-    mem_fs = mem_fs_info["info"]["instance"]
+    mem_key = "TestMem Source"
+    mem_fs_info = fs_manager.get_filesystem(mem_key)
+    mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None
 
     # Post new file with content
@@ -124,9 +124,9 @@ async def test_post_files(fs_manager_instance, jp_fetch):
 
 async def test_delete_files(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem("TestMem Source")
-    mem_key = mem_fs_info["key"]
-    mem_fs = mem_fs_info["info"]["instance"]
+    mem_key = "TestMem Source"
+    mem_fs_info = fs_manager.get_filesystem(mem_key)
+    mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None
 
     # Delete file
@@ -175,9 +175,9 @@ async def test_delete_files(fs_manager_instance, jp_fetch):
 async def test_put_files(fs_manager_instance, jp_fetch):
     # PUT replace entire resource
     fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem("TestMem Source")
-    mem_key = mem_fs_info["key"]
-    mem_fs = mem_fs_info["info"]["instance"]
+    mem_key = "TestMem Source"
+    mem_fs_info = fs_manager.get_filesystem(mem_key)
+    mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None
 
     # replace entire file content
@@ -217,9 +217,9 @@ async def test_put_files(fs_manager_instance, jp_fetch):
 
 async def test_rename_files(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem("TestMem Source")
-    mem_key = mem_fs_info["key"]
-    mem_fs = mem_fs_info["info"]["instance"]
+    mem_key = "TestMem Source"
+    mem_fs_info = fs_manager.get_filesystem(mem_key)
+    mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None
 
     # rename file
@@ -409,16 +409,16 @@ async def xtest_action_same_fs_files(fs_manager_instance, jp_fetch):
 
 async def test_upload_download(fs_manager_instance, jp_fetch):
     fs_manager = fs_manager_instance
-    remote_fs_info = fs_manager.get_filesystem("TestSourceAWS")
-    remote_key = remote_fs_info["key"]
-    remote_fs = remote_fs_info["info"]["instance"]
-    remote_root_path = remote_fs_info["info"]["path"]
+    remote_key = "TestSourceAWS"
+    remote_fs_info = fs_manager.get_filesystem(remote_key)
+    remote_fs = remote_fs_info["instance"]
+    remote_root_path = remote_fs_info["path"]
     assert remote_fs is not None
 
-    local_fs_info = fs_manager.get_filesystem("TestDir")
-    local_key = local_fs_info["key"]
-    local_fs = local_fs_info["info"]["instance"]
-    local_root_path = local_fs_info["info"]["path"]
+    local_key = "TestDir"
+    local_fs_info = fs_manager.get_filesystem(local_key)
+    local_fs = local_fs_info["instance"]
+    local_root_path = local_fs_info["path"]
     assert local_fs is not None
 
     # upload file [local to remote]

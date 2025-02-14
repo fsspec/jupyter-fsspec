@@ -76,9 +76,10 @@ def setup_config_file_fs(tmp_path: Path, setup_tmp_local):
 @pytest.fixture(scope="function")
 def fs_manager_instance(setup_config_file_fs, s3_client):
     fs_manager = setup_config_file_fs
-    fs_info = fs_manager.get_filesystem_by_protocol("memory")
-    mem_fs = fs_info["info"]["instance"]
-    mem_root_path = fs_info["info"]["path"]
+    fs_info = fs_manager.get_filesystem("TestMem Source")
+    print(f"fs_info: {fs_info}")
+    mem_fs = fs_info["instance"]
+    mem_root_path = fs_info["path"]
 
     if mem_fs:
         if mem_fs.exists(f"{mem_root_path}/test_dir"):
