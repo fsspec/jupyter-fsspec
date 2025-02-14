@@ -2,9 +2,12 @@ from .file_manager import FileSystemManager
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 from .utils import parse_range
+from .exceptions import ConfigFileException
+from contextlib import contextmanager
+from pydantic import ValidationError
+import yaml
 import tornado
 import json
-import traceback
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -43,6 +46,54 @@ class BaseFileSystemHandler(APIHandler):
         return fs, item_path
 
 
+@contextmanager
+def handle_exception(handler, status_code=500):
+    try:
+        yield
+    except yaml.YAMLError as e:
+        error_message = {
+            "error": "YAMLError",
+            "details": getattr(e, "problem", str(e)),
+            "line": getattr(e, "problem_mark", None).line + 1
+            if getattr(e, "problem_mark", None)
+            else None,
+        }
+
+        logger.error(error_message)
+
+        handler.set_status(status_code)
+        handler.write({"status": "failed", "description": error_message, "content": []})
+
+        handler.finish()
+        raise ConfigFileException
+    except ValidationError as e:
+        error_message = []
+        for err in e.errors():
+            error = f"{err['msg']}: {err['type']} {err['loc']}"
+            error_message.append(error)
+        logger.error(error_message)
+
+        handler.set_status(status_code)
+        handler.write(
+            {
+                "status": "failed",
+                "description": {error: "ValidationError", "details": error_message},
+                "content": [],
+            }
+        )
+
+        raise ConfigFileException
+    except Exception as e:
+        error_message = f"{type(e).__name__}: {str(e)}"
+        logger.error(error_message)
+
+        handler.set_status(status_code)
+        handler.write({"status": "failed", "description": error_message, "content": []})
+
+        handler.finish()
+        raise ConfigFileException
+
+
 class FsspecConfigHandler(APIHandler):
     """
 
@@ -60,42 +111,34 @@ class FsspecConfigHandler(APIHandler):
         :return: dict with filesystems key and list of filesystem information objects
         :rtype: dict
         """
-        try:
-            self.fs_manager.check_reload_config()
-            file_systems = []
+        file_systems = []
 
-            for fs in self.fs_manager.filesystems:
-                fs_info = self.fs_manager.filesystems[fs]
-                instance = {
-                    "key": fs,
-                    "name": fs_info["name"],
-                    "protocol": fs_info["protocol"],
-                    "path": fs_info["path"],
-                    "canonical_path": fs_info["canonical_path"],
-                }
-                file_systems.append(instance)
-            self.set_status(200)
-            self.write(
-                {
-                    "status": "success",
-                    "description": "Retrieved available filesystems from configuration file.",
-                    "content": file_systems,
-                }
-            )
-            self.finish()
-        except Exception as e:
-            traceback.print_exc()
-            self.set_status(404)
-            self.write(
-                {
-                    "response": {
-                        "status": "failed",
-                        "error": "FILE_NOT_FOUND",
-                        "description": f"Error loading config: {str(e)}",
-                    }
-                }
-            )
-            self.finish()
+        try:
+            with handle_exception(self):
+                self.fs_manager.check_reload_config()
+        except ConfigFileException:
+            return
+
+        for fs in self.fs_manager.filesystems:
+            fs_info = self.fs_manager.filesystems[fs]
+            instance = {
+                "key": fs,
+                "name": fs_info["name"],
+                "protocol": fs_info["protocol"],
+                "path": fs_info["path"],
+                "canonical_path": fs_info["canonical_path"],
+            }
+            file_systems.append(instance)
+
+        self.set_status(200)
+        self.write(
+            {
+                "status": "success",
+                "description": "Retrieved available filesystems from configuration file.",
+                "content": file_systems,
+            }
+        )
+        self.finish()
 
 
 # ====================================================================================

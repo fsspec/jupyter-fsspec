@@ -3,3 +3,7 @@
 
 class JupyterFsspecException(Exception):
     pass
+
+
+class ConfigFileException(JupyterFsspecException):
+    pass

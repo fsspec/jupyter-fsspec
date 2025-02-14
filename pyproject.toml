@@ -27,6 +27,7 @@ classifiers = [
 ]
 dependencies = [
     "fsspec",
+    "pydantic>=2",
     "jupyter_server>=2.4.0,<3"
 ]
 dynamic = ["version", "description", "urls", "keywords"]

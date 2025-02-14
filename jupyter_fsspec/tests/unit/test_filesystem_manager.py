@@ -1,13 +1,11 @@
 import pytest
 import yaml
+from pydantic import ValidationError
+from pathlib import Path
 from jupyter_fsspec.file_manager import FileSystemManager
+from unittest.mock import patch
 
-# Test FileSystemManager class and file operations
 
-
-# ============================================================
-# Test FileSystemManager config loading/read
-# ============================================================
 @pytest.fixture
 def config_file(tmp_path):
     config = {"sources": [{"name": "inmem", "path": "/mem_dir", "protocol": "memory"}]}
@@ -17,54 +15,30 @@ def config_file(tmp_path):
     return config_path
 
 
-# @pytest.fixture
-# def mock_filesystem(config_file):
-#     fs_test_manager = FileSystemManager(config_file)
-#     file_systems = fs_test_manager.filesystems
-#     return file_systems
+@pytest.fixture
+def empty_config_file(tmp_path):
+    config = {}
+    config_path = tmp_path / "config.yaml"
+    with open(config_path, "w") as file:
+        yaml.dump(config, file)
+    return config_path
 
 
-# test that the file systems are created
-def test_filesystem_init(config_file):
-    fs_test_manager = FileSystemManager(config_file)
+@pytest.fixture(scope="function")
+def setup_config_dir(tmp_path: Path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir(exist_ok=True)
 
-    assert fs_test_manager is not None
-    # assert 'memory' in fs_test_manager.filesystems
+    yaml_file = config_dir / "jupyter-fsspec.yaml"
+    yaml_file.write_text("")
 
-    # Validate in-memory filesystem
-    in_memory_fs = fs_test_manager.get_filesystem(
-        fs_test_manager._encode_key(
-            {"name": "inmem", "path": "/mem_dir", "protocol": "memory"}
-        )
-    )
-
-    assert in_memory_fs is not None
-    # TODO:
-    # assert any('memory' in key for key in fs_test_manager.filesystems)
-    # assert in_memory_fs['protocol'] == 'memory'
-    # assert in_memory_fs['path'] == '/mem_dir'
+    with patch(
+        "jupyter_fsspec.file_manager.jupyter_config_dir", return_value=str(config_dir)
+    ):
+        print(f"Patching jupyter_config_dir to: {config_dir}")
+        yield config_dir
 
 
-# test key encoding/decoding
-def test_key_decode_encode(config_file):
-    fs_test_manager = FileSystemManager(config_file)
-
-    fs_test_config = {
-        "name": "mylocal",
-        "protocol": "local",
-        "path": str(config_file.parent),
-    }
-
-    # TODO: update _encoded_key
-    encoded_key = fs_test_manager._encode_key(fs_test_config)
-    decoded_name = fs_test_manager._decode_key(encoded_key)
-
-    assert decoded_name == fs_test_config["name"]
-
-
-# ============================================================
-# Test FileSystemManager file operations
-# ============================================================
 @pytest.fixture
 def mock_config():
     mock_config = {
@@ -76,81 +50,177 @@ def mock_config():
 
 
 @pytest.fixture
-def fs_manager_instance(mock_config):
-    fs_test_manager = FileSystemManager.__new__(FileSystemManager)
-    fs_test_manager.config = mock_config
-    fs_test_manager.filesystems = {}
-    fs_test_manager._initialize_filesystems()
-    return fs_test_manager
+def invalid_mock_config():
+    mock_config = {
+        "sources": [
+            {"protocol": "memory", "nme": "test_memory_fs", "pah": "/test_memory"}
+        ]
+    }
+    return mock_config
 
 
-@pytest.fixture
-def populated_fs_manager(mock_config, fs_manager_instance):
-    key = fs_manager_instance._encode_key(mock_config["sources"][0])
+@pytest.fixture(scope="function")
+def bad_yaml_config(tmp_path: Path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir(exist_ok=True)
 
-    dir_path = "test_memory"
-    dest_path = "test_dir"
-    file_path = f"{dir_path}/{dest_path}/test_file_pop.txt"
-    file_content = b"This is a test for a populated filesystem!"
-
-    fs_manager_instance.write(key, dir_path, dest_path)
-
-    fs_manager_instance.write(key, file_path, file_content)
-
-    second_file_path = f"{dir_path}/second_test_file_pop.txt"
-    second_file_content = b"Second test for a populated filesystem!"
-    fs_manager_instance.write(key, second_file_path, second_file_content)
-    return fs_manager_instance, key
-
-
-# TODO: update config path for tests
-def xtest_file_read_write(mock_config, fs_manager_instance):
-    key = fs_manager_instance._encode_key(mock_config["sources"][0])
-
-    # write
-    item_path = "/test_memory/my_file.txt"
-    content = b"Hello, this is a test!"
-
-    write_result = fs_manager_instance.write(key, item_path, content)
-    assert write_result["status_code"] == 200
-
-    # read
-    read_result = fs_manager_instance.read(key, item_path)
-    assert read_result["status_code"] == 200
-    assert read_result["response"]["content"] == content.decode("utf-8")
+    yaml_content = """sources:
+  - nme: "TestSourceAWS"
+  path: s3://my-test-bucket/"
+    kwargs:
+      anon: false
+      key: "my-access-key"
+      secret: "my-secret-key"
+    """
+    yaml_file = config_dir / "jupyter-fsspec.yaml"
+    yaml_file.write_text(yaml_content)
+    return yaml_file
 
 
-def xtest_file_update_delete(populated_fs_manager):
-    # key = fs_manager_instance._encode_key(mock_config["sources"][0])
-    pass
+# ===============================
+# Test FileSystemManager
+# ===============================
+def test_filesystem_init(setup_config_dir, config_file):
+    fs_manager = FileSystemManager(config_file)
+
+    assert fs_manager is not None
+    assert "inmem" in fs_manager.filesystems
+
+    # Validate in-memory filesystem
+    in_memory_fs = fs_manager.get_filesystem(fs_manager._encode_key({"name": "inmem"}))
+
+    assert in_memory_fs is not None
+    assert in_memory_fs["protocol"] == "memory"
+    assert in_memory_fs["path"] == "/mem_dir"
 
 
-def xtest_directory_read_write(mock_config, fs_manager_instance):
-    key = fs_manager_instance._encode_key(mock_config["sources"][0])
+def test_key_decode_encode(setup_config_dir, config_file):
+    fs_manager = FileSystemManager(config_file)
 
-    # write
-    item_path = "test_memory"
-    dest_path = "my_test_subdir"
+    fs_test_config = {
+        "name": "mylocal",
+        "protocol": "local",
+        "path": str(config_file.parent),
+    }
 
-    write_result = fs_manager_instance.write(key, item_path, dest_path)
-    assert write_result["status_code"] == 200
+    encoded_key = fs_manager._encode_key(fs_test_config)
+    decoded_name = fs_manager._decode_key(encoded_key)
 
-    # read
-    read_result = fs_manager_instance.read(key, item_path)
-    content_list = read_result["response"]["content"]
-    assert read_result["status_code"] == 200
-
-    dir_name_to_check = "/" + item_path + "/my_test_subdir"
-    subdir_exists = any(
-        item["name"] == dir_name_to_check and item["type"] == "directory"
-        for item in content_list
-    )
-    assert subdir_exists
+    assert decoded_name == fs_test_config["name"]
 
 
-def xtest_directory_update_delete(populated_fs_manager):
-    # key = fs_manager_instance._encode_key(mock_config["sources"][0])
-    pass
-    # update
+def test_load_config_empty(setup_config_dir, empty_config_file):
+    with patch.object(FileSystemManager, "__init__", lambda self: None):
+        fs_manager = FileSystemManager()
 
-    # delete
+        fs_manager.filesystems = {}
+        fs_manager.base_dir = setup_config_dir
+        fs_manager.config_path = empty_config_file
+        fs_manager.async_implementations = fs_manager._asynchronous_implementations()
+
+        loaded_config = fs_manager.load_config(handle_errors=True)
+        assert loaded_config == {}
+        fs_manager.config = loaded_config
+
+        fs_manager.initialize_filesystems()
+        assert fs_manager.filesystems == {}
+
+
+def test_load_populated_config(setup_config_dir, config_file):
+    with patch.object(FileSystemManager, "__init__", lambda self: None):
+        fs_manager = FileSystemManager()
+
+        fs_manager.filesystems = {}
+        fs_manager.base_dir = setup_config_dir
+        fs_manager.config_path = config_file
+        fs_manager.async_implementations = fs_manager._asynchronous_implementations()
+
+        loaded_config = fs_manager.load_config(handle_errors=True)
+        assert loaded_config == {
+            "sources": [{"name": "inmem", "path": "/mem_dir", "protocol": "memory"}]
+        }
+        fs_manager.config = loaded_config
+
+        fs_manager.initialize_filesystems()
+        assert len(fs_manager.filesystems) == 1
+        mem_instance_info = fs_manager.filesystems["inmem"]
+        assert mem_instance_info["name"] == "inmem"
+        assert mem_instance_info["protocol"] == "memory"
+        assert mem_instance_info["path"] == "/mem_dir"
+        assert mem_instance_info["canonical_path"] == "memory:///mem_dir"
+
+        mem_fs_instance = mem_instance_info["instance"]
+        assert mem_fs_instance.ls("/") == [
+            {"name": "/my_mem_dir", "size": 0, "type": "directory"}
+        ]
+
+
+def test_check_reload_config(setup_config_dir, config_file):
+    with patch.object(FileSystemManager, "__init__", lambda self: None):
+        fs_manager = FileSystemManager()
+        fs_manager.config_path = config_file
+        fs_manager.config = {}
+        fs_manager.async_implementations = fs_manager._asynchronous_implementations()
+
+        fs_manager.check_reload_config()
+
+        assert len(fs_manager.filesystems) == 1
+        mem_instance_info = fs_manager.filesystems["inmem"]
+        assert mem_instance_info["name"] == "inmem"
+        assert mem_instance_info["protocol"] == "memory"
+        assert mem_instance_info["path"] == "/mem_dir"
+        assert mem_instance_info["canonical_path"] == "memory:///mem_dir"
+
+        mem_fs_instance = mem_instance_info["instance"]
+        assert mem_fs_instance.ls("/") == [
+            {"name": "/my_mem_dir", "size": 0, "type": "directory"}
+        ]
+
+
+def test_error_validate_config(invalid_mock_config):
+    with pytest.raises(ValidationError) as exc:
+        FileSystemManager.validate_config(invalid_mock_config)
+    exc_msg = str(exc.value)
+    assert "2 validation errors for Config" in exc_msg
+    assert "sources.0.name" in exc_msg
+    assert "sources.0.path" in exc_msg
+
+
+def test_error_initialize_filesystems(caplog):
+    with patch.object(FileSystemManager, "__init__", lambda self: None):
+        fs_manager = FileSystemManager()
+        fs_manager.config = {"sources": [{"name": "inmem"}]}
+        fs_manager.async_implementations = fs_manager._asynchronous_implementations()
+        fs_manager.initialize_filesystems()
+
+    expected_msg = "Skipping 'inmem': Missing 'protocol' and 'path' to infer it from"
+    assert expected_msg in caplog.text
+
+
+def test_empty_initialize_filesystems(caplog):
+    with patch.object(FileSystemManager, "__init__", lambda self: None):
+        fs_manager = FileSystemManager()
+        fs_manager.config = {}
+        fs_manager.async_implementations = fs_manager._asynchronous_implementations()
+        fs_manager.initialize_filesystems()
+
+    assert "Initialized filesystem" not in caplog.text
+
+
+def test_error_create_config_file(setup_config_dir, config_file):
+    with patch("os.access", return_value=False):
+        with pytest.raises(PermissionError) as exc:
+            fs_manager = FileSystemManager(config_file)
+            fs_manager.create_config_file()
+
+    expected_exc_msg = f"Config directory was not writable: {setup_config_dir.parent}"
+    assert expected_exc_msg == str(exc.value)
+
+
+def test_error_retrieve_config_content(bad_yaml_config):
+    with pytest.raises(yaml.YAMLError) as exc:
+        fs_manager = FileSystemManager(bad_yaml_config)
+        fs_manager.retrieve_config_content()
+
+    partial_exc_msg = "expected <block end>, but found '?'"
+    assert partial_exc_msg in str(exc.value)
