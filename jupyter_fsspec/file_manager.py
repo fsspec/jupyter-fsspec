@@ -116,7 +116,6 @@ class FileSystemManager:
             config_file.write(full_content)
 
         logger.info(f"Configuration file created at {config_path}")
-        return
 
     def create_config_file(self):
         config_path = self.config_path
@@ -130,7 +129,6 @@ class FileSystemManager:
 
         self.write_default_config()
 
-        return
 
     @staticmethod
     def _get_protocol_from_path(path):
