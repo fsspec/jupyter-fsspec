@@ -379,10 +379,9 @@ class FileSystemHandler(BaseFileSystemHandler):
         request_data = json.loads(self.request.body.decode("utf-8"))
         req_item_path = request_data.get("item_path")
         content = request_data.get("content")
-        content = base64.decode(
+        content = base64.b64decode(
             content
         )  # Frontend sends arbitrary binary data as b64 always
-        print(f"Handler post b64 ({len(content)})\n\n{content}")
 
         fs, item_path = self.validate_fs("post", key, req_item_path)
         fs_instance = fs["instance"]

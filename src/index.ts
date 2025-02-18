@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import * as path from 'path';
 
 import {
@@ -470,13 +471,12 @@ class FsspecWidget extends Widget {
 
         const binRaw = await this.queuedPickerUploadInfo.fileData.arrayBuffer();
         const binData: any = new Uint8Array(binRaw);
-        const latin1String = new TextDecoder('latin1').decode(binData);
-        Logger.debug(`Latin1:\n\n${latin1String}\n\n`);
+        const base64String = Buffer.from(binData).toString('base64');
 
         await this.model.post(
           this.model.activeFilesystem,
           user_path,
-          latin1String
+          base64String
         );
         Logger.debug('Finish upload');
 

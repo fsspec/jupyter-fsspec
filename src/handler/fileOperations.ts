@@ -258,16 +258,16 @@ export class FsspecModel {
   async post(key: string, item_path: string, content: string): Promise<any> {
     try {
       const query = new URLSearchParams({
-        action: 'write'
+        action: 'write',
+        key: key
       });
 
       const reqBody = JSON.stringify({
         key,
         item_path,
-        content,
-        action: 'write'
+        content
       });
-      const response = await requestAPI<any>(`fsspec?${query.toString()}`, {
+      const response = await requestAPI<any>(`files?${query.toString()}`, {
         method: 'POST',
         body: reqBody,
         headers: {
