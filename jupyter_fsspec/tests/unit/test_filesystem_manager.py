@@ -116,7 +116,6 @@ def test_load_config_empty(setup_config_dir, empty_config_file):
         fs_manager.filesystems = {}
         fs_manager.base_dir = setup_config_dir
         fs_manager.config_path = empty_config_file
-        fs_manager.async_implementations = fs_manager._asynchronous_implementations()
 
         loaded_config = fs_manager.load_config(handle_errors=True)
         assert loaded_config == {}
@@ -133,7 +132,6 @@ def test_load_populated_config(setup_config_dir, config_file):
         fs_manager.filesystems = {}
         fs_manager.base_dir = setup_config_dir
         fs_manager.config_path = config_file
-        fs_manager.async_implementations = fs_manager._asynchronous_implementations()
 
         loaded_config = fs_manager.load_config(handle_errors=True)
         assert loaded_config == {
@@ -160,7 +158,6 @@ def test_check_reload_config(setup_config_dir, config_file):
         fs_manager = FileSystemManager()
         fs_manager.config_path = config_file
         fs_manager.config = {}
-        fs_manager.async_implementations = fs_manager._asynchronous_implementations()
 
         fs_manager.check_reload_config()
 
@@ -190,7 +187,6 @@ def test_empty_initialize_filesystems(caplog):
     with patch.object(FileSystemManager, "__init__", lambda self: None):
         fs_manager = FileSystemManager()
         fs_manager.config = {}
-        fs_manager.async_implementations = fs_manager._asynchronous_implementations()
         fs_manager.initialize_filesystems()
 
     assert "Initialized filesystem" not in caplog.text

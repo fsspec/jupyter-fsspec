@@ -330,9 +330,10 @@ class FileSystemHandler(BaseFileSystemHandler):
 
         fs_instance = fs["instance"]
         response = {"content": None}
+        is_async = fs_instance.async_impl
 
         try:
-            if fs_instance.async_impl:
+            if is_async:
                 isdir = await fs_instance._isdir(item_path)
             else:
                 isdir = fs_instance.isdir(item_path)
@@ -340,21 +341,19 @@ class FileSystemHandler(BaseFileSystemHandler):
             if type == "range":
                 range_header = self.request.headers.get("Range")
                 start, end = parse_range(range_header)
-                if fs_instance.async_impl:
+                if is_async:
                     result = await fs_instance._cat_ranges(
                         [item_path], [int(start)], [int(end)]
                     )
-                    if isinstance(result, bytes):
-                        result = result.decode("utf-8")
-                    response["content"] = result
                 else:
-                    # TODO:
                     result = fs_instance.cat_ranges(
                         [item_path], [int(start)], [int(end)]
                     )
-                    if isinstance(result[0], bytes):
-                        result = result[0].decode("utf-8")
-                    response["content"] = result
+
+                for i in range(len(result)):
+                    if isinstance(result[i], bytes):
+                        result[i] = result[i].decode("utf-8")
+                response["content"] = result
                 self.set_header("Content-Range", f"bytes {start}-{end}")
             elif isdir:
                 if fs_instance.async_impl:
@@ -479,7 +478,7 @@ class FileSystemHandler(BaseFileSystemHandler):
 
         try:
             if fs_instance.async_impl:
-                isfile = await fs_instance.isfile(item_path)
+                isfile = await fs_instance._isfile(item_path)
             else:
                 isfile = fs_instance.isfile(item_path)
 

@@ -156,36 +156,27 @@ def setup_config_file_fs(tmp_path: Path, setup_tmp_local):
 
 
 @pytest.fixture(scope="function")
-def fs_manager_instance(setup_config_file_fs, s3_client):
+async def fs_manager_instance(setup_config_file_fs, s3_client):
     fs_manager = setup_config_file_fs
     fs_info = fs_manager.get_filesystem_by_protocol("memory")
     mem_fs = fs_info["info"]["instance"]
     mem_root_path = fs_info["info"]["path"]
 
     if mem_fs:
-        if mem_fs.exists(f"{mem_root_path}/test_dir"):
-            mem_fs.rm(f"{mem_root_path}/test_dir", recursive=True)
-        if mem_fs.exists(f"{mem_root_path}/second_dir"):
-            mem_fs.rm(f"{mem_root_path}/second_dir", recursive=True)
+        if await mem_fs._exists(f"{mem_root_path}/test_dir"):
+            await mem_fs._rm(f"{mem_root_path}/test_dir", recursive=True)
+        if await mem_fs._exists(f"{mem_root_path}/second_dir"):
+            await mem_fs._rm(f"{mem_root_path}/second_dir", recursive=True)
 
-        mem_fs.touch(f"{mem_root_path}/file_in_root.txt")
-        with mem_fs.open(f"{mem_root_path}/file_in_root.txt", "wb") as f:
-            f.write("Root file content".encode())
+        await mem_fs._pipe(f"{mem_root_path}/file_in_root.txt", b"Root file content")
 
-        mem_fs.mkdir(f"{mem_root_path}/test_dir", exist_ok=True)
-        mem_fs.mkdir(f"{mem_root_path}/second_dir", exist_ok=True)
-        # mem_fs.mkdir(f'{mem_root_path}/second_dir/subdir', exist_ok=True)
-        mem_fs.touch(f"{mem_root_path}/test_dir/file1.txt")
-        with mem_fs.open(f"{mem_root_path}/test_dir/file1.txt", "wb") as f:
-            f.write("Test content".encode())
-            f.close()
+        await mem_fs._mkdir(f"{mem_root_path}/test_dir", exist_ok=True)
+        await mem_fs._mkdir(f"{mem_root_path}/second_dir", exist_ok=True)
+
+        await mem_fs._pipe(f"{mem_root_path}/test_dir/file1.txt", b"Test content")
     else:
         print("In memory filesystem NOT FOUND")
 
-    if mem_fs.exists(f"{mem_root_path}/test_dir/file1.txt"):
-        mem_fs.info(f"{mem_root_path}/test_dir/file1.txt")
-    else:
-        print("File does not exist!")
     return fs_manager
 
 

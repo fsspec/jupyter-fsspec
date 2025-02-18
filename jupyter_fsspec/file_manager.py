@@ -2,7 +2,7 @@ from jupyter_core.paths import jupyter_config_dir
 from pydantic import BaseModel
 from typing import Optional, Dict, List
 from fsspec.utils import infer_storage_options
-from fsspec.registry import known_implementations
+from fsspec.implementations.asyn_wrapper import AsyncFileSystemWrapper
 import fsspec
 import os
 import sys
@@ -34,7 +34,6 @@ class FileSystemManager:
         self.base_dir = jupyter_config_dir()
         logger.info(f"Using Jupyter config directory: {self.base_dir}")
         self.config_path = os.path.join(self.base_dir, config_file)
-        self.async_implementations = self._asynchronous_implementations()
         self.config = self.load_config(handle_errors=True)
         self.initialize_filesystems()
 
@@ -132,22 +131,6 @@ class FileSystemManager:
         protocol = storage_options.get("protocol", "file")
         return protocol
 
-    @staticmethod
-    def _asynchronous_implementations():
-        async_filesystems = []
-
-        for protocol, impl in known_implementations.items():
-            try:
-                fs_class = fsspec.get_filesystem_class(protocol)
-                if fs_class.async_impl:
-                    async_filesystems.append(protocol)
-            except Exception:
-                pass
-        return async_filesystems
-
-    def _async_available(self, protocol):
-        return protocol in self.async_implementations
-
     def initialize_filesystems(self):
         new_filesystems = {}
 
@@ -171,9 +154,12 @@ class FileSystemManager:
 
             key = self._encode_key(fs_config)
 
-            # Add: _is_protocol_supported? Or rely on fsspec?
-            fs_async = self._async_available(fs_protocol)
-            fs = fsspec.filesystem(fs_protocol, asynchronous=fs_async, *args, **kwargs)
+            fs_class = fsspec.get_filesystem_class(fs_protocol)
+            if fs_class.async_impl:
+                fs = fsspec.filesystem(fs_protocol, asynchronous=True, *args, **kwargs)
+            else:
+                sync_fs = fsspec.filesystem(fs_protocol, *args, **kwargs)
+                fs = AsyncFileSystemWrapper(sync_fs)
 
             # Store the filesystem instance
             new_filesystems[key] = {

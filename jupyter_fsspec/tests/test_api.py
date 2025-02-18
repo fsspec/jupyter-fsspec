@@ -51,7 +51,7 @@ async def test_empty_config(empty_config, jp_fetch):
 
 
 async def test_get_files_memory(fs_manager_instance, jp_fetch):
-    fs_manager = fs_manager_instance
+    fs_manager = await fs_manager_instance
     mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
     mem_key = mem_fs_info["key"]
     mem_fs = mem_fs_info["info"]["instance"]
@@ -105,11 +105,11 @@ async def test_get_files_memory(fs_manager_instance, jp_fetch):
     range_json_file_body = range_file_res.body.decode("utf-8")
     range_file_body = json.loads(range_json_file_body)
     assert range_file_body["status"] == "success"
-    assert range_file_body["content"] == "Test con"
+    assert range_file_body["content"] == ["Test con"]
 
 
 async def test_post_files(fs_manager_instance, jp_fetch):
-    fs_manager = fs_manager_instance
+    fs_manager = await fs_manager_instance
     mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
     mem_key = mem_fs_info["key"]
     mem_fs = mem_fs_info["info"]["instance"]
@@ -156,7 +156,7 @@ async def test_post_files(fs_manager_instance, jp_fetch):
 
 
 async def test_delete_files(fs_manager_instance, jp_fetch):
-    fs_manager = fs_manager_instance
+    fs_manager = await fs_manager_instance
     mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
     mem_key = mem_fs_info["key"]
     mem_fs = mem_fs_info["info"]["instance"]
@@ -207,7 +207,7 @@ async def test_delete_files(fs_manager_instance, jp_fetch):
 
 async def test_put_files(fs_manager_instance, jp_fetch):
     # PUT replace entire resource
-    fs_manager = fs_manager_instance
+    fs_manager = await fs_manager_instance
     mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
     mem_key = mem_fs_info["key"]
     mem_fs = mem_fs_info["info"]["instance"]
@@ -245,7 +245,7 @@ async def test_put_files(fs_manager_instance, jp_fetch):
 
 
 async def test_rename_files(fs_manager_instance, jp_fetch):
-    fs_manager = fs_manager_instance
+    fs_manager = await fs_manager_instance
     mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
     mem_key = mem_fs_info["key"]
     mem_fs = mem_fs_info["info"]["instance"]
@@ -305,7 +305,7 @@ async def test_rename_files(fs_manager_instance, jp_fetch):
 # PATCH partial update without modifying entire data
 async def xtest_patch_file(fs_manager_instance, jp_fetch):
     # file only
-    fs_manager = fs_manager_instance
+    fs_manager = await fs_manager_instance
     mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
     mem_key = mem_fs_info["key"]
     mem_fs = mem_fs_info["info"]["instance"]
@@ -326,7 +326,7 @@ async def xtest_patch_file(fs_manager_instance, jp_fetch):
 
 # TODO:
 async def xtest_action_same_fs_files(fs_manager_instance, jp_fetch):
-    fs_manager = fs_manager_instance
+    fs_manager = await fs_manager_instance
     # get_filesystem_by_protocol(filesystem_protocol_string) returns first instance of that filesystem protocol
     mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
     mem_key = mem_fs_info["key"]
@@ -433,7 +433,7 @@ async def xtest_action_same_fs_files(fs_manager_instance, jp_fetch):
 
 # TODO: Test count files; Upload/download no more than expected
 async def test_upload_download(fs_manager_instance, jp_fetch):
-    fs_manager = fs_manager_instance
+    fs_manager = await fs_manager_instance
     remote_fs_info = fs_manager.get_filesystem_by_protocol("s3")
     remote_key = remote_fs_info["key"]
     remote_fs = remote_fs_info["info"]["instance"]
