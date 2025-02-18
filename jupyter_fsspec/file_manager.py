@@ -20,8 +20,8 @@ class Source(BaseModel):
     name: str
     path: str
     protocol: Optional[str] = None
-    args: Optional[List] = None
-    kwargs: Optional[Dict] = None
+    args: Optional[List] = []
+    kwargs: Optional[Dict] = {}
 
 
 class Config(BaseModel):
@@ -136,11 +136,12 @@ class FileSystemManager:
 
         # Init filesystem
         for fs_config in self.config.get("sources", []):
-            fs_name = fs_config.get("name", None)
-            fs_path = fs_config.get("path", None)
-            fs_protocol = fs_config.get("protocol", None)
-            args = fs_config.get("args", [])
-            kwargs = fs_config.get("kwargs", {})
+            config = Source(**fs_config)
+            fs_name = config.name
+            fs_path = config.path
+            fs_protocol = config.protocol
+            args = config.args
+            kwargs = config.kwargs
 
             if fs_protocol is None:
                 if fs_path:
