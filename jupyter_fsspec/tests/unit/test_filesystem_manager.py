@@ -1,5 +1,6 @@
 import pytest
 import yaml
+import os
 from pydantic import ValidationError
 from pathlib import Path
 from jupyter_fsspec.file_manager import FileSystemManager
@@ -193,13 +194,15 @@ def test_empty_initialize_filesystems(caplog):
 
 
 def test_error_create_config_file(setup_config_dir, config_file):
+    os.chmod(config_file, 0o44)
     with patch("os.access", return_value=False):
         with pytest.raises(PermissionError) as exc:
             fs_manager = FileSystemManager(config_file)
             fs_manager.create_config_file()
 
-    expected_exc_msg = f"Config directory was not writable: {setup_config_dir.parent}"
+    expected_exc_msg = f"[Errno 13] Permission denied: '{config_file}'"
     assert expected_exc_msg == str(exc.value)
+    os.chmod(config_file, 0o755)
 
 
 def test_error_retrieve_config_content(bad_yaml_config):

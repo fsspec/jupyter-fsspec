@@ -103,9 +103,6 @@ class FileSystemManager:
         logger.debug(f"Ensuring config directory exists: {config_dir}.")
         os.makedirs(config_dir, exist_ok=True)
 
-        if not os.access(config_dir, os.W_OK):
-            raise PermissionError(f"Config directory was not writable: {config_dir}")
-
         config_path = self.config_path
         placeholder_config = {
             "sources": [
