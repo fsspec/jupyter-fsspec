@@ -47,44 +47,16 @@ class BaseFileSystemHandler(APIHandler):
 
 
 @contextmanager
-def handle_exception(handler, status_code=500):
+def handle_exception(
+    handler,
+    status_code=500,
+    exceptions=(yaml.YAMLError, ValidationError, FileNotFoundError),
+    default_msg="Error loading config file.",
+):
     try:
         yield
-    except yaml.YAMLError as e:
-        error_message = {
-            "error": "YAMLError",
-            "details": getattr(e, "problem", str(e)),
-            "line": getattr(e, "problem_mark", None).line + 1
-            if getattr(e, "problem_mark", None)
-            else None,
-        }
-
-        logger.error(error_message)
-
-        handler.set_status(status_code)
-        handler.write({"status": "failed", "description": error_message, "content": []})
-
-        handler.finish()
-        raise ConfigFileException
-    except ValidationError as e:
-        error_message = []
-        for err in e.errors():
-            error = f"{err['msg']}: {err['type']} {err['loc']}"
-            error_message.append(error)
-        logger.error(error_message)
-
-        handler.set_status(status_code)
-        handler.write(
-            {
-                "status": "failed",
-                "description": {error: "ValidationError", "details": error_message},
-                "content": [],
-            }
-        )
-
-        raise ConfigFileException
-    except Exception as e:
-        error_message = f"{type(e).__name__}: {str(e)}"
+    except exceptions as e:
+        error_message = f"{type(e).__name__}: {str(e)}" if str(e) else default_msg
         logger.error(error_message)
 
         handler.set_status(status_code)
