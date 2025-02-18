@@ -199,6 +199,4 @@ class FileSystemManager:
 
     def get_filesystem_protocol(self, key):
         filesystem_rep = self.filesystems.get(key)
-        if not filesystem_rep:
-            return None
         return filesystem_rep["protocol"] + "://"
