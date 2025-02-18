@@ -405,6 +405,11 @@ class FsspecWidget extends Widget {
 
   handleFilePickerChange() {
     let fileData: any = null;
+    if (!this.openInputHidden.value) {
+      this.queuedPickerUploadInfo = null;
+      return;
+    }
+
     if (this.openInputHidden.files.length > 0) {
       fileData = this.openInputHidden.files[0];
       this.queuedPickerUploadInfo['fileData'] = fileData;
@@ -414,9 +419,12 @@ class FsspecWidget extends Widget {
         this.queuedPickerUploadInfo.is_dir,
         this.queuedPickerUploadInfo.is_browser_file_picker
       );
+      this.queuedPickerUploadInfo = null;
+      this.openInputHidden.value = null;
     } else {
       console.log('[FSSpec] No file selected!');
-      this.queuedPickerUploadInfo = {};
+      this.queuedPickerUploadInfo = null;
+      this.openInputHidden.value = null;
       return;
     }
   }
@@ -464,6 +472,9 @@ class FsspecWidget extends Widget {
         return;
       } else {
         Logger.debug('File Result get!');
+        Logger.debug(
+          `Dump picker info ${JSON.stringify(this.queuedPickerUploadInfo)}`
+        );
         Logger.debug(`File ${this.queuedPickerUploadInfo.fileData.name}`);
         Logger.debug(
           `File ${this.queuedPickerUploadInfo.fileData.webkitRelativePath}`
@@ -479,6 +490,8 @@ class FsspecWidget extends Widget {
           base64String
         );
         Logger.debug('Finish upload');
+
+        this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
 
         return;
       }
