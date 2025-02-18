@@ -50,7 +50,7 @@ class BaseFileSystemHandler(APIHandler):
 def handle_exception(
     handler,
     status_code=500,
-    exceptions=(yaml.YAMLError, ValidationError, FileNotFoundError),
+    exceptions=(yaml.YAMLError, ValidationError, FileNotFoundError, PermissionError),
     default_msg="Error loading config file.",
 ):
     try:
