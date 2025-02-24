@@ -118,8 +118,6 @@ def empty_config(tmp_path: Path):
 @pytest.fixture(scope="function")
 def setup_config_file_fs(tmp_path: Path, setup_tmp_local):
     tmp_local = setup_tmp_local[0]
-    items_tmp_local = list(tmp_local.iterdir())
-    print(f"items_tmp_local: {items_tmp_local}")
     empty_tmp_local = setup_tmp_local[1]
     config_dir = tmp_path / "config"
     config_dir.mkdir(exist_ok=True)
@@ -158,9 +156,10 @@ def setup_config_file_fs(tmp_path: Path, setup_tmp_local):
 @pytest.fixture(scope="function")
 async def fs_manager_instance(setup_config_file_fs, s3_client):
     fs_manager = setup_config_file_fs
-    fs_info = fs_manager.get_filesystem_by_protocol("memory")
-    mem_fs = fs_info["info"]["instance"]
-    mem_root_path = fs_info["info"]["path"]
+    fs_info = fs_manager.get_filesystem("TestMem Source")
+    print(f"fs_info: {fs_info}")
+    mem_fs = fs_info["instance"]
+    mem_root_path = fs_info["path"]
 
     if mem_fs:
         if await mem_fs._exists(f"{mem_root_path}/test_dir"):
@@ -192,7 +191,7 @@ def get_boto3_client():
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def s3_base():
     server = ThreadedMotoServer(ip_address="127.0.0.1", port=PORT)
     server.start()
@@ -207,21 +206,24 @@ def s3_base():
     server.stop()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def s3_client(s3_base):
     client = get_boto3_client()
-    client.create_bucket(Bucket="my-test-bucket", ACL="public-read")
+
+    bucket_name = "my-test-bucket"
+    client.create_bucket(Bucket=bucket_name, ACL="public-read")
     client.put_object(
-        Body=b"Hello, World1!", Bucket="my-test-bucket", Key="bucket-filename1.txt"
+        Body=b"Hello, World1!", Bucket=bucket_name, Key="bucket-filename1.txt"
     )
     client.put_object(
-        Body=b"Hello, World2!", Bucket="my-test-bucket", Key="some/bucket-filename2.txt"
+        Body=b"Hello, World2!", Bucket=bucket_name, Key="some/bucket-filename2.txt"
     )
     client.put_object(
-        Body=b"Hello, World3!", Bucket="my-test-bucket", Key="some/bucket-filename3.txt"
+        Body=b"Hello, World3!", Bucket=bucket_name, Key="some/bucket-filename3.txt"
     )
 
     yield client
+    client.close()
 
 
 @pytest.fixture

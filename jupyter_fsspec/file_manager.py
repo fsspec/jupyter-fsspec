@@ -184,15 +184,25 @@ class FileSystemManager:
 
         return new_config_content
 
+    def validate_fs(self, request_type, key, item_path):
+        if not key:
+            raise ValueError("Missing required parameter `key`")
+
+        fs = self.get_filesystem(key)
+
+        if not item_path:
+            if str(type) != "range" and request_type == "get":
+                item_path = self.fs_manager.filesystems[key]["path"]
+            else:
+                raise ValueError("Missing required parameter `item_path`")
+
+        if fs is None:
+            raise ValueError(f"No filesystem found for key: {key}")
+
+        return fs, item_path
+
     def get_filesystem(self, key):
         return self.filesystems.get(key)
-
-    # TODO: Update to pull full dict with all filesystems
-    def get_filesystem_by_protocol(self, fs_protocol):
-        for encoded_key, fs_info in self.filesystems.items():
-            if fs_info.get("protocol") == fs_protocol:
-                return {"key": encoded_key, "info": fs_info}
-        return None
 
     def get_filesystem_protocol(self, key):
         filesystem_rep = self.filesystems.get(key)
