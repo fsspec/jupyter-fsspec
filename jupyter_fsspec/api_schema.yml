@@ -1,0 +1,114 @@
+components:
+  schemas:
+    BaseRequest:
+      properties:
+        item_path:
+          title: Item Path
+          type: string
+        key:
+          title: Key
+          type: string
+      required:
+      - key
+      - item_path
+      title: BaseRequest
+      type: object
+    DeleteRequest:
+      properties:
+        item_path:
+          title: Item Path
+          type: string
+        key:
+          title: Key
+          type: string
+      required:
+      - key
+      - item_path
+      title: DeleteRequest
+      type: object
+    Direction:
+      enum:
+      - upload
+      - download
+      title: Direction
+      type: string
+    GetRequest:
+      properties:
+        item_path:
+          title: Item Path
+          type: string
+        key:
+          title: Key
+          type: string
+        type:
+          anyOf:
+          - $ref: '#/components/schemas/RequestType'
+          - type: 'null'
+          default: default
+      required:
+      - key
+      - item_path
+      title: GetRequest
+      type: object
+    PostRequest:
+      properties:
+        action:
+          anyOf:
+          - $ref: '#/components/schemas/RequestAction'
+          - type: 'null'
+          default: null
+        content:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Content
+        item_path:
+          title: Item Path
+          type: string
+        key:
+          title: Key
+          type: string
+      required:
+      - key
+      - item_path
+      title: PostRequest
+      type: object
+    RequestAction:
+      const: move
+      title: RequestAction
+      type: string
+    RequestType:
+      enum:
+      - default
+      - range
+      title: RequestType
+      type: string
+    TransferRequest:
+      properties:
+        action:
+          $ref: '#/components/schemas/Direction'
+        destination_key:
+          title: Destination Key
+          type: string
+        key:
+          title: Key
+          type: string
+        local_path:
+          title: Local Path
+          type: string
+        remote_path:
+          title: Remote Path
+          type: string
+      required:
+      - key
+      - destination_key
+      - local_path
+      - remote_path
+      - action
+      title: TransferRequest
+      type: object
+info:
+  title: jupyter-fsspec API
+  version: 0.4.0
+openapi: 3.1.1
