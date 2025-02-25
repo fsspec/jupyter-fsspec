@@ -15,6 +15,8 @@ import { addJupyterLabThemeChangeListener } from '@jupyter/web-components';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ICommandPalette, Dialog } from '@jupyterlab/apputils';
 
+import { IFileBrowserFactory } from '@jupyterlab/filebrowser';
+
 import { INotebookTracker } from '@jupyterlab/notebook';
 
 import { FsspecModel } from './handler/fileOperations';
@@ -77,14 +79,24 @@ class FsspecWidget extends Widget {
   jobQueueContainer: any;
   jobQueueExpander: any;
   queuedPickerUploadInfo: any;
+  queuedJupyterFileBrowserUploadInfo: any;
+  fileBrowserFactory: any;
+  app: any;
 
-  constructor(model: any, notebookTracker: INotebookTracker, app: any) {
+  constructor(
+    model: any,
+    notebookTracker: INotebookTracker,
+    app: any,
+    fileBrowserFactory: any
+  ) {
     Logger.debug(`DEBUGax1 ${app.serviceManager}`);
     Logger.debug(`  ${app.serviceManager}`);
 
     super();
     this.model = model;
     this.notebookTracker = notebookTracker;
+    this.fileBrowserFactory = fileBrowserFactory;
+    this.app = app;
 
     this.title.label = 'FSSpec';
     this.node.classList.add('jfss-root');
@@ -97,6 +109,7 @@ class FsspecWidget extends Widget {
 
     // Use a hiden input element to spawn the browser file picker dialog
     this.openInputHidden = document.createElement('input');
+    this.openInputHidden.classList.add('jfss-hidden');
     this.openInputHidden.setAttribute('type', 'file');
     this.openInputHidden.addEventListener(
       'input',
@@ -403,6 +416,26 @@ class FsspecWidget extends Widget {
   //   this.openInputHidden.click();
   // }
 
+  async handleJupyterFileBrowserUpload(userFile: any, fileBrowser: any) {
+    Logger.debug(
+      `FBrowser choose: B ${fileBrowser}} / D "${fileBrowser.model.driveName}" / R "${fileBrowser.model.rootPath}"`
+    );
+    Logger.debug(`  pth    ${userFile.value.path}`);
+    Logger.debug(`  srvpth ${userFile.value.serverPath}`);
+    Logger.debug(`  sz     ${userFile.value.size}`);
+    Logger.debug(`  type   ${userFile.value.type}`);
+    Logger.debug(`  mtype  ${userFile.value.mimetype}`);
+    Logger.debug(`  fmt    ${userFile.value.format}`);
+    Logger.debug(`  wrt    ${userFile.value.writable}`);
+
+    const fileData = await this.app.serviceManager.contents.get(
+      userFile.value.path,
+      { content: true, format: 'base64', type: 'base64' }
+    );
+    Logger.debug(`xFILE CONTs:\n${JSON.stringify(fileData)}`);
+    this.queuedJupyterFileBrowserUploadInfo = { fileData: fileData };
+  }
+
   handleFilePickerChange() {
     let fileData: any = null;
     if (!this.openInputHidden.value) {
@@ -417,7 +450,8 @@ class FsspecWidget extends Widget {
       this.handleContextUploadUserData(
         this.queuedPickerUploadInfo.user_path,
         this.queuedPickerUploadInfo.is_dir,
-        this.queuedPickerUploadInfo.is_browser_file_picker
+        this.queuedPickerUploadInfo.is_browser_file_picker,
+        false
       );
       this.queuedPickerUploadInfo = null;
       this.openInputHidden.value = null;
@@ -432,7 +466,8 @@ class FsspecWidget extends Widget {
   async handleContextUploadUserData(
     user_path: string,
     is_dir: boolean,
-    is_browser_file_picker: boolean
+    is_browser_file_picker: boolean,
+    is_jup_browser_file: boolean
   ) {
     const target = this.notebookTracker.currentWidget;
 
@@ -440,6 +475,11 @@ class FsspecWidget extends Widget {
       Logger.error('Invalid target widget');
       return;
     }
+
+    // Logger.debug('FileBrowser items!!');
+    // for (const item of this.fileBrowser.items()) {
+    //   Logger.debug(`${item}`);
+    // }
 
     // Get the desired path for this upload from a dialog box
     Logger.debug(`Upath ${user_path}`);
@@ -459,8 +499,9 @@ class FsspecWidget extends Widget {
 
     // Get the path of the file to upload
     let tempfilePath: any = '';
-    if (is_browser_file_picker) {
-      if (!this.queuedPickerUploadInfo) {
+    if (is_browser_file_picker || is_jup_browser_file) {
+      if (is_browser_file_picker && !this.queuedPickerUploadInfo) {
+        // First we have to obtain info from the browser file picker (async user selection)
         this.queuedPickerUploadInfo = {
           user_path: user_path,
           is_dir: is_dir,
@@ -470,7 +511,8 @@ class FsspecWidget extends Widget {
         this.openInputHidden.click();
         Logger.debug('WAIT FOR FILE PICKER');
         return;
-      } else {
+      } else if (is_browser_file_picker && this.queuedPickerUploadInfo) {
+        // We have obtained file info from the user's selection (our call above)
         Logger.debug('File Result get!');
         Logger.debug(
           `Dump picker info ${JSON.stringify(this.queuedPickerUploadInfo)}`
@@ -493,6 +535,39 @@ class FsspecWidget extends Widget {
 
         this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
 
+        return;
+      } else if (
+        is_jup_browser_file &&
+        this.queuedJupyterFileBrowserUploadInfo
+      ) {
+        // We have file information from the Lab file browser
+        Logger.debug('Jup file browser result get!');
+        Logger.debug(
+          `Dump jbrowser info ${JSON.stringify(this.queuedJupyterFileBrowserUploadInfo)}`
+        );
+        // Logger.debug(`File ${this.queuedJupyterFileBrowserUploadInfo.fileData.name}`);
+        // Logger.debug(
+        //   `File ${this.queuedJupyterFileBrowserUploadInfo.fileData.webkitRelativePath}`
+        // );
+
+        // const binRaw = await this.queuedJupyterFileBrowserUploadInfo.fileData.arrayBuffer();
+        // const binData: any = new Uint8Array(binRaw);
+        const base64String = Buffer.from(
+          this.queuedJupyterFileBrowserUploadInfo.fileData.content,
+          'base64'
+        );
+
+        await this.model.post(
+          this.model.activeFilesystem,
+          user_path,
+          base64String
+        );
+        Logger.debug('Finish upload');
+
+        this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
+
+        return;
+      } else {
         return;
       }
     } else {
@@ -894,12 +969,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
   id: 'jupyterFsspec:plugin',
   description: 'A Jupyter interface for fsspec.',
   autoStart: true,
-  requires: [ICommandPalette, INotebookTracker],
+  requires: [ICommandPalette, INotebookTracker, IFileBrowserFactory],
   optional: [ISettingRegistry],
   activate: async (
     app: JupyterFrontEnd,
     palette: ICommandPalette,
     notebookTracker: INotebookTracker,
+    fileBrowserFactory: IFileBrowserFactory,
     settingRegistry: ISettingRegistry | null
   ) => {
     console.log('JupyterLab extension jupyterFsspec is activated!');
@@ -910,9 +986,40 @@ const plugin: JupyterFrontEndPlugin<void> = {
       const fsspecModel = new FsspecModel();
       await fsspecModel.initialize();
 
+      Logger.debug(`Activate, fbrowser is ${Object.keys(fileBrowserFactory)}`);
+      console.log('########');
+      console.log(fileBrowserFactory);
+      console.log('########');
+
       // Use the model to initialize the widget and add to the UI
-      const fsspec_widget = new FsspecWidget(fsspecModel, notebookTracker, app);
+      const fsspec_widget = new FsspecWidget(
+        fsspecModel,
+        notebookTracker,
+        app,
+        fileBrowserFactory
+      );
       fsspec_widget.id = 'jupyterFsspec:widget';
+
+      // TODO verify filebrowserfactory and currentWidget are valid, file object is truthy etc.
+      // Add Jupyter File Browser help
+      app.commands.addCommand('jupyter_fsspec:filebrowser-context-upload', {
+        label: 'Jupyter fsspec FileBrowser Upload',
+        caption:
+          'Handles upload requests to configured fsspec filesystems from the FileBrowser',
+        execute: async () => {
+          const fileModel: any = fileBrowserFactory.tracker.currentWidget
+            ?.selectedItems()
+            .next();
+          const file = fileModel.value;
+
+          if (file) {
+            await fsspec_widget.handleJupyterFileBrowserUpload(
+              fileModel,
+              fileBrowserFactory.tracker?.currentWidget
+            );
+          }
+        }
+      });
 
       app.shell.add(fsspec_widget, 'right');
     } else {
@@ -943,7 +1050,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
           const fsspec_widget = new FsspecWidget(
             fsspecModel,
             notebookTracker,
-            app
+            app,
+            fileBrowserFactory
           );
           fsspec_widget.id = 'jupyter_fsspec:widget';
 

@@ -119,14 +119,21 @@ export class FssTreeItem {
 
   async handleUploadUserData(options: any) {
     let is_browser_file_picker = false;
+    let is_jup_browser_file = false;
     if (options) {
       is_browser_file_picker = options.is_browser_file_picker;
+      is_jup_browser_file = options.is_jup_browser_file;
       this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
     }
     Logger.debug('Treeitem upload user data');
     for (const slot of this.uploadUserDataSlots) {
       Logger.debug(slot);
-      await slot(this.root.dataset.fss, this.isDir, is_browser_file_picker);
+      await slot(
+        this.root.dataset.fss,
+        this.isDir,
+        is_browser_file_picker,
+        is_jup_browser_file
+      );
     }
   }
 
