@@ -1,6 +1,18 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict, List
 from enum import Enum
+
+
+class Source(BaseModel):
+    name: str
+    path: str
+    protocol: Optional[str] = None
+    args: Optional[List] = []
+    kwargs: Optional[Dict] = {}
+
+
+class Config(BaseModel):
+    sources: List[Source]
 
 
 class RequestType(str, Enum):

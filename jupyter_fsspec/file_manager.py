@@ -1,6 +1,5 @@
 from jupyter_core.paths import jupyter_config_dir
-from pydantic import BaseModel
-from typing import Optional, Dict, List
+from .models import Source, Config
 from fsspec.utils import infer_storage_options
 from fsspec.implementations.asyn_wrapper import AsyncFileSystemWrapper
 import fsspec
@@ -14,18 +13,6 @@ import logging
 logging.basicConfig(level=logging.WARNING, stream=sys.stdout)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
-class Source(BaseModel):
-    name: str
-    path: str
-    protocol: Optional[str] = None
-    args: Optional[List] = []
-    kwargs: Optional[Dict] = {}
-
-
-class Config(BaseModel):
-    sources: List[Source]
 
 
 class FileSystemManager:
