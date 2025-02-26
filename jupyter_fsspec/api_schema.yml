@@ -1,12 +1,21 @@
 components:
   schemas:
     BaseRequest:
+      description: 'The required information for all Filesystem handler endpoints.
+
+
+        key: unique
+
+        item_path: destination path for the acting filesystem'
       properties:
         item_path:
-          title: Item Path
+          description: Acting path in filesystem
+          title: Path
           type: string
         key:
-          title: Key
+          description: Unique identifier given as the filesystem 'name' in the config
+            file
+          title: Filesystem name
           type: string
       required:
       - key
@@ -14,12 +23,19 @@ components:
       title: BaseRequest
       type: object
     DeleteRequest:
+      description: 'Placeholder model for delete request
+
+
+        No additional information is needed than base request'
       properties:
         item_path:
-          title: Item Path
+          description: Acting path in filesystem
+          title: Path
           type: string
         key:
-          title: Key
+          description: Unique identifier given as the filesystem 'name' in the config
+            file
+          title: Filesystem name
           type: string
       required:
       - key
@@ -33,41 +49,64 @@ components:
       title: Direction
       type: string
     GetRequest:
+      description: 'GET request specific items.
+
+
+        type: option to specify type of GET request'
       properties:
         item_path:
-          title: Item Path
+          description: Acting path in filesystem
+          title: Path
           type: string
         key:
-          title: Key
+          description: Unique identifier given as the filesystem 'name' in the config
+            file
+          title: Filesystem name
           type: string
         type:
           anyOf:
           - $ref: '#/components/schemas/RequestType'
           - type: 'null'
           default: default
+          description: Either a 'range' GET request for file or 'default' for normal
+            GET
+          title: Type of GET request
       required:
       - key
       - item_path
       title: GetRequest
       type: object
     PostRequest:
+      description: 'POST request specific items.
+
+
+        content: content to be created upon request
+
+        action: move action specified when calling action handler'
       properties:
         action:
           anyOf:
           - $ref: '#/components/schemas/RequestAction'
           - type: 'null'
           default: null
+          description: Specify 'move' action when calling action handler, default
+            treated as copy
+          title: Move or copy action indicator
         content:
           anyOf:
           - type: string
           - type: 'null'
           default: null
-          title: Content
+          description: Content to be created upon request
+          title: File content or file/directory name
         item_path:
-          title: Item Path
+          description: Acting path in filesystem
+          title: Path
           type: string
         key:
-          title: Key
+          description: Unique identifier given as the filesystem 'name' in the config
+            file
+          title: Filesystem name
           type: string
       required:
       - key
@@ -85,14 +124,34 @@ components:
       title: RequestType
       type: string
     TransferRequest:
+      description: 'Requests made to download, upload and sync.
+
+
+        key: unique
+
+        destination_key: unique
+
+        local_path: file/directory path, filesystem root path for sync
+
+        remote_path: file/directory path, filesystem root path for sync
+
+        action: enum option upload or download'
       properties:
         action:
-          $ref: '#/components/schemas/Direction'
+          allOf:
+          - $ref: '#/components/schemas/Direction'
+          description: Can be 'upload' or 'download for local to remote or remote
+            to local respectively
+          title: Transfer direction
         destination_key:
-          title: Destination Key
+          description: Unique identifier given as the filesystem 'name' in the config
+            file
+          title: Destination filesystem name
           type: string
         key:
-          title: Key
+          description: Unique identifier given as the filesystem 'name' in the config
+            file
+          title: Source filesystem name
           type: string
         local_path:
           title: Local Path
