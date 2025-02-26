@@ -6,7 +6,6 @@ paths:
   /jupyter_fsspec/config:
     get:
       description: List all source filesystems in configuration file
-      operationId: listConfigSources
       responses:
         '200':
           description: Retrieved available filesystems from configuration file.
@@ -14,6 +13,87 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Config'
+  /jupyter_fsspec/files?{key}:
+    get:
+      description: List content at the specified path of the {key} filesystem
+      parameters:
+      - description: Unique name identifying the filesystem
+        required: true
+        schema:
+          type: string
+        name: key
+        in: query
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetRequest'
+      responses:
+        '200':
+          description: Retrieved content from item_path.
+    put:
+      description: Update existing file
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostRequest'
+      responses:
+        '200':
+          description: Update file at existing item_path
+    post:
+      description: Create a file or directory based on provided content
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostRequest'
+      responses:
+        '200':
+          description: Created file or directory in source filesystem
+    delete:
+      description: Delete the file or directory specified by path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteRequest'
+      responses:
+        '200':
+          description: Delete path at item_path.
+  /jupyter_fsspec/files/action:
+    post:
+      description: Move or, by default, copy path to destination
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostRequest'
+      responses:
+        '200':
+          description: Copied or moved item_path to destination specified by content.
+  /jupyter_fsspec/files/rename:
+    post:
+      description: Rename path to content provided
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostRequest'
+      responses:
+        '200':
+          description: Renamed the specified item_path to content provided.
+  /jupyter_fsspec/files/transfer:
+    post:
+      description: Upload or download file(s) source path to destination path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+      responses:
+        '200':
+          description: Downloaded or Uploaded from source path to destination path
 components:
   schemas:
     BaseRequest:
