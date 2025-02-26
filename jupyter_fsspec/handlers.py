@@ -1,7 +1,7 @@
 from .file_manager import FileSystemManager
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
-from .schemas import GetRequest, PostRequest, DeleteRequest, TransferRequest, Direction
+from .models import GetRequest, PostRequest, DeleteRequest, TransferRequest, Direction
 from .utils import parse_range
 from .exceptions import ConfigFileException
 from contextlib import contextmanager
