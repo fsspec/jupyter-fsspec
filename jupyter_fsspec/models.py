@@ -4,6 +4,8 @@ from enum import Enum
 
 
 class Source(BaseModel):
+    """Filesystem configurations passed to fsspec"""
+
     name: str
     path: str
     protocol: Optional[str] = None
@@ -12,6 +14,8 @@ class Source(BaseModel):
 
 
 class Config(BaseModel):
+    """A list of source filesystem configurations"""
+
     sources: List[Source]
 
 
