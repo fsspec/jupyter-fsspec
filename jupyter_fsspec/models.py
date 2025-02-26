@@ -105,19 +105,16 @@ class TransferRequest(BaseModel):
     """
 
     key: str = Field(
-        ...,
         title="Source filesystem name",
         description="Unique identifier given as the filesystem 'name' in the config file",
     )
     destination_key: str = Field(
-        ...,
         title="Destination filesystem name",
         description="Unique identifier given as the filesystem 'name' in the config file",
     )
     local_path: str
     remote_path: str
     action: Direction = Field(
-        ...,
         title="Transfer direction",
         description="Can be 'upload' or 'download for local to remote or remote to local respectively",
     )
