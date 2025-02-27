@@ -299,22 +299,20 @@ class FileSystemHandler(APIHandler):
         is_async = fs_instance.async_impl
 
         try:
-            if is_async:
-                isdir = await fs_instance._isdir(item_path)
-            else:
-                isdir = fs_instance.isdir(item_path)
+            isdir = (
+                await fs_instance._isdir(item_path)
+                if is_async
+                else fs_instance.isdir(item_path)
+            )
 
             if get_request.type == "range":
                 range_header = self.request.headers.get("Range")
                 start, end = parse_range(range_header)
-                if is_async:
-                    result = await fs_instance._cat_ranges(
-                        [item_path], [int(start)], [int(end)]
-                    )
-                else:
-                    result = fs_instance.cat_ranges(
-                        [item_path], [int(start)], [int(end)]
-                    )
+                result = (
+                    await fs_instance._cat_ranges([item_path], [int(start)], [int(end)])
+                    if is_async
+                    else fs_instance.cat_ranges([item_path], [int(start)], [int(end)])
+                )
 
                 for i in range(len(result)):
                     if isinstance(result[i], bytes):
@@ -322,10 +320,11 @@ class FileSystemHandler(APIHandler):
                 response["content"] = result
                 self.set_header("Content-Range", f"bytes {start}-{end}")
             elif isdir:
-                if fs_instance.async_impl:
-                    result = await fs_instance._ls(item_path, detail=True)
-                else:
-                    result = fs_instance.ls(item_path, detail=True)
+                result = (
+                    await fs_instance._ls(item_path, detail=True)
+                    if is_async
+                    else fs_instance.ls(item_path, detail=True)
+                )
 
                 detail_to_keep = ["name", "type", "size", "ino", "mode"]
                 filtered_result = [
@@ -338,16 +337,14 @@ class FileSystemHandler(APIHandler):
                 ]
                 response["content"] = filtered_result
             else:
-                if fs_instance.async_impl:
-                    result = await fs_instance._cat(item_path)
-                    if isinstance(result, bytes):
-                        result = result.decode("utf-8")
-                    response["content"] = result
-                else:
-                    result = fs_instance.cat(item_path)
-                    if isinstance(result, bytes):
-                        result = result.decode("utf-8")
-                    response["content"] = result
+                result = (
+                    await fs_instance._cat(item_path)
+                    if is_async
+                    else fs_instance.cat(item_path)
+                )
+                response["content"] = (
+                    result.decode("utf-8") if isinstance(result, bytes) else result
+                )
             self.set_status(200)
             response["status"] = "success"
             response["description"] = f"Retrieved {item_path}."
