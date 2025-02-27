@@ -296,10 +296,9 @@ class FileSystemHandler(APIHandler):
                     else fs_instance.cat_ranges([item_path], [int(start)], [int(end)])
                 )
 
-                for i in range(len(result)):
-                    if isinstance(result[i], bytes):
-                        result[i] = result[i].decode("utf-8")
-                response["content"] = result
+                response["content"] = [
+                    r.decode("utf-8") if isinstance(r, bytes) else r for r in result
+                ]
                 self.set_header("Content-Range", f"bytes {start}-{end}")
             elif isdir:
                 result = (
