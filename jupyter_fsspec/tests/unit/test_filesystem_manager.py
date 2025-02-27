@@ -150,7 +150,8 @@ def test_load_populated_config(setup_config_dir, config_file):
 
         mem_fs_instance = mem_instance_info["instance"]
         assert mem_fs_instance.ls("/") == [
-            {"name": "/my_mem_dir", "size": 0, "type": "directory"}
+            {"name": "/my_mem_dir", "size": 0, "type": "directory"},
+            {"name": "/mem_dir", "size": 0, "type": "directory"},
         ]
 
 
