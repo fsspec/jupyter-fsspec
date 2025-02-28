@@ -374,6 +374,11 @@ class FsspecWidget extends Widget {
     const response = await this.model.listDirectory(
       this.model.userFilesystems[this.model.activeFilesystem].key
     );
+    if (!response) {
+      Logger.error('Error fetching files for filesystem: response is null');
+      return;
+    }
+
     if (
       !('status' in response) ||
       !(response.status === 'success') ||
