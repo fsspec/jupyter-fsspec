@@ -52,7 +52,7 @@ export class FssContextMenu {
 
       const menuItem4 = document.createElement('div');
       menuItem4.classList.add('jfss-tree-context-item');
-      menuItem4.innerText = 'Pick a file to upload';
+      menuItem4.innerText = 'Upload to path (Browser file picker)';
       menuItem4.addEventListener('mouseenter', this.handleItemHover.bind(this));
       menuItem4.addEventListener(
         'mouseleave',
@@ -64,7 +64,7 @@ export class FssContextMenu {
 
       const menuItem5 = document.createElement('div');
       menuItem5.classList.add('jfss-tree-context-item');
-      menuItem5.innerText = 'Upload chosen file from JupyterLab FileBrowser';
+      menuItem5.innerText = 'Upload to path (from integrated file browser)';
       menuItem5.addEventListener('mouseenter', this.handleItemHover.bind(this));
       menuItem5.addEventListener(
         'mouseleave',

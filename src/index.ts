@@ -553,6 +553,7 @@ class FsspecWidget extends Widget {
           this.queuedJupyterFileBrowserUploadInfo.fileData.content;
         Logger.debug(`B64 content str:\n${base64String}`);
 
+        // TODO error handling and data checks
         await this.model.post(
           this.model.activeFilesystem,
           user_path,
@@ -999,7 +1000,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       // TODO verify filebrowserfactory and currentWidget are valid, file object is truthy etc.
       // Add Jupyter File Browser help
       app.commands.addCommand('jupyter_fsspec:filebrowser-context-upload', {
-        label: 'Jupyter fsspec FileBrowser Upload',
+        label: 'Set as fsspec upload target',
         caption:
           'Handles upload requests to configured fsspec filesystems from the FileBrowser',
         execute: async () => {
