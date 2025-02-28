@@ -545,17 +545,9 @@ class FsspecWidget extends Widget {
         Logger.debug(
           `Dump jbrowser info ${JSON.stringify(this.queuedJupyterFileBrowserUploadInfo)}`
         );
-        // Logger.debug(`File ${this.queuedJupyterFileBrowserUploadInfo.fileData.name}`);
-        // Logger.debug(
-        //   `File ${this.queuedJupyterFileBrowserUploadInfo.fileData.webkitRelativePath}`
-        // );
-
-        // const binRaw = await this.queuedJupyterFileBrowserUploadInfo.fileData.arrayBuffer();
-        // const binData: any = new Uint8Array(binRaw);
-        const base64String = Buffer.from(
-          this.queuedJupyterFileBrowserUploadInfo.fileData.content,
-          'base64'
-        );
+        const base64String =
+          this.queuedJupyterFileBrowserUploadInfo.fileData.content;
+        Logger.debug(`B64 content str:\n${base64String}`);
 
         await this.model.post(
           this.model.activeFilesystem,
