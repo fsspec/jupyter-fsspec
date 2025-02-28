@@ -471,9 +471,13 @@ class FsspecWidget extends Widget {
   ) {
     const target = this.notebookTracker.currentWidget;
 
-    if (!target || target.isDisposed) {
-      Logger.error('Invalid target widget');
-      return;
+    if (!is_browser_file_picker && !is_jup_browser_file) {
+      // Only check for current notebook when uploading from user kernel
+      // TODO cleanup this horrendous mess and pull these apart into discrete units
+      if (!target || target.isDisposed) {
+        Logger.error('Invalid target widget');
+        return;
+      }
     }
 
     // Logger.debug('FileBrowser items!!');
