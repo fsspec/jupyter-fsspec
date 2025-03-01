@@ -39,6 +39,10 @@ export async function requestAPI<T>(
   }
 
   if (!response.ok) {
+    if (data.status === 'failed' && data.description) {
+      return data;
+    }
+
     throw new ServerConnection.ResponseError(response, data.message || data);
   }
 
