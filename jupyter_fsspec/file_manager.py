@@ -159,6 +159,11 @@ class FileSystemManager:
                 sync_fs = fsspec.filesystem(fs_protocol, *args, **kwargs)
                 fs = AsyncFileSystemWrapper(sync_fs)
 
+            # Temporary fix to handle memory filesystems with empty root path
+            if fs_protocol == "memory":
+                if not fs.exists(fs_path):
+                    fs.mkdir(fs_path)
+
             # Store the filesystem instance
             new_filesystems[key] = {
                 "instance": fs,
