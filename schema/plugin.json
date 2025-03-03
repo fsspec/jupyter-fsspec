@@ -20,6 +20,13 @@
           }
         ]
       }
+    ],
+    "context": [
+      {
+        "command": "jupyter_fsspec:filebrowser-context-upload",
+        "selector": ".jp-DirListing-item",
+        "rank": 100
+      }
     ]
   }
 }

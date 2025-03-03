@@ -28,6 +28,16 @@ you select one of them, you will see a file browser (tree view) of those files b
 Basic navigation works as you'd expect: Click to expand/collapse folders, and right click for
 context options (such as copying the path of the current file to the clipboard).
 
+### Uploading files
+
+You can pick files to upload from multiple source:
+
+- From bytes inside your active notebook kernel
+  - `import` the `jupyter_fsspec.helper` module and designate bytes for upload with `jupyter_fsspec.helper.set_user_data(some_bytes)`, then right click the file path OR folder you want to upload to in Jupyter FSSpec and choose `Upload (helper.user_data)`
+- Browser/local file picker
+- JupyterLab's intergrated file browser
+  - Just right click one of the files in the integrated file browser and choose `Set as fsspec upload target`, then right click the file path OR folder you want to upload to in Jupyter FSSpec and choose `Upload to path (from integrated file browser)`
+
 ## Config File
 
 To define your `fsspec` filesystems, you will need to list them in the Jupyter config folder,

@@ -104,7 +104,7 @@
   box-sizing: border-box;
   width: 100%;
   height: 0.1rem;
-  background-color: var(--jp-border-color3);
+  background-color: var(--jp-layout-color2);
 }
 
 .jfss-lowerarea {
@@ -238,7 +238,7 @@
 .jfss-tree-context-item {
   display: flex;
   align-items: center;
-  width: 10rem;
+  min-width: 10rem;
   height: 1.2rem;
   padding: 0.25rem;
   border-width: 0 0 var(--jp-border-width) 0;
@@ -256,4 +256,105 @@
   height: 100px;
 
   /* background-color: green; */
+}
+
+.jfss-file-upload-context-popup {
+  width: 100%;
+  height: 100%;
+
+  /* background-color: red; */
+}
+
+.jfss-job-queue-container {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  width: 100%;
+  height: 1.75rem;
+  min-height: 1.75rem;
+  border-radius: 0.4rem 0.4rem 0 0;
+  background-color: var(--jp-layout-color4);
+}
+
+.jfss-job-queue-controls {
+  display: flex;
+  width: 100%;
+  height: 1.75rem;
+}
+
+.jfss-job-queue-label {
+  flex-shrink: 1;
+  overflow: hidden;
+  color: var(--jp-ui-inverse-font-color0);
+  line-height: 1.75rem;
+  text-align: center;
+  vertical-align: middle;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.jfss-job-queue-expander {
+  flex-shrink: 0;
+  min-width: 1.25rem;
+  min-height: 1.25rem;
+  margin: 0.25rem 0.5rem;
+  border-radius: 1rem;
+  color: var(--jp-layout-color4);
+
+  /* color: #34cf00; */
+  background-color: var(--jp-layout-color0);
+  font-weight: bold;
+  text-align: center;
+  vertical-align: middle;
+  line-height: 1.25rem;
+  user-select: none;
+}
+
+.jfss-job-queue {
+  display: flex;
+  flex-direction: column;
+  width: calc(100% - 0.2rem);
+  height: calc(100% - 1.75rem);
+  background-color: var(--jp-layout-color1);
+  overflow: auto;
+}
+
+.jfss-job-queue-item {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+
+  /* width: 100%; */
+  height: 1rem;
+  overflow: hidden;
+  margin: 0.5rem 0.5rem 0;
+  padding: 0.25rem;
+  border-radius: 2px;
+  color: var(--jp-ui-font-color0);
+
+  /* background-color: red; */
+  background-color: var(--jp-layout-color2);
+  text-align: left;
+  vertical-align: middle;
+  line-height: 1rem;
+  white-space: nowrap;
+}
+
+.jfss-job-item-status {
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-right: 0.25rem;
+  border-radius: 0.8rem;
+  flex-shrink: 0;
+  color: var(--jp-layout-color0);
+  text-align: center;
+  vertical-align: middle;
+  line-height: 0.75rem;
+  white-space: nowrap;
+}
+
+.jfss-job-item-label {
+  color: var(--jp-ui-font-color0);
 }
