@@ -521,10 +521,10 @@ class FsspecWidget extends Widget {
         Logger.debug(
           `Dump picker info ${JSON.stringify(this.queuedPickerUploadInfo)}`
         );
-        Logger.debug(`File ${this.queuedPickerUploadInfo.fileData.name}`);
-        Logger.debug(
-          `File ${this.queuedPickerUploadInfo.fileData.webkitRelativePath}`
-        );
+        // Logger.debug(`File ${this.queuedPickerUploadInfo.fileData.name}`);
+        // Logger.debug(
+        //   `File ${this.queuedPickerUploadInfo.fileData.webkitRelativePath}`
+        // );
 
         const binRaw = await this.queuedPickerUploadInfo.fileData.arrayBuffer();
         const binData: any = new Uint8Array(binRaw);
