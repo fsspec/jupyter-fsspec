@@ -35,11 +35,89 @@ def setup_tmp_local(tmp_path: Path):
     yield [local_root, local_empty_root]
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="function")
+def no_config_permission(tmp_path: Path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir(exist_ok=True)
+    os.chmod(config_dir, 0o44)
+
+    with patch(
+        "jupyter_fsspec.file_manager.jupyter_config_dir", return_value=str(config_dir)
+    ):
+        print(f"Patching jupyter_config_dir to: {config_dir}")
+    yield config_dir
+
+    os.chmod(config_dir, 0o755)
+    config_dir.rmdir()
+
+
+@pytest.fixture(scope="function")
+def malformed_config(tmp_path: Path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir(exist_ok=True)
+
+    yaml_content = f"""sources:
+  - name: "TestSourceAWS"
+    path: "s3://my-test-bucket/"
+        kwargs:
+      anon: false
+      key: "my-access-key"
+      secret: "my-secret-key"
+      client_kwargs:
+        endpoint_url: "{ENDPOINT_URI}"
+    """
+    yaml_file = config_dir / "jupyter-fsspec.yaml"
+    yaml_file.write_text(yaml_content)
+
+    with patch(
+        "jupyter_fsspec.file_manager.jupyter_config_dir", return_value=str(config_dir)
+    ):
+        print(f"Patching jupyter_config_dir to: {config_dir}")
+
+
+@pytest.fixture(scope="function")
+def bad_info_config(tmp_path: Path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir(exist_ok=True)
+
+    yaml_content = f"""sources:
+  - nme: "TestSourceAWS"
+    path: s3://my-test-bucket/"
+    kwargs:
+      anon: false
+      key: "my-access-key"
+      secret: "my-secret-key"
+      client_kwargs:
+        endpoint_url: "{ENDPOINT_URI}"
+    """
+    yaml_file = config_dir / "jupyter-fsspec.yaml"
+    yaml_file.write_text(yaml_content)
+
+    with patch(
+        "jupyter_fsspec.file_manager.jupyter_config_dir", return_value=str(config_dir)
+    ):
+        print(f"Patching jupyter_config_dir to: {config_dir}")
+
+
+@pytest.fixture(scope="function")
+def empty_config(tmp_path: Path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir(exist_ok=True)
+
+    yaml_content = """ """
+    yaml_file = config_dir / "jupyter-fsspec.yaml"
+    yaml_file.write_text(yaml_content)
+
+    with patch(
+        "jupyter_fsspec.file_manager.jupyter_config_dir", return_value=str(config_dir)
+    ):
+        print(f"Patching jupyter_config_dir to: {config_dir}")
+
+
+# TODO: split?
+@pytest.fixture(scope="function")
 def setup_config_file_fs(tmp_path: Path, setup_tmp_local):
     tmp_local = setup_tmp_local[0]
-    items_tmp_local = list(tmp_local.iterdir())
-    print(f"items_tmp_local: {items_tmp_local}")
     empty_tmp_local = setup_tmp_local[1]
     config_dir = tmp_path / "config"
     config_dir.mkdir(exist_ok=True)
@@ -76,36 +154,28 @@ def setup_config_file_fs(tmp_path: Path, setup_tmp_local):
 
 
 @pytest.fixture(scope="function")
-def fs_manager_instance(setup_config_file_fs, s3_client):
+async def fs_manager_instance(setup_config_file_fs, s3_client):
     fs_manager = setup_config_file_fs
-    fs_info = fs_manager.get_filesystem_by_protocol("memory")
-    mem_fs = fs_info["info"]["instance"]
-    mem_root_path = fs_info["info"]["path"]
+    fs_info = fs_manager.get_filesystem("TestMem Source")
+    print(f"fs_info: {fs_info}")
+    mem_fs = fs_info["instance"]
+    mem_root_path = fs_info["path"]
 
     if mem_fs:
-        if mem_fs.exists(f"{mem_root_path}/test_dir"):
-            mem_fs.rm(f"{mem_root_path}/test_dir", recursive=True)
-        if mem_fs.exists(f"{mem_root_path}/second_dir"):
-            mem_fs.rm(f"{mem_root_path}/second_dir", recursive=True)
+        if await mem_fs._exists(f"{mem_root_path}/test_dir"):
+            await mem_fs._rm(f"{mem_root_path}/test_dir", recursive=True)
+        if await mem_fs._exists(f"{mem_root_path}/second_dir"):
+            await mem_fs._rm(f"{mem_root_path}/second_dir", recursive=True)
 
-        mem_fs.touch(f"{mem_root_path}/file_in_root.txt")
-        with mem_fs.open(f"{mem_root_path}/file_in_root.txt", "wb") as f:
-            f.write("Root file content".encode())
+        await mem_fs._pipe(f"{mem_root_path}/file_in_root.txt", b"Root file content")
 
-        mem_fs.mkdir(f"{mem_root_path}/test_dir", exist_ok=True)
-        mem_fs.mkdir(f"{mem_root_path}/second_dir", exist_ok=True)
-        # mem_fs.mkdir(f'{mem_root_path}/second_dir/subdir', exist_ok=True)
-        mem_fs.touch(f"{mem_root_path}/test_dir/file1.txt")
-        with mem_fs.open(f"{mem_root_path}/test_dir/file1.txt", "wb") as f:
-            f.write("Test content".encode())
-            f.close()
+        await mem_fs._mkdir(f"{mem_root_path}/test_dir", exist_ok=True)
+        await mem_fs._mkdir(f"{mem_root_path}/second_dir", exist_ok=True)
+
+        await mem_fs._pipe(f"{mem_root_path}/test_dir/file1.txt", b"Test content")
     else:
         print("In memory filesystem NOT FOUND")
 
-    if mem_fs.exists(f"{mem_root_path}/test_dir/file1.txt"):
-        mem_fs.info(f"{mem_root_path}/test_dir/file1.txt")
-    else:
-        print("File does not exist!")
     return fs_manager
 
 
@@ -121,7 +191,7 @@ def get_boto3_client():
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def s3_base():
     server = ThreadedMotoServer(ip_address="127.0.0.1", port=PORT)
     server.start()
@@ -136,21 +206,24 @@ def s3_base():
     server.stop()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def s3_client(s3_base):
     client = get_boto3_client()
-    client.create_bucket(Bucket="my-test-bucket", ACL="public-read")
+
+    bucket_name = "my-test-bucket"
+    client.create_bucket(Bucket=bucket_name, ACL="public-read")
     client.put_object(
-        Body=b"Hello, World1!", Bucket="my-test-bucket", Key="bucket-filename1.txt"
+        Body=b"Hello, World1!", Bucket=bucket_name, Key="bucket-filename1.txt"
     )
     client.put_object(
-        Body=b"Hello, World2!", Bucket="my-test-bucket", Key="some/bucket-filename2.txt"
+        Body=b"Hello, World2!", Bucket=bucket_name, Key="some/bucket-filename2.txt"
     )
     client.put_object(
-        Body=b"Hello, World3!", Bucket="my-test-bucket", Key="some/bucket-filename3.txt"
+        Body=b"Hello, World3!", Bucket=bucket_name, Key="some/bucket-filename3.txt"
     )
 
     yield client
+    client.close()
 
 
 @pytest.fixture

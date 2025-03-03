@@ -4,21 +4,58 @@ from tornado.httpclient import HTTPClientError
 # TODO: Testing: different file types, received expected errors
 
 
-async def test_get_config(jp_fetch):
+async def test_get_config(setup_config_file_fs, jp_fetch):
     response = await jp_fetch("jupyter_fsspec", "config", method="GET")
     assert response.code == 200
 
     json_body = response.body.decode("utf-8")
     body = json.loads(json_body)
     assert body["status"] == "success"
+    assert (
+        body["description"]
+        == "Retrieved available filesystems from configuration file."
+    )
+    assert len(body["content"]) == 4
+
+
+@pytest.mark.no_setup_config_file_fs
+async def test_no_config(no_config_permission, jp_fetch):
+    with pytest.raises(HTTPClientError) as exc_info:
+        await jp_fetch("jupyter_fsspec", "config", method="GET")
+    assert exc_info.value.code == 500
+
+
+@pytest.mark.no_setup_config_file_fs
+async def test_malformed_config(malformed_config, jp_fetch):
+    with pytest.raises(HTTPClientError) as exc_info:
+        await jp_fetch("jupyter_fsspec", "config", method="GET")
+    assert exc_info.value.code == 500
+
+
+@pytest.mark.no_setup_config_file_fs
+async def test_bad_config_info(bad_info_config, jp_fetch):
+    with pytest.raises(HTTPClientError) as exc_info:
+        await jp_fetch("jupyter_fsspec", "config", method="GET")
+    assert exc_info.value.code == 500
+
+
+@pytest.mark.no_setup_config_file_fs
+async def test_empty_config(empty_config, jp_fetch):
+    fetch_config = await jp_fetch("jupyter_fsspec", "config", method="GET")
+    assert fetch_config.code == 200
+
+    json_body = fetch_config.body.decode("utf-8")
+    body = json.loads(json_body)
+    assert body["status"] == "success"
+    assert len(body["content"]) == 0
 
 
 async def test_get_files_memory(fs_manager_instance, jp_fetch):
-    fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
-    mem_key = mem_fs_info["key"]
-    mem_fs = mem_fs_info["info"]["instance"]
-    mem_item_path = mem_fs_info["info"]["path"]
+    fs_manager = await fs_manager_instance
+    mem_key = "TestMem Source"
+    mem_fs_info = fs_manager.get_filesystem(mem_key)
+    mem_fs = mem_fs_info["instance"]
+    mem_item_path = mem_fs_info["path"]
     assert mem_fs is not None
 
     # Read directory
@@ -68,7 +105,7 @@ async def test_get_files_memory(fs_manager_instance, jp_fetch):
     range_json_file_body = range_file_res.body.decode("utf-8")
     range_file_body = json.loads(range_json_file_body)
     assert range_file_body["status"] == "success"
-    assert range_file_body["content"] == "Test con"
+    assert range_file_body["content"] == ["Test con"]
 
 
 async def test_ecg(fs_manager_instance, jp_fetch):
@@ -119,17 +156,21 @@ async def test_ecg(fs_manager_instance, jp_fetch):
 
 
 async def test_post_files(fs_manager_instance, jp_fetch):
-    fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
-    mem_key = mem_fs_info["key"]
-    mem_fs = mem_fs_info["info"]["instance"]
+    fs_manager = await fs_manager_instance
+    mem_key = "TestMem Source"
+    mem_fs_info = fs_manager.get_filesystem(mem_key)
+    mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None
 
     # Post new file with content
     filepath = "/my_mem_dir/test_dir/file2.txt"
     # File does not already exist
     assert not mem_fs.exists(filepath)
-    file_payload = {"item_path": filepath, "content": "This is test file2 content"}
+    file_payload = {
+        "key": mem_key,
+        "item_path": filepath,
+        "content": "This is test file2 content",
+    }
     file_response = await jp_fetch(
         "jupyter_fsspec",
         "files",
@@ -149,7 +190,7 @@ async def test_post_files(fs_manager_instance, jp_fetch):
     newdirpath = "/my_mem_dir/test_dir/subdir/"
     # Directory does not already exist
     assert not mem_fs.exists(newdirpath)
-    dir_payload = {"item_path": newdirpath}
+    dir_payload = {"key": mem_key, "item_path": newdirpath}
     dir_response = await jp_fetch(
         "jupyter_fsspec",
         "files",
@@ -166,17 +207,17 @@ async def test_post_files(fs_manager_instance, jp_fetch):
 
 
 async def test_delete_files(fs_manager_instance, jp_fetch):
-    fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
-    mem_key = mem_fs_info["key"]
-    mem_fs = mem_fs_info["info"]["instance"]
+    fs_manager = await fs_manager_instance
+    mem_key = "TestMem Source"
+    mem_fs_info = fs_manager.get_filesystem(mem_key)
+    mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None
 
     # Delete file
     filepath = "/my_mem_dir/test_dir/file1.txt"
     assert mem_fs.exists(filepath)
 
-    file_payload = {"item_path": filepath}
+    file_payload = {"key": mem_key, "item_path": filepath}
     response = await jp_fetch(
         "jupyter_fsspec",
         "files",
@@ -197,7 +238,7 @@ async def test_delete_files(fs_manager_instance, jp_fetch):
     dirpath = "/my_mem_dir/test_dir"
     assert mem_fs.exists(dirpath)
 
-    dir_payload = {"item_path": dirpath}
+    dir_payload = {"key": mem_key, "item_path": dirpath}
     dir_response = await jp_fetch(
         "jupyter_fsspec",
         "files",
@@ -217,15 +258,19 @@ async def test_delete_files(fs_manager_instance, jp_fetch):
 
 async def test_put_files(fs_manager_instance, jp_fetch):
     # PUT replace entire resource
-    fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
-    mem_key = mem_fs_info["key"]
-    mem_fs = mem_fs_info["info"]["instance"]
+    fs_manager = await fs_manager_instance
+    mem_key = "TestMem Source"
+    mem_fs_info = fs_manager.get_filesystem(mem_key)
+    mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None
 
     # replace entire file content
     filepath = "/my_mem_dir/test_dir/file1.txt"
-    file_payload = {"item_path": filepath, "content": "Replaced content"}
+    file_payload = {
+        "key": mem_key,
+        "item_path": filepath,
+        "content": "Replaced content",
+    }
     file_response = await jp_fetch(
         "jupyter_fsspec",
         "files",
@@ -242,7 +287,7 @@ async def test_put_files(fs_manager_instance, jp_fetch):
 
     # replacing directory returns error
     dirpath = "/my_mem_dir/test_dir"
-    dir_payload = {"item_path": dirpath, "content": "new_test_dir"}
+    dir_payload = {"key": mem_key, "item_path": dirpath, "content": "new_test_dir"}
     with pytest.raises(HTTPClientError) as exc_info:
         await jp_fetch(
             "jupyter_fsspec",
@@ -255,15 +300,16 @@ async def test_put_files(fs_manager_instance, jp_fetch):
 
 
 async def test_rename_files(fs_manager_instance, jp_fetch):
-    fs_manager = fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
-    mem_key = mem_fs_info["key"]
-    mem_fs = mem_fs_info["info"]["instance"]
+    fs_manager = await fs_manager_instance
+    mem_key = "TestMem Source"
+    mem_fs_info = fs_manager.get_filesystem(mem_key)
+    mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None
 
     # rename file
     filepath = "/my_mem_dir/test_dir/file1.txt"
     file_payload = {
+        "key": mem_key,
         "item_path": filepath,
         "content": "/my_mem_dir/test_dir/new_file.txt",
     }
@@ -289,7 +335,11 @@ async def test_rename_files(fs_manager_instance, jp_fetch):
 
     # rename directory
     dirpath = "/my_mem_dir/second_dir"
-    dir_payload = {"item_path": dirpath, "content": "/my_mem_dir/new_dir"}
+    dir_payload = {
+        "key": mem_key,
+        "item_path": dirpath,
+        "content": "/my_mem_dir/new_dir",
+    }
     dir_response = await jp_fetch(
         "jupyter_fsspec",
         "files",
@@ -315,7 +365,7 @@ async def test_rename_files(fs_manager_instance, jp_fetch):
 # PATCH partial update without modifying entire data
 async def xtest_patch_file(fs_manager_instance, jp_fetch):
     # file only
-    fs_manager = fs_manager_instance
+    fs_manager = await fs_manager_instance
     mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
     mem_key = mem_fs_info["key"]
     mem_fs = mem_fs_info["info"]["instance"]
@@ -336,7 +386,7 @@ async def xtest_patch_file(fs_manager_instance, jp_fetch):
 
 # TODO:
 async def xtest_action_same_fs_files(fs_manager_instance, jp_fetch):
-    fs_manager = fs_manager_instance
+    fs_manager = await fs_manager_instance
     # get_filesystem_by_protocol(filesystem_protocol_string) returns first instance of that filesystem protocol
     mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
     mem_key = mem_fs_info["key"]
@@ -441,25 +491,25 @@ async def xtest_action_same_fs_files(fs_manager_instance, jp_fetch):
     )
 
 
-# TODO: Test count files; Upload/download no more than expected
 async def test_upload_download(fs_manager_instance, jp_fetch):
-    fs_manager = fs_manager_instance
-    remote_fs_info = fs_manager.get_filesystem_by_protocol("s3")
-    remote_key = remote_fs_info["key"]
-    remote_fs = remote_fs_info["info"]["instance"]
-    remote_root_path = remote_fs_info["info"]["path"]
+    fs_manager = await fs_manager_instance
+    remote_key = "TestSourceAWS"
+    remote_fs_info = fs_manager.get_filesystem(remote_key)
+    remote_fs = remote_fs_info["instance"]
+    remote_root_path = remote_fs_info["path"]
     assert remote_fs is not None
 
-    local_fs_info = fs_manager.get_filesystem_by_protocol("local")
-    local_key = local_fs_info["key"]
-    local_fs = local_fs_info["info"]["instance"]
-    local_root_path = local_fs_info["info"]["path"]
+    local_key = "TestDir"
+    local_fs_info = fs_manager.get_filesystem(local_key)
+    local_fs = local_fs_info["instance"]
+    local_root_path = local_fs_info["path"]
     assert local_fs is not None
 
     # upload file [local to remote]
     local_upload_filepath = f"{local_root_path}/file_loc.txt"
     assert local_fs.exists(local_upload_filepath)
     upload_file_payload = {
+        "key": local_key,
         "local_path": local_upload_filepath,
         "remote_path": remote_root_path,
         "destination_key": remote_key,
@@ -480,23 +530,29 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
     assert upfile_body["status"] == "success"
     assert (
         upfile_body["description"]
-        == f"Uploaded {local_upload_filepath} to s3://{remote_root_path}."
+        == f"Uploaded {local_upload_filepath} to {remote_root_path}."
     )
 
     uploaded_filepath = remote_root_path + "/file_loc.txt"
 
     remote_file_items = await remote_fs._ls(remote_root_path)
     assert uploaded_filepath in remote_file_items
+    assert len(remote_file_items) == 3
+
+    all_remote = await remote_fs._find(remote_root_path)
+    assert len(all_remote) == 4
 
     # upload dir [local to remote]
     upload_dirpath = local_root_path + "/nested/"
     assert local_fs.exists(upload_dirpath)
     upload_dir_payload = {
+        "key": remote_key,
         "local_path": upload_dirpath,
         "remote_path": remote_root_path,
         "destination_key": remote_key,
         "action": "upload",
     }
+
     upload_dir_res = await jp_fetch(
         "jupyter_fsspec",
         "files",
@@ -510,20 +566,20 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
     updir_body = json.loads(updir_body_json)
     assert updir_body["status"] == "success"
     assert (
-        updir_body["description"]
-        == f"Uploaded {upload_dirpath} to s3://{remote_root_path}."
+        updir_body["description"] == f"Uploaded {upload_dirpath} to {remote_root_path}."
     )
 
     remote_file_items = await remote_fs._ls(remote_root_path)
     # TODO:  remote_root_path + "/nested"
-    assert "my-test-bucket/.keep" in remote_file_items
-    assert "my-test-bucket/.empty" in remote_file_items
+    assert f"{remote_root_path}/.keep" in remote_file_items
+    assert f"{remote_root_path}/.empty" in remote_file_items
 
     # download file [other to remote] #remote_root_path that we want to download.
-    download_filepath = "my-test-bucket/bucket-filename1.txt"
+    download_filepath = f"{remote_root_path}/bucket-filename1.txt"
     file_present = await remote_fs._exists(download_filepath)
     assert file_present
     download_file_payload = {
+        "key": remote_key,
         "remote_path": download_filepath,
         "local_path": local_root_path,
         "destination_key": remote_key,
@@ -543,7 +599,7 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
     assert download_file_body["status"] == "success"
     assert (
         download_file_body["description"]
-        == f"Downloaded s3://{download_filepath} to {local_root_path}."
+        == f"Downloaded {download_filepath} to {local_root_path}."
     )
 
     downloaded_filepath = local_root_path + "/bucket-filename1.txt"
@@ -553,6 +609,7 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
     # download dir [other to local]
     download_dirpath = f"{remote_root_path}/some/"
     download_dir_payload = {
+        "key": remote_key,
         "remote_path": download_dirpath,
         "local_path": local_root_path,
         "destination_key": remote_key,
@@ -572,7 +629,7 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
     assert download_dir_body["status"] == "success"
     assert (
         download_dir_body["description"]
-        == f"Downloaded s3://{download_dirpath} to {local_root_path}."
+        == f"Downloaded {download_dirpath} to {local_root_path}."
     )
 
     files_in_local = local_fs.ls(local_root_path)
@@ -586,3 +643,63 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
     # downloaded_dirpath = local_root_path + '/some'
     # new_local_items = local_fs.ls(downloaded_dirpath)
     # assert downloaded_dirpath in new_local_items
+
+    # download entire remote to local
+    download_sync_payload = {
+        "key": remote_key,
+        "destination_key": local_key,
+        "remote_path": remote_root_path,
+        "local_path": local_root_path,
+        "action": "download",
+    }
+    download_sync_res = await jp_fetch(
+        "jupyter_fsspec",
+        "files",
+        "transfer",
+        method="POST",
+        params={"key": remote_key},
+        body=json.dumps(download_sync_payload),
+    )
+    download_sync_body_json = download_sync_res.body.decode("utf-8")
+    download_sync_body = json.loads(download_sync_body_json)
+    assert download_sync_body["status"] == "success"
+    assert (
+        download_sync_body["description"]
+        == f"Downloaded {remote_root_path} to {local_root_path}."
+    )
+    new_local_files = local_fs.find(local_root_path)
+    assert (
+        len(new_local_files) == 10
+    )  # pulls in individual items in remote root dir into local
+
+    current_remote_files = await remote_fs._find(remote_root_path)
+    print(f"current_remote_files: {current_remote_files}")
+
+    # try uploading entire local to remote
+    upload_sync_payload = {
+        "key": local_key,
+        "destination_key": remote_key,
+        "remote_path": remote_root_path,
+        "local_path": local_root_path,
+        "action": "upload",
+    }
+    upload_sync_res = await jp_fetch(
+        "jupyter_fsspec",
+        "files",
+        "transfer",
+        method="POST",
+        params={"key": local_key},
+        body=json.dumps(upload_sync_payload),
+    )
+    upload_sync_body_json = upload_sync_res.body.decode("utf-8")
+    upload_sync_body = json.loads(upload_sync_body_json)
+    assert upload_sync_body["status"] == "success"
+    assert (
+        upload_sync_body["description"]
+        == f"Uploaded {local_root_path} to {remote_root_path}."
+    )
+    new_remote_files = await remote_fs._find(remote_root_path)
+    assert len(new_remote_files) == 16  # aggregate- dumps local root dir into remote
+
+
+# TODO: Fix Event loop closed error (unclosed session); Dirty state between tests with s3
