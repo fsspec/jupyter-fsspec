@@ -61,8 +61,12 @@
     "dependencies": {
         "@jupyterlab/application": "^4.0.0",
         "@jupyterlab/apputils": "^4.0.0",
+        "@jupyterlab/docregistry": "^4.0.0",
+        "@jupyterlab/filebrowser": "^4.0.0",
         "@jupyterlab/settingregistry": "^4.0.0",
         "@jupyterlab/ui-components": "^4.0.0",
+        "buffer": "^6.0.3",
+        "path": "^0.12.7",
         "react": "^18.3.1",
         "react-dom": "^18.3.1"
     },

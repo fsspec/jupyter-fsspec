@@ -1,15 +1,22 @@
-from .file_manager import FileSystemManager
+import base64
+import binascii
+import traceback
+import json
+import logging
+import tornado
+import yaml
+from contextlib import contextmanager
+
+from pydantic import ValidationError
+
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
+
+from .file_manager import FileSystemManager
 from .schemas import GetRequest, PostRequest, DeleteRequest, TransferRequest, Direction
 from .utils import parse_range
 from .exceptions import ConfigFileException
-from contextlib import contextmanager
-from pydantic import ValidationError
-import yaml
-import tornado
-import json
-import logging
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -248,6 +255,17 @@ class FileSystemHandler(APIHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
+    async def process_content(self, content):
+        """Determine correct content encoding before writing to storage."""
+
+        if content:
+            try:
+                content = base64.b64decode(content)
+            except (binascii.Error, UnicodeDecodeError) as e:
+                logger.error(f"Error decoding base64: {e}")
+                raise
+        return content
+
     # GET
     # /files
     async def get(self):
@@ -359,6 +377,9 @@ class FileSystemHandler(APIHandler):
         key = post_request.key
         req_item_path = post_request.item_path
         content = post_request.content
+        is_base64 = post_request.base64
+        if is_base64:
+            content = await self.process_content(content)
 
         fs, item_path = self.fs_manager.validate_fs("post", key, req_item_path)
         fs_instance = fs["instance"]
@@ -391,6 +412,8 @@ class FileSystemHandler(APIHandler):
             response["status"] = "success"
             response["description"] = f"Wrote {item_path}."
         except Exception as e:
+            traceback.print_exc()
+            logger.error(f"Error posting: {e}")
             self.set_status(500)
             response["status"] = "failed"
             response["description"] = str(e)

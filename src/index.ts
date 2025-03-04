@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import * as path from 'path';
 
 import {
@@ -12,13 +13,16 @@ import {
 import { addJupyterLabThemeChangeListener } from '@jupyter/web-components';
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
-import { ICommandPalette } from '@jupyterlab/apputils';
+import { ICommandPalette, Dialog } from '@jupyterlab/apputils';
+
+import { IFileBrowserFactory } from '@jupyterlab/filebrowser';
 
 import { INotebookTracker } from '@jupyterlab/notebook';
 
 import { FsspecModel } from './handler/fileOperations';
 import { FssFilesysItem } from './FssFilesysItem';
 import { FssTreeItem } from './FssTreeItem';
+import { FssFileUploadContextPopup } from './fileUploadContextPopup';
 
 import { Widget } from '@lumino/widgets';
 
@@ -40,6 +44,18 @@ class UniqueId {
   }
 }
 
+const CODE_GETBYTES = `
+from jupyter_fsspec import helper as _jupyter_fsshelper
+try:
+  _jupyter_fsshelper._request_bytes('FS_NAME', 'FILEPATH')
+except:
+  raise
+`;
+
+const CODE_UPLOADUSERDATA = `
+from jupyter_fsspec import helper as _jupyter_fsshelper
+`;
+
 class FsspecWidget extends Widget {
   upperArea: any;
   model: any;
@@ -52,13 +68,35 @@ class FsspecWidget extends Widget {
   sourcesHeap: any = {}; // Holds FssFilesysItem's keyed by name
   emptySourcesHint: any;
   filesysContainer: any;
+  openInputHidden: any;
   dirTree: any = {};
+  getCurrentWidget: any;
+  currentTarget: any = null;
   notebookTracker: INotebookTracker;
+  uploadDialog: any = null;
+  jobQueueControls: any;
+  jobQueue: any;
+  jobQueueContainer: any;
+  jobQueueExpander: any;
+  queuedPickerUploadInfo: any;
+  queuedJupyterFileBrowserUploadInfo: any;
+  fileBrowserFactory: any;
+  app: any;
 
-  constructor(model: any, notebookTracker: INotebookTracker) {
+  constructor(
+    model: any,
+    notebookTracker: INotebookTracker,
+    app: any,
+    fileBrowserFactory: any
+  ) {
+    Logger.debug(`DEBUGax1 ${app.serviceManager}`);
+    Logger.debug(`  ${app.serviceManager}`);
+
     super();
     this.model = model;
     this.notebookTracker = notebookTracker;
+    this.fileBrowserFactory = fileBrowserFactory;
+    this.app = app;
 
     this.title.label = 'FSSpec';
     this.node.classList.add('jfss-root');
@@ -68,6 +106,17 @@ class FsspecWidget extends Widget {
 
     this.upperArea = document.createElement('div');
     this.upperArea.classList.add('jfss-upperarea');
+
+    // Use a hiden input element to spawn the browser file picker dialog
+    this.openInputHidden = document.createElement('input');
+    this.openInputHidden.classList.add('jfss-hidden');
+    this.openInputHidden.setAttribute('type', 'file');
+    this.openInputHidden.addEventListener(
+      'input',
+      this.handleFilePickerChange.bind(this),
+      { passive: true }
+    );
+    this.upperArea.appendChild(this.openInputHidden);
 
     const mainLabel = document.createElement('div');
     mainLabel.classList.add('jfss-mainlabel');
@@ -137,12 +186,461 @@ class FsspecWidget extends Widget {
     this.treeView.setAttribute('name', 'jfss-treeView');
     resultArea.appendChild(this.treeView);
 
+    // Add job queue bottom panel
+    this.jobQueueContainer = document.createElement('div');
+    this.jobQueueContainer.classList.add('jfss-job-queue-container');
+    // ....
+    this.jobQueueControls = document.createElement('div');
+    this.jobQueueControls.classList.add('jfss-job-queue-controls');
+    this.jobQueueContainer.appendChild(this.jobQueueControls);
+    // ....
+    this.jobQueueExpander = document.createElement('div');
+    this.jobQueueExpander.classList.add('jfss-job-queue-expander');
+    this.jobQueueExpander.innerText = '\u{25B6}';
+    this.jobQueueExpander.addEventListener(
+      'click',
+      this.handleJobQueueExpanderClick.bind(this)
+    );
+    this.jobQueueControls.appendChild(this.jobQueueExpander);
+    // ....
+    const controlLabel = document.createElement('div');
+    controlLabel.classList.add('jfss-job-queue-label');
+    controlLabel.innerText = 'Success: file:///Users/spam/eggs.txt';
+    this.jobQueueControls.appendChild(controlLabel);
+    // ....
+    this.jobQueue = document.createElement('div');
+    this.jobQueue.classList.add('jfss-job-queue');
+    this.jobQueueContainer.appendChild(this.jobQueue);
+    lowerArea.appendChild(this.jobQueueContainer);
+    // ....
+    for (let i = 0; i < 3; i++) {
+      const exampleJobItem = document.createElement('div');
+      exampleJobItem.classList.add('jfss-job-queue-item');
+      const statusIndicator = document.createElement('div');
+      statusIndicator.classList.add('jfss-job-item-status');
+      statusIndicator.innerText = '\u{00D7}';
+      exampleJobItem.appendChild(statusIndicator);
+      const jobItemLabel = document.createElement('span');
+      jobItemLabel.classList.add('jfss-job-item-label');
+      exampleJobItem.appendChild(jobItemLabel);
+      if (i === 0) {
+        jobItemLabel.innerText = '\u{2B61}OK: file:///Users/spam/eggs.txt';
+        statusIndicator.style.backgroundColor = '#34cf00';
+      } else if (i === 1) {
+        jobItemLabel.innerText = '\u{2B63}FAIL: file:///Users/wik/rak.txt';
+        statusIndicator.style.backgroundColor = 'red';
+      } else if (i === 2) {
+        jobItemLabel.innerText = '\u{2B61}OK: file:///etc/fstab';
+        statusIndicator.style.backgroundColor = '#34cf00';
+      }
+      this.jobQueue.appendChild(exampleJobItem);
+    }
+
     primaryDivider.appendChild(this.upperArea);
     primaryDivider.appendChild(hsep);
     primaryDivider.appendChild(lowerArea);
 
     this.node.appendChild(primaryDivider);
     this.populateFilesystems();
+  }
+
+  // handleMainWidgetChanged() {
+  //   // Change the target notebook when the user switches widgets in the application
+  //   const currentWidget = this.getCurrentWidget();
+  //   if (currentWidget instanceof DocumentWidget) {
+  //     // TODO: !!!!!!!! Fix/make more specific, for notebooks
+  //     // Notebooks are the only valid target
+  //     // this.currentTargetLbl.innerText =
+  //     //   'Current Notebook: ' + currentWidget.title.label;
+  //     this.currentTarget = currentWidget;
+  //   } else {
+  //     // Set target to nothing if it's not valid
+  //     // this.currentTargetLbl.innerText = 'Current Notebook: <None>';
+  //     this.currentTarget = null;
+  //   }
+  // }
+
+  handleJobQueueExpanderClick() {
+    if (this.jobQueueContainer.style.height === '17.75rem') {
+      this.jobQueueContainer.style.height = '1.75rem';
+      this.jobQueueExpander.innerText = '\u{25B6}';
+    } else {
+      this.jobQueueContainer.style.height = '17.75rem';
+      this.jobQueueExpander.innerText = '\u{25BC}';
+    }
+  }
+
+  // navigateToPath(userPath:  string) {
+  //   // TODO subdirs need to be lazy loaded individually to avoid inaccurate/unpopulated subdir contents in browser view
+  //   Logger.debug(`Navigate to path ${userPath}`);
+  //   // let currentNode = this.dirTree;
+  //   for (const segment of userPath
+  //     .split('/')
+  //     .filter((c: any) => c.length > 0)) {
+  //       Logger.debug(`  segment: ${segment}`);
+  //   }
+
+  //   this.lazyLoad(userPath);
+  //   let node = this.getNodeForPath(userPath);
+  //   Logger.debug(`Nav to: ${node}`);
+  //   return node;
+  // }
+
+  async promptForFilename() {
+    const bodyWidget = new FssFileUploadContextPopup();
+    this.uploadDialog = new Dialog({
+      body: bodyWidget,
+      title: 'Upload file'
+    });
+    const result = await this.uploadDialog.launch();
+    if (result?.value) {
+      return result;
+    }
+    return null;
+    Logger.debug(`Popup path ${result?.value}`);
+    // TODO cancel when no path provided, IF user specified upload to folder
+  }
+
+  async getKernelUserBytesTempfilePath() {
+    const target = this.notebookTracker.currentWidget;
+
+    if (!target || target.isDisposed) {
+      Logger.error('Invalid target widget');
+      return null;
+    }
+
+    if (target?.context?.sessionContext?.session) {
+      const kernel = target.context.sessionContext.session.kernel;
+      if (!kernel) {
+        Logger.error('Error fetching kernel from active widget!');
+        return null;
+      }
+      Logger.debug('Kernel: ' + kernel);
+      // Logger.debug(
+      //   `this.savedSnapshotPathField.value is : ${this.savedSnapshotPathField.value}`
+      // );
+      const userCode = CODE_UPLOADUSERDATA;
+      Logger.debug(userCode);
+      const shellFuture = kernel.requestExecute({
+        code: 'from jupyter_fsspec import helper as _jupyter_fsshelper',
+        user_expressions: {
+          jfss_data: '_jupyter_fsshelper._get_user_data_tempfile_path()'
+        }
+      });
+      try {
+        const reply: any = await shellFuture.done;
+        Logger.debug(`DEBUGx1 ${JSON.stringify(reply.content)}`);
+        let tempfilePath =
+          reply.content.user_expressions.jfss_data.data['text/plain'];
+        Logger.debug(`AA1 ${tempfilePath}`);
+        // Strip out the quotes
+        tempfilePath = tempfilePath.replace(
+          /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
+          (match: any, p1: any, p2: any, p3: any, offset: any, string: any) => {
+            return ''; // Removes matching chars
+          }
+        );
+        Logger.debug(`AA2 "${tempfilePath}"`);
+        if (!tempfilePath) {
+          // TODO yuck
+          Logger.error('Error obtaining tempfile path!');
+          return null;
+        }
+        return tempfilePath;
+      } catch (e) {
+        Logger.debug(`${e}\nError on kernel execution, read more above.`);
+        return null;
+      }
+      // kernel
+      //   .requestExecute({
+      //     code: 'from jupyter_fsspec import helper as _jupyter_fsshelper',
+      //     user_expressions: {
+      //       jfss_data: '_jupyter_fsshelper._get_user_data_tempfile_path()'
+      //     }
+      //   })
+      //   .done.then((message: any) => {
+      //     Logger.debug(message);
+
+      //     // Grab the value (this is the python repr() of our user expression
+      //     // according to the jupyter messaging protocol, it will have quotes)
+      //     let tempfilePath = '';
+      //     const message_content =
+      //       message?.content?.user_expressions?.jfss_data.data;
+      //     if (message_content) {
+      //       tempfilePath = message_content['text/plain'];
+      //       Logger.debug(`Tempfile path is ${tempfilePath}`);
+      //     } else {
+      //       Logger.error('Error uploading data');
+      //       return;
+      //     }
+      //     if (!tempfilePath) {
+      //       Logger.error('Error ');
+      //       return;
+      //     }
+
+      //     // Strip out the quotes
+      //     tempfilePath = tempfilePath.replace(
+      //       /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
+      //       (
+      //         match: any,
+      //         p1: any,
+      //         p2: any,
+      //         p3: any,
+      //         offset: any,
+      //         string: any
+      //       ) => {
+      //         return ''; // Removes matching chars
+      //       }
+      //     );
+      //     if (!tempfilePath) {  // TODO yuck
+      //       Logger.error('Error ');
+      //       return null;
+      //     }
+
+      //     return tempfilePath;
+      //   })
+      //   // temp1.content.user_expressions.jfss_data.data
+      //   .catch(() => {
+      //     Logger.error('Error loading on kernel');
+      //   });
+    }
+    return null;
+  }
+
+  // handleContextUploadFilePicker(user_path: string, is_dir: boolean, is_browser_file_picker: boolean) {
+  //   this.queuedPickerUploadInfo = {
+  //     user_path: user_path,
+  //     is_dir: is_dir,
+  //     is_browser_file_picker: is_browser_file_picker,
+  //   }
+  //   this.openInputHidden.click();
+  // }
+
+  async handleJupyterFileBrowserUpload(userFile: any, fileBrowser: any) {
+    Logger.debug(
+      `FBrowser choose: B ${fileBrowser}} / D "${fileBrowser.model.driveName}" / R "${fileBrowser.model.rootPath}"`
+    );
+    Logger.debug(`  pth    ${userFile.value.path}`);
+    Logger.debug(`  srvpth ${userFile.value.serverPath}`);
+    Logger.debug(`  sz     ${userFile.value.size}`);
+    Logger.debug(`  type   ${userFile.value.type}`);
+    Logger.debug(`  mtype  ${userFile.value.mimetype}`);
+    Logger.debug(`  fmt    ${userFile.value.format}`);
+    Logger.debug(`  wrt    ${userFile.value.writable}`);
+
+    const fileData = await this.app.serviceManager.contents.get(
+      userFile.value.path,
+      { content: true, format: 'base64', type: 'base64' }
+    );
+    Logger.debug(`xFILE CONTs:\n${JSON.stringify(fileData)}`);
+    this.queuedJupyterFileBrowserUploadInfo = { fileData: fileData };
+  }
+
+  handleFilePickerChange() {
+    let fileData: any = null;
+    if (!this.openInputHidden.value) {
+      this.queuedPickerUploadInfo = null;
+      return;
+    }
+
+    if (this.openInputHidden.files.length > 0) {
+      fileData = this.openInputHidden.files[0];
+      this.queuedPickerUploadInfo['fileData'] = fileData;
+      Logger.debug(`FData ${fileData}`);
+      this.handleContextUploadUserData(
+        this.queuedPickerUploadInfo.user_path,
+        this.queuedPickerUploadInfo.is_dir,
+        this.queuedPickerUploadInfo.is_browser_file_picker,
+        false
+      );
+      this.queuedPickerUploadInfo = null;
+      this.openInputHidden.value = null;
+    } else {
+      console.log('[FSSpec] No file selected!');
+      this.queuedPickerUploadInfo = null;
+      this.openInputHidden.value = null;
+      return;
+    }
+  }
+
+  async handleContextUploadUserData(
+    user_path: string,
+    is_dir: boolean,
+    is_browser_file_picker: boolean,
+    is_jup_browser_file: boolean
+  ) {
+    const target = this.notebookTracker.currentWidget;
+
+    if (!is_browser_file_picker && !is_jup_browser_file) {
+      // Only check for current notebook when uploading from user kernel
+      // TODO cleanup this horrendous mess and pull these apart into discrete units
+      if (!target || target.isDisposed) {
+        Logger.error('Invalid target widget');
+        return;
+      }
+    }
+
+    // Logger.debug('FileBrowser items!!');
+    // for (const item of this.fileBrowser.items()) {
+    //   Logger.debug(`${item}`);
+    // }
+
+    // Get the desired path for this upload from a dialog box
+    Logger.debug(`Upath ${user_path}`);
+    if (is_dir) {
+      // TODO make dialog box and grab filename when uploading to folder
+      const result: any = await this.promptForFilename();
+      Logger.debug(`Resultvalue ${result?.value}`);
+      if (result?.value) {
+        user_path += '/' + result.value;
+      } else {
+        Logger.error('Error, no filename provided!');
+        return;
+      }
+      Logger.debug(`Popup path ${result?.value}`);
+    }
+    Logger.debug(`Upath2 ${user_path}`);
+
+    // Get the path of the file to upload
+    let tempfilePath: any = '';
+    if (is_browser_file_picker || is_jup_browser_file) {
+      if (is_browser_file_picker && !this.queuedPickerUploadInfo) {
+        // First we have to obtain info from the browser file picker (async user selection)
+        this.queuedPickerUploadInfo = {
+          user_path: user_path,
+          is_dir: is_dir,
+          is_browser_file_picker: is_browser_file_picker,
+          fileData: null
+        };
+        this.openInputHidden.click();
+        Logger.debug('WAIT FOR FILE PICKER');
+        return;
+      } else if (is_browser_file_picker && this.queuedPickerUploadInfo) {
+        // We have obtained file info from the user's selection (our call above)
+        Logger.debug('File Result get!');
+        Logger.debug(
+          `Dump picker info ${JSON.stringify(this.queuedPickerUploadInfo)}`
+        );
+        // Logger.debug(`File ${this.queuedPickerUploadInfo.fileData.name}`);
+        // Logger.debug(
+        //   `File ${this.queuedPickerUploadInfo.fileData.webkitRelativePath}`
+        // );
+
+        const binRaw = await this.queuedPickerUploadInfo.fileData.arrayBuffer();
+        const binData: any = new Uint8Array(binRaw);
+        const base64String = Buffer.from(binData).toString('base64');
+
+        await this.model.post(
+          this.model.activeFilesystem,
+          user_path,
+          base64String,
+          true
+        );
+        Logger.debug('Finish upload');
+
+        this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
+
+        return;
+      } else if (
+        is_jup_browser_file &&
+        this.queuedJupyterFileBrowserUploadInfo
+      ) {
+        // We have file information from the Lab file browser
+        Logger.debug('Jup file browser result get!');
+        Logger.debug(
+          `Dump jbrowser info ${JSON.stringify(this.queuedJupyterFileBrowserUploadInfo)}`
+        );
+        const base64String =
+          this.queuedJupyterFileBrowserUploadInfo.fileData.content;
+        Logger.debug(`B64 content str:\n${base64String}`);
+
+        // TODO error handling and data checks
+        await this.model.post(
+          this.model.activeFilesystem,
+          user_path,
+          base64String,
+          true
+        );
+        Logger.debug('Finish upload');
+
+        this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
+
+        return;
+      } else {
+        return;
+      }
+    } else {
+      // We are obtaining bytes from the user's kernel, get a
+      // serialized tempfile path from the server
+      tempfilePath = await this.getKernelUserBytesTempfilePath();
+      Logger.debug(`Debugx2: ${tempfilePath}`);
+    }
+
+    if (!tempfilePath) {
+      Logger.error('Error fetching serialized user_data!');
+      return;
+    }
+
+    // TODO error handling
+    this.model.upload(
+      this.model.activeFilesystem,
+      tempfilePath,
+      user_path,
+      'upload'
+    );
+    // let foo = this.navigateToPath(user_path);
+    // Logger.debug(`Finish upload to ${foo}`);
+    this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
+  }
+
+  handleContextGetBytes(user_path: string) {
+    const target = this.notebookTracker.currentWidget;
+
+    if (!target || target.isDisposed) {
+      Logger.debug('Invalid target widget');
+      return;
+    }
+
+    Logger.debug('INDEX handle context get bytes');
+
+    // console.log('Session: ' + target.context.sessionContext.session);
+    if (target?.context?.sessionContext?.session) {
+      const kernel = target.context.sessionContext.session.kernel;
+      if (!kernel) {
+        Logger.error('Error fetching kernel from active widget!');
+        return;
+      }
+      Logger.debug('Kernel: ' + kernel);
+      // Logger.debug(
+      //   `this.savedSnapshotPathField.value is : ${this.savedSnapshotPathField.value}`
+      // );
+      let getBytesCode = CODE_GETBYTES.replace(
+        'FS_NAME',
+        (match, p1, p2, p3, offset, string) => {
+          return this.model.activeFilesystem;
+        }
+      );
+      getBytesCode = getBytesCode.replace(
+        'FILEPATH',
+        (match, p1, p2, p3, offset, string) => {
+          return user_path;
+        }
+      );
+      Logger.debug(getBytesCode);
+      kernel
+        .requestExecute({
+          code: getBytesCode,
+          user_expressions: {
+            jfss_data: 'repr(_jupyter_fsshelper.out)'
+          }
+        })
+        .done.then((message: any) => {
+          Logger.error(message);
+        })
+        .catch(() => {
+          Logger.error('Error loading on kernel');
+        });
+    }
   }
 
   async fetchConfig() {
@@ -327,6 +825,8 @@ class FsspecWidget extends Widget {
           const item = new FssTreeItem(
             this.model,
             [this.lazyLoad.bind(this)],
+            [this.handleContextGetBytes.bind(this)],
+            [this.handleContextUploadUserData.bind(this)],
             true,
             true,
             this.notebookTracker
@@ -468,12 +968,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
   id: 'jupyterFsspec:plugin',
   description: 'A Jupyter interface for fsspec.',
   autoStart: true,
-  requires: [ICommandPalette, INotebookTracker],
+  requires: [ICommandPalette, INotebookTracker, IFileBrowserFactory],
   optional: [ISettingRegistry],
   activate: async (
     app: JupyterFrontEnd,
     palette: ICommandPalette,
     notebookTracker: INotebookTracker,
+    fileBrowserFactory: IFileBrowserFactory,
     settingRegistry: ISettingRegistry | null
   ) => {
     console.log('JupyterLab extension jupyterFsspec is activated!');
@@ -484,9 +985,40 @@ const plugin: JupyterFrontEndPlugin<void> = {
       const fsspecModel = new FsspecModel();
       await fsspecModel.initialize();
 
+      Logger.debug(`Activate, fbrowser is ${Object.keys(fileBrowserFactory)}`);
+      console.log('########');
+      console.log(fileBrowserFactory);
+      console.log('########');
+
       // Use the model to initialize the widget and add to the UI
-      const fsspec_widget = new FsspecWidget(fsspecModel, notebookTracker);
+      const fsspec_widget = new FsspecWidget(
+        fsspecModel,
+        notebookTracker,
+        app,
+        fileBrowserFactory
+      );
       fsspec_widget.id = 'jupyterFsspec:widget';
+
+      // TODO verify filebrowserfactory and currentWidget are valid, file object is truthy etc.
+      // Add Jupyter File Browser help
+      app.commands.addCommand('jupyter_fsspec:filebrowser-context-upload', {
+        label: 'Set as fsspec upload target',
+        caption:
+          'Handles upload requests to configured fsspec filesystems from the FileBrowser',
+        execute: async () => {
+          const fileModel: any = fileBrowserFactory.tracker.currentWidget
+            ?.selectedItems()
+            .next();
+          const file = fileModel.value;
+
+          if (file) {
+            await fsspec_widget.handleJupyterFileBrowserUpload(
+              fileModel,
+              fileBrowserFactory.tracker?.currentWidget
+            );
+          }
+        }
+      });
 
       app.shell.add(fsspec_widget, 'right');
     } else {
@@ -514,7 +1046,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
           const fsspecModel = new FsspecModel();
           await fsspecModel.initialize();
           // Use the model to initialize the widget and add to the UI
-          const fsspec_widget = new FsspecWidget(fsspecModel, notebookTracker);
+          const fsspec_widget = new FsspecWidget(
+            fsspecModel,
+            notebookTracker,
+            app,
+            fileBrowserFactory
+          );
           fsspec_widget.id = 'jupyter_fsspec:widget';
 
           // Add the widget to the top area
