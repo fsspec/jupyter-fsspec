@@ -533,7 +533,8 @@ class FsspecWidget extends Widget {
         await this.model.post(
           this.model.activeFilesystem,
           user_path,
-          base64String
+          base64String,
+          true
         );
         Logger.debug('Finish upload');
 
@@ -557,7 +558,8 @@ class FsspecWidget extends Widget {
         await this.model.post(
           this.model.activeFilesystem,
           user_path,
-          base64String
+          base64String,
+          true
         );
         Logger.debug('Finish upload');
 

@@ -1,4 +1,6 @@
 import base64
+import binascii
+import traceback
 import json
 import logging
 import tornado
@@ -253,6 +255,16 @@ class FileSystemHandler(APIHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
+    async def process_content(self, content):
+        """Determine correct content encoding before writing to storage."""
+
+        if content:
+            try:
+                content = base64.b64decode(content, validate=True)
+            except (binascii.Error, UnicodeDecodeError) as e:
+                logger.error(f"Error decoding base64: {e}")
+        return content
+
     # GET
     # /files
     async def get(self):
@@ -363,10 +375,10 @@ class FileSystemHandler(APIHandler):
         post_request = PostRequest(**request_data)
         key = post_request.key
         req_item_path = post_request.item_path
-        try:
-            content = base64.b64decode(post_request.content)
-        except Exception:
-            pass  # TODO log error/pass to frontend
+        content = post_request.content
+        is_base64 = post_request.base64
+        if is_base64:
+            content = await self.process_content(content)
 
         fs, item_path = self.fs_manager.validate_fs("post", key, req_item_path)
         fs_instance = fs["instance"]
@@ -399,6 +411,8 @@ class FileSystemHandler(APIHandler):
             response["status"] = "success"
             response["description"] = f"Wrote {item_path}."
         except Exception as e:
+            traceback.print_exc()
+            logger.error(f"Error posting: {e}")
             self.set_status(500)
             response["status"] = "failed"
             response["description"] = str(e)

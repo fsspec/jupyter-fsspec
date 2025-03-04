@@ -24,6 +24,7 @@ class GetRequest(BaseRequest):
 class PostRequest(BaseRequest):
     content: Optional[str] = None
     action: Optional[RequestAction] = None
+    base64: Optional[bool] = False
 
 
 class DeleteRequest(BaseRequest):
