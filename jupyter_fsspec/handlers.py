@@ -260,9 +260,10 @@ class FileSystemHandler(APIHandler):
 
         if content:
             try:
-                content = base64.b64decode(content, validate=True)
+                content = base64.b64decode(content)
             except (binascii.Error, UnicodeDecodeError) as e:
                 logger.error(f"Error decoding base64: {e}")
+                raise
         return content
 
     # GET
