@@ -89,6 +89,7 @@ class HelperOutput:
         if value is not None:
             value_info = f"\n\n{value[:HelperOutput.PREVIEW_LEN]}"
 
+        newline = "\n"
         string_rep = (
             '----------------\n'
             f'Request [{"OK" if self.ok else "FAIL"}]{time_delta_info}\n'
@@ -96,7 +97,7 @@ class HelperOutput:
             '................\n'
             f'Path: {"<None>" if self.path is None else self.path}\n'
             f'Data[:{HelperOutput.PREVIEW_LEN}] preview (total {self.length:,}):{value_info}\n'
-            f'{"" if self.ok else "\n.... ERROR! ....\n" + str(self.error)}'
+            f'{"" if self.ok else f"{newline}.... ERROR! ....{newline}" + str(self.error) + newline}'
             '----------------'
         )
         return string_rep
