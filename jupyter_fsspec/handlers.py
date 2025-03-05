@@ -113,29 +113,45 @@ class FileActionHandler(APIHandler):
         action = post_request.action
         destination = post_request.content
 
-        response = {"content": None}
+        response = {}
 
         fs, item_path = self.fs_manager.validate_fs("post", key, req_item_path)
         fs_instance = fs["instance"]
+        is_async = fs_instance.async_impl
 
         try:
             if action == "move":
-                fs_instance.mv(item_path, destination)
+                try:
+                    with handle_exception(self):
+                        (
+                            await fs_instance._mv(item_path, destination)
+                            if is_async
+                            else fs_instance.mv(item_path, destination)
+                        )
+                except JupyterFsspecException:
+                    return
+
                 response["description"] = f"Moved {item_path} to {destination}."
             else:
-                if fs_instance.async_impl:
-                    # if provided paths are not expanded fsspec expands them
-                    # for a list of paths: recursive=False or maxdepth not None
-                    await fs_instance._copy(item_path, destination)
-                else:
-                    fs_instance.copy(item_path, destination)
+                # if provided paths are not expanded fsspec expands them
+                # for a list of paths: recursive=False or maxdepth not None
+                try:
+                    with handle_exception(self):
+                        (
+                            await fs_instance._copy(item_path, destination)
+                            if is_async
+                            else fs_instance.copy(item_path, destination)
+                        )
+                except JupyterFsspecException:
+                    return
+
                 response["description"] = f"Copied {item_path} to {destination}."
             response["status"] = "success"
             self.set_status(200)
         except Exception as e:
+            traceback.print_exc()
+            logger.error(f"Error calling move/copy handler: {e}")
             self.set_status(500)
-            response["status"] = "Failed"
-            response["description"] = str(e)
 
         self.write(response)
         self.finish()
@@ -171,7 +187,7 @@ class FileTransferHandler(APIHandler):
         fs_info = self.fs_manager.get_filesystem(key)
         path = fs_info["canonical_path"]
 
-        response = {"content": None}
+        response = {}
 
         try:
             if transfer_request.action == Direction.UPLOAD:
@@ -179,12 +195,21 @@ class FileTransferHandler(APIHandler):
                 fs, dest_path = self.fs_manager.validate_fs(
                     "post", dest_fs_key, dest_path
                 )
-                fs_instance = fs["instance"]
 
-                if fs_instance.async_impl:
-                    await fs_instance._put(local_path, remote_path, recursive=True)
-                else:
-                    fs_instance.put(local_path, remote_path, recursive=True)
+                fs_instance = fs["instance"]
+                try:
+                    with handle_exception(self):
+                        (
+                            await fs_instance._put(
+                                local_path, remote_path, recursive=True
+                            )
+                            if fs_instance.async_impl
+                            else fs_instance.put(
+                                local_path, remote_path, recursive=True
+                            )
+                        )
+                except JupyterFsspecException:
+                    return
 
                 response["description"] = f"Uploaded {local_path} to {remote_path}."
             else:
@@ -192,20 +217,28 @@ class FileTransferHandler(APIHandler):
                 fs, dest_path = self.fs_manager.validate_fs("post", key, path)
                 fs_instance = fs["instance"]
 
-                if fs_instance.async_impl:
-                    await fs_instance._get(remote_path, local_path, recursive=True)
-                else:
-                    fs_instance.get(remote_path, local_path, recursive=True)
+                try:
+                    with handle_exception(self):
+                        (
+                            await fs_instance._get(
+                                remote_path, local_path, recursive=True
+                            )
+                            if fs_instance.async_impl
+                            else fs_instance.get(
+                                remote_path, local_path, recursive=True
+                            )
+                        )
+                except JupyterFsspecException:
+                    return
 
                 response["description"] = f"Downloaded {remote_path} to {local_path}."
 
             response["status"] = "success"
             self.set_status(200)
         except Exception as e:
-            print(f"Error uploading/downloading file: {e}")
+            traceback.print_exc()
+            logger.error(f"Error uploading/downloading file: {e}")
             self.set_status(500)
-            response["status"] = "failed"
-            response["description"] = str(e)
 
         self.write(response)
         self.finish()
@@ -218,13 +251,13 @@ class RenameFileHandler(APIHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
-    def post(self):
+    async def post(self):
         request_data = json.loads(self.request.body.decode("utf-8"))
         post_request = PostRequest(**request_data)
         key = post_request.key
         req_item_path = post_request.item_path
         content = post_request.content
-        response = {"content": None}
+        response = {}
 
         fs, item_path = self.fs_manager.validate_fs("post", key, req_item_path)
         fs_instance = fs["instance"]
@@ -233,14 +266,23 @@ class RenameFileHandler(APIHandler):
         try:
             # when item_path is a directory, if recursive=True is not set,
             # path1 is deleted and path2 is not created
-            fs_instance.rename(item_path, content, recursive=True)
+            try:
+                with handle_exception(self):
+                    (
+                        await fs_instance._rename(item_path, content, recursive=True)
+                        if fs_instance.async_impl
+                        else fs_instance.rename(item_path, content, recursive=True)
+                    )
+            except JupyterFsspecException:
+                return
+
             response["status"] = "success"
             response["description"] = f"Renamed {item_path} to {content}."
             self.set_status(200)
         except Exception as e:
+            traceback.print_exc()
+            logger.error(f"Error renaming file: {e}")
             self.set_status(500)
-            response["status"] = "failed"
-            response["description"] = str(e)
 
         self.write(response)
         self.finish()
@@ -366,8 +408,9 @@ class FileSystemHandler(APIHandler):
             self.set_status(200)
             response["status"] = "success"
             response["description"] = f"Retrieved {item_path}."
-        except Exception:
+        except Exception as e:
             traceback.print_exc()
+            logger.error(f"Error calling get handler: {e}")
             self.set_status(500)
         self.write(response)
         self.finish()
@@ -397,40 +440,55 @@ class FileSystemHandler(APIHandler):
 
         fs, item_path = self.fs_manager.validate_fs("post", key, req_item_path)
         fs_instance = fs["instance"]
-        response = {"content": None}
+        is_async = fs_instance.async_impl
+        response = {}
 
         try:
             # directory expect item_path to end with `/`
             if item_path.endswith("/"):
                 # content is then expected to be null
-                if fs_instance.async_impl:
-                    await fs_instance._mkdir(item_path, exists_ok=True)
-                else:
-                    fs_instance.mkdir(item_path, exists_ok=True)
+                try:
+                    with handle_exception(self):
+                        (
+                            await fs_instance._mkdir(item_path, exists_ok=True)
+                            if is_async
+                            else fs_instance.mkdir(item_path, exists_ok=True)
+                        )
+                except JupyterFsspecException:
+                    return
             else:
                 # file name expected in item_path
-                if fs_instance.async_impl:
-                    await fs_instance._touch(item_path)
-                    if content:
-                        if not isinstance(content, bytes):
-                            content = str.encode(content)
-                        await fs_instance._pipe(item_path, content)
-                else:
-                    fs_instance.touch(item_path)
-                    if content:
-                        if not isinstance(content, bytes):
-                            content = str.encode(content)
-                        fs_instance.pipe(item_path, content)
+                try:
+                    with handle_exception(self):
+                        (
+                            await fs_instance._touch(item_path)
+                            if is_async
+                            else await fs_instance.touch(item_path)
+                        )
+                except JupyterFsspecException:
+                    return
+
+                if content:
+                    if not isinstance(content, bytes):
+                        content = str.encode(content)
+
+                try:
+                    with handle_exception(self):
+                        (
+                            await fs_instance._pipe(item_path, content)
+                            if is_async
+                            else fs_instance.pipe(item_path, content)
+                        )
+                except JupyterFsspecException:
+                    return
 
             self.set_status(200)
             response["status"] = "success"
             response["description"] = f"Wrote {item_path}."
         except Exception as e:
             traceback.print_exc()
-            logger.error(f"Error posting: {e}")
+            logger.error(f"Error calling post handler: {e}")
             self.set_status(500)
-            response["status"] = "failed"
-            response["description"] = str(e)
         self.write(response)
         self.finish()
 
@@ -455,7 +513,8 @@ class FileSystemHandler(APIHandler):
 
         fs, item_path = self.fs_manager.validate_fs("put", key, req_item_path)
         fs_instance = fs["instance"]
-        response = {"content": None}
+        is_async = fs_instance.async_impl
+        response = {}
 
         if not isinstance(content, bytes):
             if isinstance(content, str):
@@ -464,25 +523,36 @@ class FileSystemHandler(APIHandler):
                 raise TypeError("Unsupported type, cannot convert to bytes")
 
         try:
-            if fs_instance.async_impl:
-                isfile = await fs_instance._isfile(item_path)
-            else:
-                isfile = fs_instance.isfile(item_path)
+            try:
+                with handle_exception(self):
+                    isfile = (
+                        await fs_instance._isfile(item_path)
+                        if is_async
+                        else fs_instance.isfile(item_path)
+                    )
+            except JupyterFsspecException:
+                return
 
             if not isfile:
                 raise FileNotFoundError(f"{item_path} is not a file.")
 
-            if fs_instance.async_impl:
-                await fs_instance._pipe(item_path, content)
-            else:
-                fs_instance.pipe(item_path, content)
+            try:
+                with handle_exception(self):
+                    (
+                        await fs_instance._pipe(item_path, content)
+                        if is_async
+                        else fs_instance.pipe(item_path, content)
+                    )
+            except JupyterFsspecException:
+                return
+
             response["status"] = "success"
             response["description"] = f"Updated file {item_path}."
             self.set_status(200)
         except Exception as e:
+            traceback.print_exc()
+            logger.error(f"Error calling put handler: {e}")
             self.set_status(500)
-            response["status"] = "failed"
-            response["description"] = str(e)
 
         self.write(response)
         self.finish()
@@ -497,23 +567,34 @@ class FileSystemHandler(APIHandler):
 
         fs, item_path = self.fs_manager.validate_fs("patch", key, req_item_path)
         fs_instance = fs["instance"]
+        is_async = fs_instance.async_impl
 
         # TODO: offset
-        response = {"content": None}
+        response = {}
 
         try:
-            if fs_instance.async_impl:
-                isfile = await fs_instance.isfile(item_path)
-            else:
-                isfile = fs_instance.isfile(item_path)
+            try:
+                with handle_exception(self):
+                    isfile = (
+                        await fs_instance.isfile(item_path)
+                        if is_async
+                        else fs_instance.isfile(item_path)
+                    )
+            except JupyterFsspecException:
+                return
 
             if not isfile:
                 raise FileNotFoundError(f"{item_path} is not a file.")
 
-            if fs_instance.async_impl:
-                original_content = await fs_instance._cat(item_path)
-            else:
-                original_content = fs_instance.cat(item_path)
+            try:
+                with handle_exception(self):
+                    original_content = (
+                        await fs_instance._cat(item_path)
+                        if is_async
+                        else fs_instance.cat(item_path)
+                    )
+            except JupyterFsspecException:
+                return
 
             new_content = (
                 original_content[:offset]
@@ -521,17 +602,23 @@ class FileSystemHandler(APIHandler):
                 + original_content[offset + len(content) :]
             )
 
-            if fs_instance.async_impl:
-                await fs_instance._pipe(item_path, new_content)
-            else:
-                fs_instance.pipe(item_path, new_content)
+            try:
+                with handle_exception(self):
+                    (
+                        await fs_instance._pipe(item_path, new_content)
+                        if is_async
+                        else fs_instance.pipe(item_path, new_content)
+                    )
+            except JupyterFsspecException:
+                return
+
             self.set_status(200)
             response["status"] = "success"
             response["description"] = f"Patched file {item_path} at offset {offset}."
         except Exception as e:
+            traceback.print_exc()
+            logger.error(f"Error calling patch handler: {e}")
             self.set_status(500)
-            response["status"] = "failed"
-            response["description"] = str(e)
 
         self.write(response)
         self.finish()
@@ -553,20 +640,27 @@ class FileSystemHandler(APIHandler):
 
         fs, item_path = self.fs_manager.validate_fs("delete", key, req_item_path)
         fs_instance = fs["instance"]
-        response = {"content": None}
+        is_async = fs_instance.async_impl
+        response = {}
 
         try:
-            if fs_instance.async_impl:
-                await fs_instance._rm(item_path)
-            else:
-                fs_instance.rm(item_path)
+            try:
+                with handle_exception(self):
+                    (
+                        await fs_instance._rm(item_path)
+                        if is_async
+                        else fs_instance.rm(item_path)
+                    )
+            except JupyterFsspecException:
+                return
+
             self.set_status(200)
             response["status"] = "success"
             response["description"] = f"Deleted {item_path}."
         except Exception as e:
+            traceback.print_exc()
+            logger.error(f"Error calling delete handler: {e}")
             self.set_status(500)
-            response["status"] = "failed"
-            response["description"] = str(e)
 
         self.write(response)
         self.finish()
