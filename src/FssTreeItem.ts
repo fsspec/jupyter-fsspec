@@ -21,6 +21,8 @@ export class FssTreeItem {
   dirSymbol: HTMLElement;
   container: HTMLElement;
   clickSlots: any;
+  getBytesSlots: any;
+  uploadUserDataSlots: any;
   isDir = false;
   treeItemObserver: MutationObserver;
   pendingExpandAction = false;
@@ -31,6 +33,8 @@ export class FssTreeItem {
   constructor(
     model: any,
     clickSlots: any,
+    userGetBytesSlots: any,
+    uploadUserDataSlots: any,
     autoExpand: boolean,
     expandOnClickAnywhere: boolean,
     notebookTracker: INotebookTracker
@@ -47,6 +51,8 @@ export class FssTreeItem {
     this.root = root;
     this.model = model;
     this.clickSlots = clickSlots;
+    this.getBytesSlots = userGetBytesSlots; // TODO fix its horrible
+    this.uploadUserDataSlots = uploadUserDataSlots;
     this.lazyLoadAutoExpand = autoExpand;
     this.clickAnywhereDoesAutoExpand = expandOnClickAnywhere;
     this.notebookTracker = notebookTracker;
@@ -101,6 +107,34 @@ export class FssTreeItem {
 
   appendChild(elem: any) {
     this.root.appendChild(elem);
+  }
+
+  handleRequestBytes() {
+    Logger.debug('Treeitem get bytes');
+    for (const slot of this.getBytesSlots) {
+      Logger.debug(slot);
+      slot(this.root.dataset.fss);
+    }
+  }
+
+  async handleUploadUserData(options: any) {
+    let is_browser_file_picker = false;
+    let is_jup_browser_file = false;
+    if (options) {
+      is_browser_file_picker = options.is_browser_file_picker;
+      is_jup_browser_file = options.is_jup_browser_file;
+      this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
+    }
+    Logger.debug('Treeitem upload user data');
+    for (const slot of this.uploadUserDataSlots) {
+      Logger.debug(slot);
+      await slot(
+        this.root.dataset.fss,
+        this.isDir,
+        is_browser_file_picker,
+        is_jup_browser_file
+      );
+    }
   }
 
   setMetadata(user_path: string, size: string) {
@@ -222,7 +256,7 @@ export class FssTreeItem {
     }
 
     // Make/add the context menu
-    const context = new FssContextMenu(this.model, this.notebookTracker);
+    const context = new FssContextMenu(this.model, this.notebookTracker, this);
     context.root.dataset.fss = this.root.dataset.fss;
     const body = document.getElementsByTagName('body')[0];
     body.appendChild(context.root);

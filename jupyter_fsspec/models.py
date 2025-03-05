@@ -76,6 +76,11 @@ class PostRequest(BaseRequest):
         title="Move or copy action indicator",
         description="Specify 'move' action when calling action handler, default treated as copy",
     )
+    base64: Optional[bool] = Field(
+        default=False,
+        title="Base64 content payload",
+        description="Indicate base64 content in request payload",
+    )
 
 
 class DeleteRequest(BaseRequest):

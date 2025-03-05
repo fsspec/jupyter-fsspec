@@ -1,6 +1,7 @@
 import json
 import pytest
 from tornado.httpclient import HTTPClientError
+from jupyter_fsspec.utils import load_image_as_base64
 # TODO: Testing: different file types, received expected errors
 
 
@@ -119,10 +120,12 @@ async def test_post_files(fs_manager_instance, jp_fetch):
     filepath = "/my_mem_dir/test_dir/file2.txt"
     # File does not already exist
     assert not mem_fs.exists(filepath)
+    content = "VGhpcyBpcyBzb21lIHNhbXBsZSBlbmNvZGVkIHRleHQu"
     file_payload = {
         "key": mem_key,
         "item_path": filepath,
-        "content": "This is test file2 content",
+        "content": content,
+        "base64": True,
     }
     file_response = await jp_fetch(
         "jupyter_fsspec",
@@ -137,6 +140,32 @@ async def test_post_files(fs_manager_instance, jp_fetch):
     file_body = json.loads(file_json_body)
     assert file_body["status"] == "success"
     assert file_body["description"] == "Wrote /my_mem_dir/test_dir/file2.txt."
+    assert mem_fs.exists(filepath)
+
+    # Post new file with base64 encoded content
+    filepath = "/my_mem_dir/test_dir/test_end.png"
+    content = load_image_as_base64("jupyter_fsspec/tests/test_end.png")
+    # File does not already exist
+    assert not mem_fs.exists(filepath)
+    file_payload = {
+        "key": mem_key,
+        "item_path": filepath,
+        "content": content,
+        "base64": True,
+    }
+    file_response = await jp_fetch(
+        "jupyter_fsspec",
+        "files",
+        method="POST",
+        params={"key": mem_key},
+        body=json.dumps(file_payload),
+    )
+    assert file_response.code == 200
+
+    file_json_body = file_response.body.decode("utf-8")
+    file_body = json.loads(file_json_body)
+    assert file_body["status"] == "success"
+    assert file_body["description"] == "Wrote /my_mem_dir/test_dir/test_end.png."
     assert mem_fs.exists(filepath)
 
     # Post directory

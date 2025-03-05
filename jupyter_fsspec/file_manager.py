@@ -179,7 +179,7 @@ class FileSystemManager:
 
         if not item_path:
             if str(type) != "range" and request_type == "get":
-                item_path = self.fs_manager.filesystems[key]["path"]
+                item_path = self.filesystems[key]["path"]
             else:
                 raise ValueError("Missing required parameter `item_path`")
 

@@ -260,18 +260,25 @@ export class FsspecModel {
     }
   }
 
-  async post(key: string, item_path: string, content: string): Promise<any> {
+  async post(
+    key: string,
+    item_path: string,
+    content: string,
+    base64: boolean
+  ): Promise<any> {
     try {
       const query = new URLSearchParams({
-        action: 'write'
+        action: 'write',
+        key: key
       });
 
       const reqBody = JSON.stringify({
         key,
         item_path,
-        content
+        content,
+        base64
       });
-      const response = await requestAPI<any>(`fsspec?${query.toString()}`, {
+      const response = await requestAPI<any>(`files?${query.toString()}`, {
         method: 'POST',
         body: reqBody,
         headers: {
@@ -326,7 +333,9 @@ export class FsspecModel {
       const reqBody = JSON.stringify({
         key: key,
         local_path,
-        remote_path
+        remote_path,
+        destination_key: key, // TODO fix this, need to specify source and dest fs keys, AND paths for each
+        action: action
       });
 
       const response = await requestAPI<any>(

@@ -1,6 +1,12 @@
 # Gives users access to filesystems defined in the jupyter_fsspec config file
 
 
+import copy
+import datetime
+import tempfile
+import traceback
+from base64 import standard_b64encode
+
 from .file_manager import FileSystemManager
 from .exceptions import JupyterFsspecException
 
@@ -8,6 +14,93 @@ from .exceptions import JupyterFsspecException
 # Global config manager for kernel-side jupyter-fsspec use
 _manager = None
 _active = None
+_user_data = None
+_EMPTY_RESULT = {
+    "ok": False,
+    "value": None,
+    "path": None,
+    "timestamp": None,
+    "error": None,
+}
+out = None  # Set below
+
+
+class HelperOutput:
+    """Jupyter FSSpec request output helper (read-only)"""
+
+    PREVIEW_LEN = 64
+
+    def __init__(self, data):
+        # if not (set(data) >= set(_EMPTY_RESULT)):
+        #     # Check for all needed keys
+        #     raise JupyterFsspecException('Invalid Jupyter FSSpec output!')
+
+        self._result = data
+
+    @property
+    def value(self):
+        """The value of the requested operation"""
+        return self._result["value"]
+
+    @property
+    def ok(self):
+        """The status of the request"""
+        return self._result["ok"]
+
+    @property
+    def path(self):
+        return self._result["path"]
+
+    @property
+    def timestamp(self):
+        return self._result["timestamp"]
+
+    @property
+    def timedelta(self):
+        time_delta = None
+        if self.timestamp:
+            time_delta = datetime.datetime.now() - self.timestamp
+        return time_delta
+
+    @property
+    def error(self):
+        return self._result["error"]
+
+    @property
+    def length(self):
+        return -1 if self.value is None else len(self.value)
+
+    def __repr__(self):
+        # Compile time info
+        timestamp = self.timestamp
+        # ....
+        time_delta_info = ""
+        if timestamp is not None:
+            delta = datetime.datetime.now() - datetime.datetime.fromisoformat(timestamp)
+            time_delta_info = f" made {delta}s ago"
+        # ....
+        timestamp_info = (
+            f'Timestamp {timestamp if timestamp is not None else "<None>"}\n'
+        )
+
+        # Compile value info
+        value = self.value
+        value_info = " <None>"
+        if value is not None:
+            value_info = f"\n\n{value[:HelperOutput.PREVIEW_LEN]}"
+
+        newline = "\n"
+        string_rep = (
+            '----------------\n'
+            f'Request [{"OK" if self.ok else "FAIL"}]{time_delta_info}\n'
+            f'{timestamp_info}'
+            '................\n'
+            f'Path: {"<None>" if self.path is None else self.path}\n'
+            f'Data[:{HelperOutput.PREVIEW_LEN}] preview (total {self.length:,}):{value_info}\n'
+            f'{"" if self.ok else f"{newline}.... ERROR! ....{newline}" + str(self.error) + newline}'
+            '----------------'
+        )
+        return string_rep
 
 
 def _get_manager(cached=True):
@@ -42,6 +135,49 @@ def fs(fs_name):
 
 
 filesystem = fs  # Alias for matching fsspec call
+
+
+def _request_bytes(fs_name, path):
+    global out
+
+    # Empty results first
+    blank = copy.deepcopy(_EMPTY_RESULT)
+    now = datetime.datetime.now().isoformat()
+    blank["timestamp"] = now
+    blank["path"] = path
+    out = HelperOutput(blank)
+
+    filesys = filesystem(fs_name)
+    try:
+        out = HelperOutput(
+            {
+                "ok": True,
+                "value": filesys.open(path, mode="rb").read(),
+                "path": path,
+                "timestamp": now,
+                "error": None,
+            }
+        )
+    except Exception:
+        blank["error"] = traceback.format_exc()
+        out = HelperOutput(blank)
+
+
+def _get_user_data_string():
+    # TODO refactor/remove this later
+    # The web APIs use strings for base64 decoding, return an ascii/utf8 string
+    return standard_b64encode(_user_data).decode("utf8")
+
+
+def _get_user_data_tempfile_path():
+    tfile = tempfile.NamedTemporaryFile(delete=False)
+    tfile.write(_user_data)
+    return tfile.name
+
+
+def set_user_data(data):
+    global _user_data
+    _user_data = data
 
 
 def work_on(fs_name):
