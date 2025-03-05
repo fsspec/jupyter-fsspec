@@ -4,10 +4,8 @@ import traceback
 import json
 import logging
 import tornado
-import yaml
 from contextlib import contextmanager
 
-from pydantic import ValidationError
 
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
@@ -15,7 +13,7 @@ from jupyter_server.utils import url_path_join
 from .file_manager import FileSystemManager
 from .schemas import GetRequest, PostRequest, DeleteRequest, TransferRequest, Direction
 from .utils import parse_range
-from .exceptions import ConfigFileException
+from .exceptions import JupyterFsspecException
 
 
 logging.basicConfig(level=logging.INFO)
@@ -26,20 +24,20 @@ logger = logging.getLogger(__name__)
 def handle_exception(
     handler,
     status_code=500,
-    exceptions=(yaml.YAMLError, ValidationError, FileNotFoundError, PermissionError),
-    default_msg="Error loading config file.",
+    default_msg="Unkown server error occurred",
 ):
     try:
         yield
-    except exceptions as e:
+    except Exception as e:
         error_message = f"{type(e).__name__}: {str(e)}" if str(e) else default_msg
         logger.error(error_message)
+        traceback.print_exc()
 
         handler.set_status(status_code)
         handler.write({"status": "failed", "description": error_message, "content": []})
 
         handler.finish()
-        raise ConfigFileException
+        raise JupyterFsspecException
 
 
 class FsspecConfigHandler(APIHandler):
@@ -64,7 +62,7 @@ class FsspecConfigHandler(APIHandler):
         try:
             with handle_exception(self):
                 self.fs_manager.check_reload_config()
-        except ConfigFileException:
+        except JupyterFsspecException:
             return
 
         for fs in self.fs_manager.filesystems:
@@ -295,35 +293,51 @@ class FileSystemHandler(APIHandler):
         fs, item_path = self.fs_manager.validate_fs("get", key, req_item_path)
 
         fs_instance = fs["instance"]
-        response = {"content": None}
+        response = {}
         is_async = fs_instance.async_impl
 
         try:
-            isdir = (
-                await fs_instance._isdir(item_path)
-                if is_async
-                else fs_instance.isdir(item_path)
-            )
+            try:
+                with handle_exception(self):
+                    isdir = (
+                        await fs_instance._isdir(item_path)
+                        if is_async
+                        else fs_instance.isdir(item_path)
+                    )
+            except JupyterFsspecException:
+                return
 
             if get_request.type == "range":
                 range_header = self.request.headers.get("Range")
                 start, end = parse_range(range_header)
-                result = (
-                    await fs_instance._cat_ranges([item_path], [int(start)], [int(end)])
-                    if is_async
-                    else fs_instance.cat_ranges([item_path], [int(start)], [int(end)])
-                )
+                try:
+                    with handle_exception(self):
+                        result = (
+                            await fs_instance._cat_ranges(
+                                [item_path], [int(start)], [int(end)]
+                            )
+                            if is_async
+                            else fs_instance.cat_ranges(
+                                [item_path], [int(start)], [int(end)]
+                            )
+                        )
+                except JupyterFsspecException:
+                    return
 
                 response["content"] = [
                     r.decode("utf-8") if isinstance(r, bytes) else r for r in result
                 ]
                 self.set_header("Content-Range", f"bytes {start}-{end}")
             elif isdir:
-                result = (
-                    await fs_instance._ls(item_path, detail=True)
-                    if is_async
-                    else fs_instance.ls(item_path, detail=True)
-                )
+                try:
+                    with handle_exception(self):
+                        result = (
+                            await fs_instance._ls(item_path, detail=True)
+                            if is_async
+                            else fs_instance.ls(item_path, detail=True)
+                        )
+                except JupyterFsspecException:
+                    return
 
                 detail_to_keep = ["name", "type", "size", "ino", "mode"]
                 filtered_result = [
@@ -336,21 +350,25 @@ class FileSystemHandler(APIHandler):
                 ]
                 response["content"] = filtered_result
             else:
-                result = (
-                    await fs_instance._cat(item_path)
-                    if is_async
-                    else fs_instance.cat(item_path)
-                )
+                try:
+                    with handle_exception(self):
+                        result = (
+                            await fs_instance._cat(item_path)
+                            if is_async
+                            else fs_instance.cat(item_path)
+                        )
+                except JupyterFsspecException:
+                    return
+
                 response["content"] = (
                     result.decode("utf-8") if isinstance(result, bytes) else result
                 )
             self.set_status(200)
             response["status"] = "success"
             response["description"] = f"Retrieved {item_path}."
-        except Exception as e:
+        except Exception:
+            traceback.print_exc()
             self.set_status(500)
-            response["status"] = "failed"
-            response["description"] = str(e)
         self.write(response)
         self.finish()
 
