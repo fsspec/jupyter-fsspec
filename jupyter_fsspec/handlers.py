@@ -34,7 +34,13 @@ def handle_exception(
         traceback.print_exc()
 
         handler.set_status(status_code)
-        handler.write({"status": "failed", "description": error_message, "content": []})
+        handler.write(
+            {
+                "status": "failed",
+                "description": error_message,
+                "error_code": type(e).__name__,
+            }
+        )
 
         handler.finish()
         raise JupyterFsspecException
