@@ -11,7 +11,7 @@ from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 
 from .file_manager import FileSystemManager
-from .schemas import GetRequest, PostRequest, DeleteRequest, TransferRequest, Direction
+from .models import GetRequest, PostRequest, DeleteRequest, TransferRequest, Direction
 from .utils import parse_range
 from .exceptions import JupyterFsspecException
 
@@ -113,7 +113,14 @@ class FileActionHandler(APIHandler):
         :rtype: dict
         """
         request_data = json.loads(self.request.body.decode("utf-8"))
-        post_request = PostRequest(**request_data)
+        try:
+            with handle_exception(
+                self, status_code=400, default_msg="Error processing request payload."
+            ):
+                post_request = PostRequest(**request_data)
+        except JupyterFsspecException:
+            return
+
         key = post_request.key
         req_item_path = post_request.item_path
         action = post_request.action
@@ -183,7 +190,14 @@ class FileTransferHandler(APIHandler):
         :rtype: dict
         """
         request_data = json.loads(self.request.body.decode("utf-8"))
-        transfer_request = TransferRequest(**request_data)
+        try:
+            with handle_exception(
+                self, status_code=400, default_msg="Error processing request payload."
+            ):
+                transfer_request = TransferRequest(**request_data)
+        except JupyterFsspecException:
+            return
+
         key = transfer_request.key
         local_path = transfer_request.local_path
         remote_path = transfer_request.remote_path
@@ -259,7 +273,14 @@ class RenameFileHandler(APIHandler):
 
     async def post(self):
         request_data = json.loads(self.request.body.decode("utf-8"))
-        post_request = PostRequest(**request_data)
+        try:
+            with handle_exception(
+                self, status_code=400, default_msg="Error processing request payload."
+            ):
+                post_request = PostRequest(**request_data)
+        except JupyterFsspecException:
+            return
+
         key = post_request.key
         req_item_path = post_request.item_path
         content = post_request.content
@@ -334,7 +355,14 @@ class FileSystemHandler(APIHandler):
         # GET /jupyter_fsspec/files?key=my-key&item_path=/some_directory/file.txt&type=range
         # content header specifying the byte range
         request_data = {k: self.get_argument(k) for k in self.request.arguments}
-        get_request = GetRequest(**request_data)
+        try:
+            with handle_exception(
+                self, status_code=400, default_msg="Error processing request payload."
+            ):
+                get_request = GetRequest(**request_data)
+        except JupyterFsspecException:
+            return
+
         key = get_request.key
         req_item_path = get_request.item_path
 
@@ -436,7 +464,14 @@ class FileSystemHandler(APIHandler):
         :rtype: dict
         """
         request_data = json.loads(self.request.body.decode("utf-8"))
-        post_request = PostRequest(**request_data)
+        try:
+            with handle_exception(
+                self, status_code=400, default_msg="Error processing request payload."
+            ):
+                post_request = PostRequest(**request_data)
+        except JupyterFsspecException:
+            return
+
         key = post_request.key
         req_item_path = post_request.item_path
         content = post_request.content
@@ -512,7 +547,14 @@ class FileSystemHandler(APIHandler):
         :rtype: dict
         """
         request_data = json.loads(self.request.body.decode("utf-8"))
-        post_request = PostRequest(**request_data)
+        try:
+            with handle_exception(
+                self, status_code=400, default_msg="Error processing request payload."
+            ):
+                post_request = PostRequest(**request_data)
+        except JupyterFsspecException:
+            return
+
         key = post_request.key
         req_item_path = post_request.item_path
         content = post_request.content
@@ -640,7 +682,14 @@ class FileSystemHandler(APIHandler):
         :rtype: dict
         """
         request_data = json.loads(self.request.body.decode("utf-8"))
-        delete_request = DeleteRequest(**request_data)
+        try:
+            with handle_exception(
+                self, status_code=400, default_msg="Error processing request payload."
+            ):
+                delete_request = DeleteRequest(**request_data)
+        except JupyterFsspecException:
+            return
+
         key = delete_request.key
         req_item_path = delete_request.item_path
 

@@ -1,0 +1,493 @@
+openapi: 3.1.0
+info:
+  title: jupyter-fsspec API
+  version: 0.4.0
+paths:
+  /jupyter_fsspec/config:
+    get:
+      description: List all source filesystems in configuration file
+      responses:
+        '200':
+          description: Retrieved available filesystems from configuration file.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Config'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+  /jupyter_fsspec/files?{key}:
+    get:
+      description: List content at the specified path of the {key} filesystem
+      parameters:
+      - description: Unique name identifying the filesystem
+        required: true
+        schema:
+          type: string
+        name: key
+        in: query
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetRequest'
+      responses:
+        '200':
+          description: Retrieved content from item_path.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessPayload'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+    put:
+      description: Update existing file
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostRequest'
+      responses:
+        '200':
+          description: Update file at existing item_path
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessPayload'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+    post:
+      description: Create a file or directory based on provided content
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostRequest'
+      responses:
+        '200':
+          description: Created file or directory in source filesystem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessPayload'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+    delete:
+      description: Delete the file or directory specified by path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteRequest'
+      responses:
+        '200':
+          description: Deleted path at item_path.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessPayload'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+  /jupyter_fsspec/files/action:
+    post:
+      description: Move or, by default, copy path to destination
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostRequest'
+      responses:
+        '200':
+          description: Copied or moved item_path to destination specified by content.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessPayload'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+  /jupyter_fsspec/files/rename:
+    post:
+      description: Rename path to content provided
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostRequest'
+      responses:
+        '200':
+          description: Renamed the specified item_path to content provided.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessPayload'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+  /jupyter_fsspec/files/transfer:
+    post:
+      description: Upload or download file(s) source path to destination path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+      responses:
+        '200':
+          description: Downloaded or Uploaded from source path to destination path
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessPayload'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+components:
+  schemas:
+    BaseRequest:
+      properties:
+        key:
+          type: string
+          title: Filesystem name
+          description: Unique identifier given as the filesystem 'name' in the config
+            file
+        item_path:
+          type: string
+          title: Path
+          description: Acting path in filesystem
+      type: object
+      required:
+      - key
+      - item_path
+      title: BaseRequest
+      description: 'The required information for all Filesystem handler endpoints.
+
+
+        key: unique
+
+        item_path: destination path for the acting filesystem'
+    DeleteRequest:
+      properties:
+        key:
+          type: string
+          title: Filesystem name
+          description: Unique identifier given as the filesystem 'name' in the config
+            file
+        item_path:
+          type: string
+          title: Path
+          description: Acting path in filesystem
+      type: object
+      required:
+      - key
+      - item_path
+      title: DeleteRequest
+      description: 'Placeholder model for delete request
+
+
+        No additional information is needed than base request'
+    Direction:
+      type: string
+      enum:
+      - upload
+      - download
+      title: Direction
+    GetRequest:
+      properties:
+        key:
+          type: string
+          title: Filesystem name
+          description: Unique identifier given as the filesystem 'name' in the config
+            file
+        item_path:
+          type: string
+          title: Path
+          description: Acting path in filesystem
+        type:
+          anyOf:
+          - $ref: '#/components/schemas/RequestType'
+          - type: 'null'
+          title: Type of GET request
+          description: Either a 'range' GET request for file or 'default' for normal
+            GET
+          default: default
+      type: object
+      required:
+      - key
+      - item_path
+      title: GetRequest
+      description: 'GET request specific items.
+
+
+        type: option to specify type of GET request'
+    PostRequest:
+      properties:
+        key:
+          type: string
+          title: Filesystem name
+          description: Unique identifier given as the filesystem 'name' in the config
+            file
+        item_path:
+          type: string
+          title: Path
+          description: Acting path in filesystem
+        content:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: File content or file/directory name
+          description: Content to be created upon request
+        action:
+          anyOf:
+          - $ref: '#/components/schemas/RequestAction'
+          - type: 'null'
+          title: Move or copy action indicator
+          description: Specify 'move' action when calling action handler, default
+            treated as copy
+        base64:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Base64 content payload
+          description: Indicate base64 content in request payload
+          default: false
+      type: object
+      required:
+      - key
+      - item_path
+      title: PostRequest
+      description: 'POST request specific items.
+
+
+        content: content to be created upon request
+
+        action: move action specified when calling action handler'
+    RequestAction:
+      type: string
+      const: move
+      title: RequestAction
+    RequestType:
+      type: string
+      enum:
+      - default
+      - range
+      title: RequestType
+    ResponseErrorPayload:
+      properties:
+        status:
+          const: failed
+          title: Status
+        description:
+          type: string
+          title: Description
+        error_code:
+          type: string
+          title: Error code
+          description: Name of the server call exception
+      type: object
+      required:
+      - status
+      - description
+      - error_code
+      title: ResponseErrorPayload
+      description: 'Response payload for server requests
+
+
+        description: error detail string from the server
+
+        error_code: name of the exception'
+    ResponseSuccessPayload:
+      properties:
+        status:
+          const: success
+          title: Status
+        description:
+          type: string
+          title: Description
+        content:
+          anyOf:
+          - items:
+              type: object
+            type: array
+          - items:
+              type: string
+            type: array
+          - type: string
+          - type: 'null'
+          title: Content
+          description: List of file or directory information
+      type: object
+      required:
+      - status
+      - description
+      title: ResponseSuccessPayload
+      description: 'Response payload for server requests
+
+
+        description: success or error detail string from the server
+
+        content: list of file or directory information'
+    TransferRequest:
+      properties:
+        key:
+          type: string
+          title: Source filesystem name
+          description: Unique identifier given as the filesystem 'name' in the config
+            file
+        destination_key:
+          type: string
+          title: Destination filesystem name
+          description: Unique identifier given as the filesystem 'name' in the config
+            file
+        local_path:
+          type: string
+          title: Local Path
+        remote_path:
+          type: string
+          title: Remote Path
+        action:
+          allOf:
+          - $ref: '#/components/schemas/Direction'
+          title: Transfer direction
+          description: Can be 'upload' or 'download for local to remote or remote
+            to local respectively
+      type: object
+      required:
+      - key
+      - destination_key
+      - local_path
+      - remote_path
+      - action
+      title: TransferRequest
+      description: 'Requests made to download, upload and sync.
+
+
+        key: unique
+
+        destination_key: unique
+
+        local_path: file/directory path, filesystem root path for sync
+
+        remote_path: file/directory path, filesystem root path for sync
+
+        action: enum option upload or download'
+    Config:
+      properties:
+        sources:
+          items:
+            $ref: '#/components/schemas/Source'
+          type: array
+          title: Sources
+      type: object
+      required:
+      - sources
+      title: Config
+      description: A list of source filesystem configurations
+    Source:
+      properties:
+        name:
+          type: string
+          title: Name
+        path:
+          type: string
+          title: Path
+        protocol:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Protocol
+        args:
+          anyOf:
+          - items: {}
+            type: array
+          - type: 'null'
+          title: Args
+          default: []
+        kwargs:
+          anyOf:
+          - type: object
+          - type: 'null'
+          title: Kwargs
+          default: {}
+      type: object
+      required:
+      - name
+      - path
+      title: Source
+      description: Filesystem configurations passed to fsspec
