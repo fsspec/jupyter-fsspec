@@ -5,12 +5,31 @@ from jupyter_fsspec.models import (
     PostRequest,
     DeleteRequest,
     TransferRequest,
+    ResponseErrorPayload,
+    ResponseSuccessPayload,
 )
 from pydantic.json_schema import models_json_schema
 from openapi_pydantic.v3 import OpenAPI, Info, PathItem, Operation
 from openapi_pydantic.util import PydanticSchema, construct_open_api_with_schema_class
 import yaml
 import os
+
+
+success_content = {
+    "application/json": {"schema": PydanticSchema(schema_class=ResponseSuccessPayload)}
+}
+
+error_content = {
+    "application/json": {"schema": PydanticSchema(schema_class=ResponseErrorPayload)}
+}
+
+response_error_codes = {
+    "400": {
+        "description": "Error with request payload information",
+        "content": error_content,
+    },
+    "500": {"description": "Server operation error", "content": error_content},
+}
 
 
 def write_json_schema(openapi):
@@ -53,7 +72,8 @@ def base_openapi(models) -> OpenAPI:
                                     "schema": PydanticSchema(schema_class=Config)
                                 }
                             },
-                        }
+                        },
+                        **response_error_codes,
                     },
                 )
             ),
@@ -81,7 +101,9 @@ def base_openapi(models) -> OpenAPI:
                     responses={
                         "200": {
                             "description": "Retrieved content from item_path.",
-                        }
+                            "content": success_content,
+                        },
+                        **response_error_codes,
                     },
                 ),
                 post=Operation(
@@ -96,7 +118,9 @@ def base_openapi(models) -> OpenAPI:
                     responses={
                         "200": {
                             "description": "Created file or directory in source filesystem",
-                        }
+                            "content": success_content,
+                        },
+                        **response_error_codes,
                     },
                 ),
                 put=Operation(
@@ -111,7 +135,9 @@ def base_openapi(models) -> OpenAPI:
                     responses={
                         "200": {
                             "description": "Update file at existing item_path",
-                        }
+                            "content": success_content,
+                        },
+                        **response_error_codes,
                     },
                 ),
                 delete=Operation(
@@ -126,7 +152,9 @@ def base_openapi(models) -> OpenAPI:
                     responses={
                         "200": {
                             "description": "Delete path at item_path.",
-                        }
+                            "content": success_content,
+                        },
+                        **response_error_codes,
                     },
                 ),
             ),
@@ -143,7 +171,9 @@ def base_openapi(models) -> OpenAPI:
                     responses={
                         "200": {
                             "description": "Copied or moved item_path to destination specified by content.",
-                        }
+                            "content": success_content,
+                        },
+                        **response_error_codes,
                     },
                 ),
             ),
@@ -160,7 +190,9 @@ def base_openapi(models) -> OpenAPI:
                     responses={
                         "200": {
                             "description": "Renamed the specified item_path to content provided.",
-                        }
+                            "content": success_content,
+                        },
+                        **response_error_codes,
                     },
                 ),
             ),
@@ -177,7 +209,9 @@ def base_openapi(models) -> OpenAPI:
                     responses={
                         "200": {
                             "description": "Downloaded or Uploaded from source path to destination path",
-                        }
+                            "content": success_content,
+                        },
+                        **response_error_codes,
                     },
                 ),
             ),
@@ -186,7 +220,15 @@ def base_openapi(models) -> OpenAPI:
 
 
 open_api = base_openapi(
-    [BaseRequest, GetRequest, PostRequest, DeleteRequest, TransferRequest]
+    [
+        BaseRequest,
+        GetRequest,
+        PostRequest,
+        DeleteRequest,
+        TransferRequest,
+        ResponseSuccessPayload,
+        ResponseErrorPayload,
+    ]
 )
 open_api = construct_open_api_with_schema_class(open_api)
 

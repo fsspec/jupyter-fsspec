@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Literal, Union
 from enum import Enum
 
 
@@ -123,3 +123,29 @@ class TransferRequest(BaseModel):
         title="Transfer direction",
         description="Can be 'upload' or 'download for local to remote or remote to local respectively",
     )
+
+
+class ResponseSuccessPayload(BaseModel):
+    """
+    Response payload for server requests
+
+    description: success or error detail string from the server
+    content: list of file or directory information
+    """
+
+    status: Literal["success"]
+    description: str
+    content: Optional[Union[List[dict], List[str], str]] = None
+
+
+class ResponseErrorPayload(BaseModel):
+    """
+    Response payload for server requests
+
+    description: error detail string from the server
+    error_code: name of the exception
+    """
+
+    status: Literal["failed"]
+    description: str
+    error_code: str

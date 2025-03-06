@@ -13,6 +13,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Config'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
   /jupyter_fsspec/files?{key}:
     get:
       description: List content at the specified path of the {key} filesystem
@@ -31,6 +43,22 @@ paths:
       responses:
         '200':
           description: Retrieved content from item_path.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessPayload'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
     put:
       description: Update existing file
       requestBody:
@@ -41,6 +69,22 @@ paths:
       responses:
         '200':
           description: Update file at existing item_path
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessPayload'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
     post:
       description: Create a file or directory based on provided content
       requestBody:
@@ -51,6 +95,22 @@ paths:
       responses:
         '200':
           description: Created file or directory in source filesystem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessPayload'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
     delete:
       description: Delete the file or directory specified by path
       requestBody:
@@ -61,6 +121,22 @@ paths:
       responses:
         '200':
           description: Delete path at item_path.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessPayload'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
   /jupyter_fsspec/files/action:
     post:
       description: Move or, by default, copy path to destination
@@ -72,6 +148,22 @@ paths:
       responses:
         '200':
           description: Copied or moved item_path to destination specified by content.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessPayload'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
   /jupyter_fsspec/files/rename:
     post:
       description: Rename path to content provided
@@ -83,6 +175,22 @@ paths:
       responses:
         '200':
           description: Renamed the specified item_path to content provided.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessPayload'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
   /jupyter_fsspec/files/transfer:
     post:
       description: Upload or download file(s) source path to destination path
@@ -94,6 +202,22 @@ paths:
       responses:
         '200':
           description: Downloaded or Uploaded from source path to destination path
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessPayload'
+        '400':
+          description: Error with request payload information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
+        '500':
+          description: Server operation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseErrorPayload'
 components:
   schemas:
     BaseRequest:
@@ -196,6 +320,13 @@ components:
           title: Move or copy action indicator
           description: Specify 'move' action when calling action handler, default
             treated as copy
+        base64:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Base64 content payload
+          description: Indicate base64 content in request payload
+          default: false
       type: object
       required:
       - key
@@ -217,6 +348,59 @@ components:
       - default
       - range
       title: RequestType
+    ResponseErrorPayload:
+      properties:
+        status:
+          const: failed
+          title: Status
+        description:
+          type: string
+          title: Description
+        error_code:
+          type: string
+          title: Error Code
+      type: object
+      required:
+      - status
+      - description
+      - error_code
+      title: ResponseErrorPayload
+      description: 'Response payload for server requests
+
+
+        description: error detail string from the server
+
+        error_code: name of the exception'
+    ResponseSuccessPayload:
+      properties:
+        status:
+          const: success
+          title: Status
+        description:
+          type: string
+          title: Description
+        content:
+          anyOf:
+          - items:
+              type: object
+            type: array
+          - items:
+              type: string
+            type: array
+          - type: string
+          - type: 'null'
+          title: Content
+      type: object
+      required:
+      - status
+      - description
+      title: ResponseSuccessPayload
+      description: 'Response payload for server requests
+
+
+        description: success or error detail string from the server
+
+        content: list of file or directory information'
     TransferRequest:
       properties:
         key:
