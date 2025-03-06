@@ -151,7 +151,7 @@ def base_openapi(models) -> OpenAPI:
                     },
                     responses={
                         "200": {
-                            "description": "Delete path at item_path.",
+                            "description": "Deleted path at item_path.",
                             "content": success_content,
                         },
                         **response_error_codes,

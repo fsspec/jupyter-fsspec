@@ -135,7 +135,11 @@ class ResponseSuccessPayload(BaseModel):
 
     status: Literal["success"]
     description: str
-    content: Optional[Union[List[dict], List[str], str]] = None
+    content: Optional[Union[List[dict], List[str], str]] = Field(
+        default=None,
+        title="Content",
+        description="List of file or directory information",
+    )
 
 
 class ResponseErrorPayload(BaseModel):
@@ -148,4 +152,7 @@ class ResponseErrorPayload(BaseModel):
 
     status: Literal["failed"]
     description: str
-    error_code: str
+    error_code: str = Field(
+        title="Error code",
+        description="Name of the server call exception",
+    )

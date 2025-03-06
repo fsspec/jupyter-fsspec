@@ -120,7 +120,7 @@ paths:
               $ref: '#/components/schemas/DeleteRequest'
       responses:
         '200':
-          description: Delete path at item_path.
+          description: Deleted path at item_path.
           content:
             application/json:
               schema:
@@ -358,7 +358,8 @@ components:
           title: Description
         error_code:
           type: string
-          title: Error Code
+          title: Error code
+          description: Name of the server call exception
       type: object
       required:
       - status
@@ -390,6 +391,7 @@ components:
           - type: string
           - type: 'null'
           title: Content
+          description: List of file or directory information
       type: object
       required:
       - status
