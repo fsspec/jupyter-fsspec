@@ -3,7 +3,7 @@ import { INotebookTracker } from '@jupyterlab/notebook';
 
 import { Logger } from './logger';
 
-export class FssContextMenu {
+export class FssTreeItemContext {
   root: any;
   clicked = false;
   parentControl: any = null;
@@ -20,79 +20,47 @@ export class FssContextMenu {
     this.root = root;
     this.model = model;
     this.notebookTracker = notebookTracker;
+    this.parentControl = parentControl;
 
-    const menuItem = this.createMenuItem('Copy Path', 'copyPath');
-    root.appendChild(menuItem);
-
-    // TODO refactor this...add a second option for TreeItems
-    if (parentControl) {
-      const menuItem2 = document.createElement('div');
-      menuItem2.classList.add('jfss-tree-context-item');
-      menuItem2.innerText = 'Send Bytes to helper';
-      menuItem2.addEventListener('mouseenter', this.handleItemHover.bind(this));
-      menuItem2.addEventListener(
-        'mouseleave',
-        this.handleItemUnhover.bind(this)
-      );
-      menuItem2.addEventListener('click', this.handleItemClick.bind(this));
-      menuItem2.dataset.fssContextType = 'getBytes';
-      root.appendChild(menuItem2);
-
-      const menuItem3 = document.createElement('div');
-      menuItem3.classList.add('jfss-tree-context-item');
-      menuItem3.innerText = 'Upload to path (helper.user_data)';
-      menuItem3.addEventListener('mouseenter', this.handleItemHover.bind(this));
-      menuItem3.addEventListener(
-        'mouseleave',
-        this.handleItemUnhover.bind(this)
-      );
-      menuItem3.addEventListener('click', this.handleItemClick.bind(this));
-      menuItem3.dataset.fssContextType = 'uploadUserData';
-      root.appendChild(menuItem3);
-
-      const menuItem4 = document.createElement('div');
-      menuItem4.classList.add('jfss-tree-context-item');
-      menuItem4.innerText = 'Upload to path (Browser file picker)';
-      menuItem4.addEventListener('mouseenter', this.handleItemHover.bind(this));
-      menuItem4.addEventListener(
-        'mouseleave',
-        this.handleItemUnhover.bind(this)
-      );
-      menuItem4.addEventListener('click', this.handleItemClick.bind(this));
-      menuItem4.dataset.fssContextType = 'uploadBrowserFile';
-      root.appendChild(menuItem4);
-
-      const menuItem5 = document.createElement('div');
-      menuItem5.classList.add('jfss-tree-context-item');
-      menuItem5.innerText = 'Upload to path (from integrated file browser)';
-      menuItem5.addEventListener('mouseenter', this.handleItemHover.bind(this));
-      menuItem5.addEventListener(
-        'mouseleave',
-        this.handleItemUnhover.bind(this)
-      );
-      menuItem5.addEventListener('click', this.handleItemClick.bind(this));
-      menuItem5.dataset.fssContextType = 'uploadJupyterBrowserFile';
-      root.appendChild(menuItem5);
+    const actions = [
+      ['Copy Path', 'jfss-tree-context-item', 'copyPath'],
+      ['Send Bytes to helper', 'jfss-tree-context-item', 'getBytes'],
+      [
+        'Upload to path (helper.user_data)',
+        'jfss-tree-context-item',
+        'uploadUserData'
+      ],
+      [
+        'Upload to path (Browser file picker)',
+        'jfss-tree-context-item',
+        'uploadBrowserFile'
+      ],
+      [
+        'Upload to path (from integrated file browser)',
+        'jfss-tree-context-item',
+        'uploadJupyterBrowserFile'
+      ],
+      ['Copy `open` code block', 'jfss-tree-context-item', 'copyOpenCodeBlock'] // TODO: skip(?) if file path is directory
+    ];
+    for (const action of actions) {
+      this.createMenuItem(action[0], action[1], action[2]);
     }
 
     root.addEventListener('mouseleave', this.handleMouseExit.bind(this), false);
-
-    this.parentControl = parentControl;
-    // TODO: skip(?) if file path is directory
-    const openCode = this.createMenuItem(
-      'Copy `open` code block',
-      'copyOpenCodeBlock'
-    );
-    root.appendChild(openCode);
   }
 
-  createMenuItem(text: string, contextType: string) {
+  createMenuItem(text: string, cssClass: string, contextType: string) {
     const menuItem = document.createElement('div');
-    menuItem.classList.add('jfss-tree-context-item');
+    menuItem.classList.add(cssClass);
     menuItem.innerText = text;
     menuItem.dataset.fssContextType = contextType;
 
     menuItem.addEventListener('click', this.handleItemClick.bind(this));
+    menuItem.addEventListener('mouseenter', this.handleItemHover.bind(this));
+    menuItem.addEventListener('mouseleave', this.handleItemUnhover.bind(this));
+
+    this.root.appendChild(menuItem);
+
     return menuItem;
   }
 

@@ -9,7 +9,7 @@ import { INotebookTracker } from '@jupyterlab/notebook';
 
 import { fileIcon, folderIcon } from '@jupyterlab/ui-components';
 
-import { FssContextMenu } from './treeContext';
+import { FssTreeItemContext } from './FssTreeItemContext';
 import { Logger } from './logger';
 
 export class FssTreeItem {
@@ -256,7 +256,11 @@ export class FssTreeItem {
     }
 
     // Make/add the context menu
-    const context = new FssContextMenu(this.model, this.notebookTracker, this);
+    const context = new FssTreeItemContext(
+      this.model,
+      this.notebookTracker,
+      this
+    );
     context.root.dataset.fss = this.root.dataset.fss;
     const body = document.getElementsByTagName('body')[0];
     body.appendChild(context.root);
