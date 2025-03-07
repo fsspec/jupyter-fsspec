@@ -3,7 +3,7 @@ import { INotebookTracker } from '@jupyterlab/notebook';
 
 import { Logger } from './logger';
 
-export class FssContextMenu {
+export class FssTreeItemContext {
   root: any;
   clicked = false;
   parentControl: any = null;
