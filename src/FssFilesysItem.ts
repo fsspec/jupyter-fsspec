@@ -1,6 +1,6 @@
 // Element for displaying a single fsspec filesystem
 
-import { FssContextMenu } from './treeContext';
+import { FssFilesysContextMenu } from './FssFilesysContextMenu';
 // import { Logger } from "./logger"
 import { INotebookTracker } from '@jupyterlab/notebook';
 
@@ -75,7 +75,7 @@ class FssFilesysItem {
     }
 
     // Make/add the context menu
-    const context = new FssContextMenu(this.model, this.notebookTracker, null);
+    const context = new FssFilesysContextMenu(this.model, this.notebookTracker);
     context.root.dataset.fss = this.root.dataset.fss;
     const body = document.getElementsByTagName('body')[0];
     body.appendChild(context.root);
