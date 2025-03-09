@@ -343,29 +343,6 @@ async def test_rename_files(fs_manager_instance, jp_fetch):
     assert mem_fs.exists("/my_mem_dir/new_dir")
 
 
-# TODO: Implement update functionality
-# PATCH partial update without modifying entire data
-async def xtest_patch_file(fs_manager_instance, jp_fetch):
-    # file only
-    fs_manager = await fs_manager_instance
-    mem_fs_info = fs_manager.get_filesystem_by_protocol("memory")
-    mem_key = mem_fs_info["key"]
-    mem_fs = mem_fs_info["info"]["instance"]
-    assert mem_fs is not None
-
-    # replace partial file content
-    filepath = "/my_mem_dir/test_dir/file1.txt"
-    file_payload = {"item_path": filepath, "content": " and new"}
-    file_res = await jp_fetch(
-        "jupyter_fsspec",
-        "files",
-        method="PATCH",
-        params={"key": mem_key},
-        body=json.dumps(file_payload),
-    )
-    assert file_res.code == 200
-
-
 # TODO:
 async def xtest_action_same_fs_files(fs_manager_instance, jp_fetch):
     fs_manager = await fs_manager_instance
