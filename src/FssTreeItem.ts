@@ -23,6 +23,8 @@ export class FssTreeItem {
   clickSlots: any;
   getBytesSlots: any;
   uploadUserDataSlots: any;
+  uploadFromBrowserPickerSlots: any;
+  uploadFromJupyterBrowserSlots: any;
   isDir = false;
   treeItemObserver: MutationObserver;
   pendingExpandAction = false;
@@ -35,6 +37,10 @@ export class FssTreeItem {
     clickSlots: any,
     userGetBytesSlots: any,
     uploadUserDataSlots: any,
+
+    uploadFromBrowserPickerSlots: any,
+    uploadFromJupyterBrowserSlots: any,
+
     autoExpand: boolean,
     expandOnClickAnywhere: boolean,
     notebookTracker: INotebookTracker
@@ -53,6 +59,8 @@ export class FssTreeItem {
     this.clickSlots = clickSlots;
     this.getBytesSlots = userGetBytesSlots; // TODO fix its horrible
     this.uploadUserDataSlots = uploadUserDataSlots;
+    this.uploadFromBrowserPickerSlots = uploadFromBrowserPickerSlots;
+    this.uploadFromJupyterBrowserSlots = uploadFromJupyterBrowserSlots;
     this.lazyLoadAutoExpand = autoExpand;
     this.clickAnywhereDoesAutoExpand = expandOnClickAnywhere;
     this.notebookTracker = notebookTracker;
@@ -117,7 +125,50 @@ export class FssTreeItem {
     }
   }
 
+  async handleUploadFromBrowserPicker(options: any) {
+    Logger.debug('AA1');
+    let is_browser_file_picker = false;
+    let is_jup_browser_file = false;
+    if (options) {
+      is_browser_file_picker = options.is_browser_file_picker;
+      is_jup_browser_file = options.is_jup_browser_file;
+      this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
+    }
+    Logger.debug('Treeitem upload user data');
+    for (const slot of this.uploadFromBrowserPickerSlots) {
+      Logger.debug(slot);
+      await slot(
+        this.root.dataset.fss,
+        this.isDir,
+        is_browser_file_picker,
+        is_jup_browser_file
+      );
+    }
+  }
+
+  async handleUploadFromJupyterBrowser(options: any) {
+    Logger.debug('BB1');
+    let is_browser_file_picker = false;
+    let is_jup_browser_file = false;
+    if (options) {
+      is_browser_file_picker = options.is_browser_file_picker;
+      is_jup_browser_file = options.is_jup_browser_file;
+      this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
+    }
+    Logger.debug('Treeitem upload user data');
+    for (const slot of this.uploadFromJupyterBrowserSlots) {
+      Logger.debug(slot);
+      await slot(
+        this.root.dataset.fss,
+        this.isDir,
+        is_browser_file_picker,
+        is_jup_browser_file
+      );
+    }
+  }
+
   async handleUploadUserData(options: any) {
+    Logger.debug('CC1');
     let is_browser_file_picker = false;
     let is_jup_browser_file = false;
     if (options) {
