@@ -127,43 +127,20 @@ export class FssTreeItem {
 
   async handleUploadFromBrowserPicker(options: any) {
     Logger.debug('AA1');
-    let is_browser_file_picker = false;
-    let is_jup_browser_file = false;
-    if (options) {
-      is_browser_file_picker = options.is_browser_file_picker;
-      is_jup_browser_file = options.is_jup_browser_file;
-      this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
-    }
+    this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
     Logger.debug('Treeitem upload user data');
     for (const slot of this.uploadFromBrowserPickerSlots) {
       Logger.debug(slot);
-      await slot(
-        this.root.dataset.fss,
-        this.isDir,
-        is_browser_file_picker,
-        is_jup_browser_file
-      );
+      await slot(this.root.dataset.fss, this.isDir);
     }
   }
 
   async handleUploadFromJupyterBrowser(options: any) {
     Logger.debug('BB1');
-    let is_browser_file_picker = false;
-    let is_jup_browser_file = false;
-    if (options) {
-      is_browser_file_picker = options.is_browser_file_picker;
-      is_jup_browser_file = options.is_jup_browser_file;
-      this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
-    }
     Logger.debug('Treeitem upload user data');
     for (const slot of this.uploadFromJupyterBrowserSlots) {
       Logger.debug(slot);
-      await slot(
-        this.root.dataset.fss,
-        this.isDir,
-        is_browser_file_picker,
-        is_jup_browser_file
-      );
+      await slot(this.root.dataset.fss, this.isDir);
     }
   }
 
