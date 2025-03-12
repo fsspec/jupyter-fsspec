@@ -184,7 +184,7 @@ test('test interacting with a filesystem', async ({ page }) => {
   for (const element of elements) {
     console.log(await element.evaluate(el => el.textContent));
   }
-  expect(countTreeItems).toEqual(3);
+  expect(countTreeItems).toEqual(4);
 });
 
 test('test copy path', async ({ page }) => {
