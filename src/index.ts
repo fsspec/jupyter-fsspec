@@ -416,23 +416,26 @@ class FsspecWidget extends Widget {
   //   this.openInputHidden.click();
   // }
 
-  async handleJupyterFileBrowserUpload(userFile: any, fileBrowser: any) {
-    Logger.debug(
-      `FBrowser choose: B ${fileBrowser}} / D "${fileBrowser.model.driveName}" / R "${fileBrowser.model.rootPath}"`
-    );
-    Logger.debug(`  pth    ${userFile.value.path}`);
-    Logger.debug(`  srvpth ${userFile.value.serverPath}`);
-    Logger.debug(`  sz     ${userFile.value.size}`);
-    Logger.debug(`  type   ${userFile.value.type}`);
-    Logger.debug(`  mtype  ${userFile.value.mimetype}`);
-    Logger.debug(`  fmt    ${userFile.value.format}`);
-    Logger.debug(`  wrt    ${userFile.value.writable}`);
+  async handleJupyterFileBrowserSetBytesTarget(
+    userFile: any,
+    fileBrowser: any
+  ) {
+    // Logger.debug(
+    //   `FBrowser choose: B ${fileBrowser}} / D "${fileBrowser.model.driveName}" / R "${fileBrowser.model.rootPath}"`
+    // );
+    // Logger.debug(`  pth    ${userFile.value.path}`);
+    // Logger.debug(`  srvpth ${userFile.value.serverPath}`);
+    // Logger.debug(`  sz     ${userFile.value.size}`);
+    // Logger.debug(`  type   ${userFile.value.type}`);
+    // Logger.debug(`  mtype  ${userFile.value.mimetype}`);
+    // Logger.debug(`  fmt    ${userFile.value.format}`);
+    // Logger.debug(`  wrt    ${userFile.value.writable}`);
 
     const fileData = await this.app.serviceManager.contents.get(
       userFile.value.path,
       { content: true, format: 'base64', type: 'base64' }
     );
-    Logger.debug(`xFILE CONTs:\n${JSON.stringify(fileData)}`);
+    // Logger.debug(`xFILE CONTs:\n${JSON.stringify(fileData)}`);
     this.queuedJupyterFileBrowserUploadInfo = { fileData: fileData };
   }
 
@@ -447,7 +450,7 @@ class FsspecWidget extends Widget {
       fileData = this.openInputHidden.files[0];
       this.queuedPickerUploadInfo['fileData'] = fileData;
       Logger.debug(`FData ${fileData}`);
-      this.fetchBytesFromBrowserPicker(
+      this.handleBrowserPickerUpload(
         this.queuedPickerUploadInfo.user_path,
         this.queuedPickerUploadInfo.is_dir,
         this.queuedPickerUploadInfo.is_browser_file_picker,
@@ -463,7 +466,7 @@ class FsspecWidget extends Widget {
     }
   }
 
-  async fetchBytesFromJupyterFileBrowser(user_path: string, is_dir: boolean) {
+  async handleJupyterFileBrowserUpload(user_path: string, is_dir: boolean) {
     Logger.debug('BB a1');
 
     // Get the desired path for this upload from a dialog box
@@ -510,7 +513,7 @@ class FsspecWidget extends Widget {
     }
   }
 
-  async fetchBytesFromBrowserPicker(
+  async handleBrowserPickerUpload(
     user_path: string,
     is_dir: boolean,
     is_browser_file_picker: boolean,
@@ -576,25 +579,9 @@ class FsspecWidget extends Widget {
       Logger.error('Error, no browser file data available!');
       return;
     }
-
-    // if (!tempfilePath) {
-    //   Logger.error('Error fetching upload path!');
-    //   return;
-    // }
-
-    // // TODO error handling
-    // this.model.upload(
-    //   this.model.activeFilesystem,
-    //   tempfilePath,
-    //   user_path,
-    //   'upload'
-    // );
-    // let foo = this.navigateToPath(user_path);
-    // Logger.debug(`Finish upload to ${foo}`);
-    this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
   }
 
-  async handleContextUploadUserData(
+  async handleKernelHelperUpload(
     user_path: string,
     is_dir: boolean,
     is_browser_file_picker: boolean,
@@ -635,79 +622,10 @@ class FsspecWidget extends Widget {
 
     // Get the path of the file to upload
     let tempfilePath: any = '';
-    if (is_browser_file_picker || is_jup_browser_file) {
-      if (is_browser_file_picker && !this.queuedPickerUploadInfo) {
-        // First we have to obtain info from the browser file picker (async user selection)
-        this.queuedPickerUploadInfo = {
-          user_path: user_path,
-          is_dir: is_dir,
-          is_browser_file_picker: is_browser_file_picker,
-          fileData: null
-        };
-        this.openInputHidden.click();
-        Logger.debug('WAIT FOR FILE PICKER');
-        return;
-      } else if (is_browser_file_picker && this.queuedPickerUploadInfo) {
-        // We have obtained file info from the user's selection (our call above)
-        Logger.debug('File Result get!');
-        Logger.debug(
-          `Dump picker info ${JSON.stringify(this.queuedPickerUploadInfo)}`
-        );
-        // Logger.debug(`File ${this.queuedPickerUploadInfo.fileData.name}`);
-        // Logger.debug(
-        //   `File ${this.queuedPickerUploadInfo.fileData.webkitRelativePath}`
-        // );
-
-        const binRaw = await this.queuedPickerUploadInfo.fileData.arrayBuffer();
-        const binData: any = new Uint8Array(binRaw);
-        const base64String = Buffer.from(binData).toString('base64');
-
-        await this.model.post(
-          this.model.activeFilesystem,
-          user_path,
-          base64String,
-          true
-        );
-        Logger.debug('Finish upload');
-
-        this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
-
-        return;
-      } else if (
-        is_jup_browser_file &&
-        this.queuedJupyterFileBrowserUploadInfo
-      ) {
-        // We have file information from the Lab file browser
-        Logger.debug('Jup file browser result get!');
-        Logger.debug(
-          `Dump jbrowser info ${JSON.stringify(this.queuedJupyterFileBrowserUploadInfo)}`
-        );
-        const base64String =
-          this.queuedJupyterFileBrowserUploadInfo.fileData.content;
-        Logger.debug(`B64 content str:\n${base64String}`);
-
-        // TODO error handling and data checks
-        await this.model.post(
-          this.model.activeFilesystem,
-          user_path,
-          base64String,
-          true
-        );
-        Logger.debug('Finish upload');
-
-        this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
-
-        return;
-      } else {
-        return;
-      }
-    } else {
-      // We are obtaining bytes from the user's kernel, get a
-      // serialized tempfile path from the server
-      tempfilePath = await this.getKernelUserBytesTempfilePath();
-      Logger.debug(`Debugx2: ${tempfilePath}`);
-    }
-
+    // We are obtaining bytes from the user's kernel, get a
+    // serialized tempfile path from the server
+    tempfilePath = await this.getKernelUserBytesTempfilePath();
+    Logger.debug(`Debugx2: ${tempfilePath}`);
     if (!tempfilePath) {
       Logger.error('Error fetching serialized user_data!');
       return;
@@ -958,9 +876,9 @@ class FsspecWidget extends Widget {
             this.model,
             [this.lazyLoad.bind(this)],
             [this.handleContextGetBytes.bind(this)],
-            [this.handleContextUploadUserData.bind(this)],
-            [this.fetchBytesFromBrowserPicker.bind(this)],
-            [this.fetchBytesFromJupyterFileBrowser.bind(this)],
+            [this.handleKernelHelperUpload.bind(this)],
+            [this.handleBrowserPickerUpload.bind(this)],
+            [this.handleJupyterFileBrowserUpload.bind(this)],
             true,
             true,
             this.notebookTracker
@@ -1151,7 +1069,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           const file = fileModel.value;
 
           if (file) {
-            await fsspec_widget.handleJupyterFileBrowserUpload(
+            await fsspec_widget.handleJupyterFileBrowserSetBytesTarget(
               fileModel,
               fileBrowserFactory.tracker?.currentWidget
             );
