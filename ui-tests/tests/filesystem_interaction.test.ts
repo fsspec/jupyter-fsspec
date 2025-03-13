@@ -385,6 +385,13 @@ test('upload file from the Jupyterlab file browser', async ({ page }) => {
   await expect.soft(page.getByText(command)).toBeVisible();
   await page.getByText(command).click();
 
+  // input file name and click `Ok`
+  page.on('dialog', dialog => {
+    if (dialog.type() == 'prompt') {
+      dialog.accept('test.txt');
+    }
+  });
+
   // file size information will not be upadated to match the notebook size
   // as that information is currenly mocked.
 
@@ -451,7 +458,7 @@ test('upload file from browser picker', async ({ page }) => {
   await page.getByText(command).highlight();
   await page.getByText(command).click();
 
-  const filePicker = await filePickerPromise;
+  await filePickerPromise;
 
   const tmpFilePath = path.join(os.tmpdir(), 'test-file.txt');
   fs.writeFileSync(tmpFilePath, 'This is a test file for Playwright.');
@@ -463,6 +470,79 @@ test('upload file from browser picker', async ({ page }) => {
     request =>
       request.url().includes(request_url) && request.method() === 'POST'
   );
+
+  // TODO: ensure HTTP request is made with correct parameters
+  const request = await requestPromise;
+  expect.soft(request.method()).toBe('POST');
+  expect.soft(request.url()).toContain(request_url);
+
+  const response = await request.response();
+  expect.soft(response?.status()).toBe(200);
+  const jsonResponse = await response?.json();
+  expect.soft(jsonResponse).toEqual(response_body);
+});
+
+test('upload file from helper', async ({ page }) => {
+  const request_url =
+    'http://localhost:8888/jupyter_fsspec/files/transfer?action=upload';
+  const response_body = {
+    status: 'success',
+    desctiption: 'Uploaded file'
+  };
+
+  await page.route(request_url + '**', route => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(response_body)
+    });
+  });
+
+  await page.goto();
+  await page.getByText('FSSpec', { exact: true }).click();
+  await page.locator('.jfss-fsitem-root').click();
+
+  // open a notebook
+  await page.notebook.createNew();
+  await page.waitForTimeout(1000);
+
+  const quote_mark = '"';
+  const new_bytes = `${quote_mark}Hello there from playwright${quote_mark}.encode()`;
+  await page.notebook.addCell(
+    'code',
+    `from jupyter_fsspec import helper\nhelper.set_user_data(${new_bytes})`
+  );
+  await page.notebook.runCell(1);
+
+  await page
+    .getByRole('button', { name: 'Save and create checkpoint' })
+    .click();
+  await page.getByRole('button', { name: 'Rename' }).click();
+
+  page.on('request', request =>
+    console.log('>>', request.method(), request.url())
+  );
+  page.on('response', response =>
+    console.log('<<', response.status(), response.url(), '<<', response.text())
+  );
+
+  const file_locator = page
+    .locator('jp-tree-view')
+    .locator('jp-tree-item')
+    .nth(1);
+  await file_locator.highlight();
+  await file_locator.click({ button: 'right' });
+
+  const requestPromise = page.waitForRequest(
+    request =>
+      request.url().includes(request_url) && request.method() === 'POST'
+  );
+
+  // Wait for pop up
+  const command = 'Upload to path (helper.user_data)';
+  await expect.soft(page.getByText(command)).toBeVisible();
+  await page.getByText(command).highlight();
+  await page.getByText(command).click();
 
   // TODO: ensure HTTP request is made with correct parameters
   const request = await requestPromise;
