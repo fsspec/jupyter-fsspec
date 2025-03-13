@@ -143,7 +143,6 @@ export class FssTreeItem {
   }
 
   async handleUploadUserData(options: any) {
-    Logger.debug('CC1');
     let is_browser_file_picker = false;
     let is_jup_browser_file = false;
     if (options) {
