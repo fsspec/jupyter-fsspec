@@ -126,7 +126,6 @@ export class FssTreeItem {
   }
 
   async handleUploadFromBrowserPicker(options: any) {
-    Logger.debug('AA1');
     this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
     Logger.debug('Treeitem upload user data');
     for (const slot of this.uploadFromBrowserPickerSlots) {
