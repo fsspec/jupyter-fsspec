@@ -558,3 +558,24 @@ test('upload file from helper', async ({ page }) => {
   const jsonResponse = await response?.json();
   expect.soft(jsonResponse).toEqual(response_body);
 });
+
+test('verify option `send bytes to helper` is present', async ({ page }) => {
+  page.on('console', logMsg => console.log('[BROWSER OUTPUT] ', logMsg.text()));
+
+  await page.goto();
+  await page.getByText('FSSpec', { exact: true }).click();
+  await page.locator('.jfss-fsitem-root').click();
+
+  // select file to send to helper
+  const file_locator = page
+    .locator('jp-tree-view')
+    .locator('jp-tree-item')
+    .nth(2);
+  await file_locator.highlight();
+  await file_locator.click({ button: 'right' });
+
+  // Wait for pop up
+  const command = 'Send bytes to helper';
+  await expect.soft(page.getByText(command)).toBeVisible();
+  await page.getByText(command).click();
+});
