@@ -135,7 +135,6 @@ export class FssTreeItem {
   }
 
   async handleUploadFromJupyterBrowser(options: any) {
-    Logger.debug('BB1');
     Logger.debug('Treeitem upload user data');
     for (const slot of this.uploadFromJupyterBrowserSlots) {
       Logger.debug(slot);
