@@ -145,20 +145,23 @@ export class FssTreeItemContext {
         this.parentControl.handleRequestBytes();
       }
     } else if (event.target.dataset.fssContextType === 'uploadUserData') {
+      Logger.debug('XX1');
       if (this.parentControl) {
         this.parentControl.handleUploadUserData();
       }
     } else if (event.target.dataset.fssContextType === 'uploadBrowserFile') {
+      Logger.debug('XX2');
       if (this.parentControl) {
-        this.parentControl.handleUploadUserData({
+        this.parentControl.handleUploadFromBrowserPicker({
           is_browser_file_picker: true
         });
       }
     } else if (
       event.target.dataset.fssContextType === 'uploadJupyterBrowserFile'
     ) {
+      Logger.debug('XX3');
       if (this.parentControl) {
-        this.parentControl.handleUploadUserData({
+        this.parentControl.handleUploadFromJupyterBrowser({
           is_jup_browser_file: true
         });
       }
