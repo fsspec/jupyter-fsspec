@@ -328,6 +328,7 @@ test('copy open with code block with active notebook cell', async ({
 });
 
 test('upload file from the Jupyterlab file browser', async ({ page }) => {
+  page.on('console', logMsg => console.log('[BROWSER OUTPUT] ', logMsg.text()));
   const request_url =
     'http://localhost:8888/jupyter_fsspec/files?action=write&key=mymem';
   const response_body = {
@@ -383,14 +384,13 @@ test('upload file from the Jupyterlab file browser', async ({ page }) => {
   // Wait for pop up
   const command = 'Upload to path (from integrated file browser)';
   await expect.soft(page.getByText(command)).toBeVisible();
+  await page.getByText(command).highlight();
   await page.getByText(command).click();
 
   // input file name and click `Ok`
-  page.on('dialog', dialog => {
-    if (dialog.type() == 'prompt') {
-      dialog.accept('test.txt');
-    }
-  });
+  await page.waitForSelector('.jp-Dialog');
+  await page.fill('.jp-Dialog input[type="text"]', 'test.txt');
+  await page.click('.jp-Dialog .jp-mod-accept');
 
   // file size information will not be upadated to match the notebook size
   // as that information is currenly mocked.
@@ -483,6 +483,7 @@ test('upload file from browser picker', async ({ page }) => {
 });
 
 test('upload file from helper', async ({ page }) => {
+  page.on('console', logMsg => console.log('[BROWSER OUTPUT] ', logMsg.text()));
   const request_url =
     'http://localhost:8888/jupyter_fsspec/files/transfer?action=upload';
   const response_body = {
@@ -543,6 +544,11 @@ test('upload file from helper', async ({ page }) => {
   await expect.soft(page.getByText(command)).toBeVisible();
   await page.getByText(command).highlight();
   await page.getByText(command).click();
+
+  // input file name and click `Ok`
+  await page.waitForSelector('.jp-Dialog');
+  await page.fill('.jp-Dialog input[type="text"]', 'test.txt');
+  await page.click('.jp-Dialog .jp-mod-accept');
 
   // TODO: ensure HTTP request is made with correct parameters
   const request = await requestPromise;
