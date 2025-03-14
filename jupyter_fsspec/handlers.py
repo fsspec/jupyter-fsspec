@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import binascii
 import traceback
@@ -10,10 +11,16 @@ from contextlib import contextmanager
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 
-from .file_manager import FileSystemManager
-from .models import GetRequest, PostRequest, DeleteRequest, TransferRequest, Direction
-from .utils import parse_range
-from .exceptions import JupyterFsspecException
+from jupyter_fsspec.file_manager import FileSystemManager
+from jupyter_fsspec.models import (
+    GetRequest,
+    PostRequest,
+    DeleteRequest,
+    TransferRequest,
+    Direction,
+)
+from jupyter_fsspec.utils import parse_range
+from jupyter_fsspec.exceptions import JupyterFsspecException
 
 
 logging.basicConfig(level=logging.INFO)
@@ -679,3 +686,23 @@ def setup_handlers(web_app):
     ]
 
     web_app.add_handlers(host_pattern, handlers)
+
+
+async def main():
+    port = 9898  # or from CLI args
+    # mock login
+    APIHandler.get_current_user = lambda *_, **__: "tester"
+    app = tornado.web.Application(base_url=".*")
+    setup_handlers(app)
+
+    app.listen(port)
+    shutdown = asyncio.Event()
+    try:
+        await shutdown.wait()
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        pass
+
+
+if __name__ == "__main__":
+    print("http://127.0.0.1:9898/jupyter_fsspec/config")
+    asyncio.run(main())
