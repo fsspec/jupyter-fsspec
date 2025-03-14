@@ -1,4 +1,7 @@
 import { expect, test } from '@jupyterlab/galata';
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
 
 test.use({
   autoGoto: false,
@@ -64,6 +67,13 @@ const rootMyMemFs = {
       type: 'file',
       size: 128,
       ino: 49648960,
+      mode: 33188
+    },
+    {
+      name: '/mymemoryfs/myfile2.txt',
+      type: 'file',
+      size: 128,
+      ino: 49638760,
       mode: 33188
     },
     {
@@ -174,7 +184,7 @@ test('test interacting with a filesystem', async ({ page }) => {
   for (const element of elements) {
     console.log(await element.evaluate(el => el.textContent));
   }
-  expect(countTreeItems).toEqual(3);
+  expect(countTreeItems).toEqual(4);
 });
 
 test('test copy path', async ({ page }) => {
@@ -315,4 +325,257 @@ test('copy open with code block with active notebook cell', async ({
   });
   expect(content?.includes(cellText));
   expect(content?.includes(copyCodeBlock));
+});
+
+test('upload file from the Jupyterlab file browser', async ({ page }) => {
+  page.on('console', logMsg => console.log('[BROWSER OUTPUT] ', logMsg.text()));
+  const request_url =
+    'http://localhost:8888/jupyter_fsspec/files?action=write&key=mymem';
+  const response_body = {
+    status: 'success',
+    desctiption: 'Uploaded file'
+  };
+
+  await page.route(request_url + '**', route => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(response_body)
+    });
+  });
+
+  await page.goto();
+  await page.getByText('FSSpec', { exact: true }).click();
+  await page.locator('.jfss-fsitem-root').click();
+
+  // open a notebook
+  await page.notebook.createNew();
+  await page.waitForTimeout(1000);
+  await page
+    .getByRole('button', { name: 'Save and create checkpoint' })
+    .click();
+  await page.getByRole('button', { name: 'Rename' }).click();
+
+  // right-click on Jupyterlab filebrowser item
+  await page.getByRole('listitem', { name: 'Name: Untitled.ipynb' }).click({
+    button: 'right'
+  });
+  await page.getByText('Set as fsspec upload target').click();
+
+  const file_locator = page
+    .locator('jp-tree-view')
+    .locator('jp-tree-item')
+    .nth(1);
+  await file_locator.highlight();
+  await file_locator.click({ button: 'right' });
+
+  const requestPromise = page.waitForRequest(
+    request =>
+      request.url().includes(request_url) && request.method() === 'POST'
+  );
+
+  // Wait for pop up
+  const command = 'Upload to path (from integrated file browser)';
+  await expect.soft(page.getByText(command)).toBeVisible();
+  await page.getByText(command).highlight();
+  await page.getByText(command).click();
+
+  // input file name and click `Ok`
+  try {
+    await page.waitForSelector('.jp-Dialog', { timeout: 3000 });
+    await page
+      .locator('.jfss-file-upload-context-popup input')
+      .fill('test.txt');
+    await page.getByRole('button', { name: 'Ok' }).click();
+  } catch (error) {
+    console.log('Dialog not found, skipping action');
+  }
+
+  // file size information will not be upadated to match the notebook size
+  // as that information is currenly mocked.
+
+  // TODO: ensure HTTP request is made with correct parameters
+  const request = await requestPromise;
+  expect.soft(request.method()).toBe('POST');
+  expect.soft(request.url()).toContain(request_url);
+
+  const response = await request.response();
+
+  const jsonResponse = await response?.json();
+  expect.soft(jsonResponse).toEqual(response_body);
+});
+
+test('upload file from browser picker', async ({ page }) => {
+  const request_url =
+    'http://localhost:8888/jupyter_fsspec/files?action=write&key=mymem';
+  const response_body = {
+    status: 'success',
+    desctiption: 'uploaded file'
+  };
+
+  await page.route(request_url + '**', route => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(response_body)
+    });
+  });
+
+  await page.goto();
+  await page.getByText('FSSpec', { exact: true }).click();
+  await page.locator('.jfss-fsitem-root').click();
+
+  // open a notebook
+  await page.notebook.createNew();
+  await page.waitForTimeout(1000);
+  await page
+    .getByRole('button', { name: 'Save and create checkpoint' })
+    .click();
+  await page.getByRole('button', { name: 'Rename' }).click();
+
+  page.on('request', request =>
+    console.log('>>', request.method(), request.url())
+  );
+  page.on('response', async response =>
+    console.log('<<', response.status(), response.url(), '<<', response.text())
+  );
+
+  // right-click on browser picker item
+  const file_locator = page
+    .locator('jp-tree-view')
+    .locator('jp-tree-item')
+    .nth(2);
+  await file_locator.highlight();
+  await file_locator.click({ button: 'right' });
+
+  // Wait for file picker dialog
+  const filePickerPromise = page.waitForEvent('filechooser');
+
+  // Wait for pop up
+  const command = 'Upload to path (Browser file picker)';
+  await expect.soft(page.getByText(command)).toBeVisible();
+  await page.getByText(command).highlight();
+  await page.getByText(command).click();
+
+  await filePickerPromise;
+
+  const tmpFilePath = path.join(os.tmpdir(), 'test-file.txt');
+  fs.writeFileSync(tmpFilePath, 'This is a test file for Playwright.');
+  await page.setInputFiles('input[type="file"]', tmpFilePath);
+
+  fs.unlinkSync(tmpFilePath);
+
+  const requestPromise = page.waitForRequest(
+    request =>
+      request.url().includes(request_url) && request.method() === 'POST'
+  );
+
+  // TODO: ensure HTTP request is made with correct parameters
+  const request = await requestPromise;
+  expect.soft(request.method()).toBe('POST');
+  expect.soft(request.url()).toContain(request_url);
+
+  const response = await request.response();
+  expect.soft(response?.status()).toBe(200);
+  const jsonResponse = await response?.json();
+  expect.soft(jsonResponse).toEqual(response_body);
+});
+
+test('upload file from helper', async ({ page }) => {
+  page.on('console', logMsg => console.log('[BROWSER OUTPUT] ', logMsg.text()));
+  const request_url =
+    'http://localhost:8888/jupyter_fsspec/files/transfer?action=upload';
+  const response_body = {
+    status: 'success',
+    desctiption: 'Uploaded file'
+  };
+
+  await page.route(request_url + '**', route => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(response_body)
+    });
+  });
+
+  await page.goto();
+  await page.getByText('FSSpec', { exact: true }).click();
+  await page.locator('.jfss-fsitem-root').click();
+
+  // open a notebook
+  await page.notebook.createNew();
+  await page.waitForTimeout(1000);
+
+  const quote_mark = '"';
+  const new_bytes = `${quote_mark}Hello there from playwright${quote_mark}.encode()`;
+  await page.notebook.addCell(
+    'code',
+    `from jupyter_fsspec import helper\nhelper.set_user_data(${new_bytes})`
+  );
+  await page.notebook.runCell(1);
+
+  await page
+    .getByRole('button', { name: 'Save and create checkpoint' })
+    .click();
+  await page.getByRole('button', { name: 'Rename' }).click();
+
+  const file_locator = page
+    .locator('jp-tree-view')
+    .locator('jp-tree-item')
+    .nth(1);
+  await file_locator.highlight();
+  await file_locator.click({ button: 'right' });
+
+  const requestPromise = page.waitForRequest(
+    request =>
+      request.url().includes(request_url) && request.method() === 'POST'
+  );
+
+  // Wait for pop up
+  const command = 'Upload to path (helper.user_data)';
+  await expect.soft(page.getByText(command)).toBeVisible();
+  await page.getByText(command).highlight();
+  await page.getByText(command).click();
+
+  // input file name and click `Ok`
+  try {
+    await page.waitForSelector('.jp-Dialog', { timeout: 3000 });
+    await page
+      .locator('.jfss-file-upload-context-popup input')
+      .fill('test.txt');
+    await page.getByRole('button', { name: 'Ok' }).click();
+  } catch (error) {
+    console.log('Dialog not found, skipping action');
+  }
+
+  // TODO: ensure HTTP request is made with correct parameters
+  const request = await requestPromise;
+  expect.soft(request.method()).toBe('POST');
+  expect.soft(request.url()).toContain(request_url);
+
+  const response = await request.response();
+  expect.soft(response?.status()).toBe(200);
+  const jsonResponse = await response?.json();
+  expect.soft(jsonResponse).toEqual(response_body);
+});
+
+test('verify option `send bytes to helper` is present', async ({ page }) => {
+  page.on('console', logMsg => console.log('[BROWSER OUTPUT] ', logMsg.text()));
+
+  await page.goto();
+  await page.getByText('FSSpec', { exact: true }).click();
+  await page.locator('.jfss-fsitem-root').click();
+
+  // select file to send to helper
+  const file_locator = page
+    .locator('jp-tree-view')
+    .locator('jp-tree-item')
+    .nth(2);
+  await file_locator.highlight();
+  await file_locator.click({ button: 'right' });
+
+  // Wait for pop up
+  const command = 'Send bytes to helper';
+  await expect.soft(page.getByText(command)).toBeVisible();
+  await page.getByText(command).click();
 });
