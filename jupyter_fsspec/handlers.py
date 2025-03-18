@@ -704,5 +704,9 @@ async def main():
 
 
 if __name__ == "__main__":
+    import fsspec
+
+    m = fsspec.filesystem("memory")
+    m.pipe_file("mytests/afile", b"hello")
     print("http://127.0.0.1:9898/jupyter_fsspec/config")
     asyncio.run(main())

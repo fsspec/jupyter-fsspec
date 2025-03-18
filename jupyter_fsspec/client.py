@@ -35,8 +35,7 @@ class JFS(AbstractFileSystem):
                 self.dircache[""] = out
             else:
                 key, relpath = self._split_path(path)
-                bits = self._call("jupyter_fsspec/files", key=key, item_path=relpath)
-                return bits
+                out = self._call("jupyter_fsspec/files", key=key, item_path=relpath)
 
         if detail:
             return out
