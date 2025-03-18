@@ -79,6 +79,7 @@ class FsspecConfigHandler(APIHandler):
                 "protocol": fs_info["protocol"],
                 "path": fs_info["path"],
                 "canonical_path": fs_info["canonical_path"],
+                "prefix": self.fs_manager.name_to_prefix.get(fs_info["name"], ""),
             }
             file_systems.append(instance)
 
