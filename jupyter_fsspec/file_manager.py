@@ -4,6 +4,7 @@ from fsspec.utils import infer_storage_options
 from fsspec.implementations.asyn_wrapper import AsyncFileSystemWrapper
 import fsspec
 import os
+import re
 import sys
 import yaml
 import hashlib
@@ -18,6 +19,7 @@ logger.setLevel(logging.INFO)
 class FileSystemManager:
     def __init__(self, config_file):
         self.filesystems = {}
+        self.name_to_prefix = {}
         self.base_dir = jupyter_config_dir()
         logger.info(f"Using Jupyter config directory: {self.base_dir}")
         self.config_path = os.path.join(self.base_dir, config_file)
@@ -117,6 +119,7 @@ class FileSystemManager:
 
     def initialize_filesystems(self):
         new_filesystems = {}
+        name_to_prefix = {}
 
         # Init filesystem
         for fs_config in self.config.get("sources", []):
@@ -139,6 +142,8 @@ class FileSystemManager:
 
             key = self._encode_key(fs_config)
 
+            # # Restrict local file systems to server root
+
             fs_class = fsspec.get_filesystem_class(fs_protocol)
             if fs_class.async_impl:
                 fs = fsspec.filesystem(fs_protocol, asynchronous=True, *args, **kwargs)
@@ -154,11 +159,31 @@ class FileSystemManager:
                 "path": fs._strip_protocol(fs_path),
                 "canonical_path": fs.unstrip_protocol(fs_path),
             }
+            name_to_prefix[fs_name] = fs_path
             logger.debug(
                 f"Initialized filesystem '{fs_name}' with protocol '{fs_protocol}' at path '{fs_path}'"
             )
 
         self.filesystems = new_filesystems
+        self.name_to_prefix = name_to_prefix
+
+    def _translate_path(self, fs_name, fs_path):
+        if fs_name not in self.name_to_prefix:
+            raise ValueError(f"Unkown filesystem: {fs_name}")
+
+        if not self.filesystems[fs_name]["protocol"] == "file":
+            # memory or remote fs
+            prefix_path = self.name_to_prefix[fs_name]
+            relative_path = re.sub(rf"^.*?{prefix_path}", "", fs_path)
+            full_path = relative_path
+        else:
+            # local fs
+            # source name maps to path from config (:: root /)
+            #    user has no knowledge of the root path details
+            root_path = self.name_to_prefix[fs_name]
+            relative_path = re.sub(rf"^.*?{fs_name}", "", fs_path)
+            full_path = os.path.join(root_path, relative_path)
+        return full_path
 
     def check_reload_config(self):
         new_config_content = self.load_config()
@@ -186,6 +211,7 @@ class FileSystemManager:
         if fs is None:
             raise ValueError(f"No filesystem found for key: {key}")
 
+        item_path = self._translate_path(key, item_path)
         return fs, item_path
 
     def get_filesystem(self, key):

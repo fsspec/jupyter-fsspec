@@ -23,6 +23,8 @@ export class FssTreeItem {
   clickSlots: any;
   getBytesSlots: any;
   uploadUserDataSlots: any;
+  uploadFromBrowserPickerSlots: any;
+  uploadFromJupyterBrowserSlots: any;
   isDir = false;
   treeItemObserver: MutationObserver;
   pendingExpandAction = false;
@@ -35,6 +37,10 @@ export class FssTreeItem {
     clickSlots: any,
     userGetBytesSlots: any,
     uploadUserDataSlots: any,
+
+    uploadFromBrowserPickerSlots: any,
+    uploadFromJupyterBrowserSlots: any,
+
     autoExpand: boolean,
     expandOnClickAnywhere: boolean,
     notebookTracker: INotebookTracker
@@ -53,6 +59,8 @@ export class FssTreeItem {
     this.clickSlots = clickSlots;
     this.getBytesSlots = userGetBytesSlots; // TODO fix its horrible
     this.uploadUserDataSlots = uploadUserDataSlots;
+    this.uploadFromBrowserPickerSlots = uploadFromBrowserPickerSlots;
+    this.uploadFromJupyterBrowserSlots = uploadFromJupyterBrowserSlots;
     this.lazyLoadAutoExpand = autoExpand;
     this.clickAnywhereDoesAutoExpand = expandOnClickAnywhere;
     this.notebookTracker = notebookTracker;
@@ -114,6 +122,23 @@ export class FssTreeItem {
     for (const slot of this.getBytesSlots) {
       Logger.debug(slot);
       slot(this.root.dataset.fss);
+    }
+  }
+
+  async handleUploadFromBrowserPicker(options: any) {
+    this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
+    Logger.debug('Treeitem upload user data');
+    for (const slot of this.uploadFromBrowserPickerSlots) {
+      Logger.debug(slot);
+      await slot(this.root.dataset.fss, this.isDir);
+    }
+  }
+
+  async handleUploadFromJupyterBrowser(options: any) {
+    Logger.debug('Treeitem upload user data');
+    for (const slot of this.uploadFromJupyterBrowserSlots) {
+      Logger.debug(slot);
+      await slot(this.root.dataset.fss, this.isDir);
     }
   }
 
