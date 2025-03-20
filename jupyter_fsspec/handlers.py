@@ -192,7 +192,6 @@ class FileTransferHandler(APIHandler):
         :rtype: dict
         """
         request_data = json.loads(self.request.body.decode("utf-8"))
-        print(f"FTRANSFER data\n{request_data}")
         try:
             with handle_exception(
                 self, status_code=400, default_msg="Error processing request payload."
