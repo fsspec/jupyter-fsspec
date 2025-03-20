@@ -7,7 +7,8 @@ import tempfile
 import traceback
 from base64 import standard_b64encode
 
-from .file_manager import FileSystemManager
+import fsspec
+
 from .exceptions import JupyterFsspecException
 
 
@@ -103,41 +104,18 @@ class HelperOutput:
         return string_rep
 
 
-def _get_manager(cached=True):
-    # Get and cache a manager: The manager handles the config and filesystem
-    # construction using the same underlying machinery used by the frontend extension.
-    # The manager is cached to avoid hitting the disk/config file multiple times.
-    global _manager
-    if not cached or _manager is None:
-        _manager = FileSystemManager.create_default()
-    return _manager
+_get_fs = fsspec.filesystem
 
 
-def _get_fs(fs_name):
-    # Get an fsspec filesystem from the manager
-    # The fs_name is url encoded, we handle that here...TODO refactor that
-    mgr = _get_manager()
-    fs = mgr.get_filesystem(fs_name)
-    if fs is not None and "instance" in fs:
-        return fs["instance"]  # TODO refactor
-    else:
-        raise JupyterFsspecException("Error, could not find specified filesystem")
-
-
-def reload():
-    # Get a new manager/re-read the config file
-    return _get_manager(False)
-
-
-def fs(fs_name):
+def fs(protocol, kwargs):
     # (Public API) Return an fsspec filesystem from the manager
-    return _get_fs(fs_name)
+    return _get_fs(protocol, **kwargs)
 
 
 filesystem = fs  # Alias for matching fsspec call
 
 
-def _request_bytes(fs_name, path):
+def _request_bytes(protocol, kwargs, path):
     global out
 
     # Empty results first
@@ -147,12 +125,12 @@ def _request_bytes(fs_name, path):
     blank["path"] = path
     out = HelperOutput(blank)
 
-    filesys = filesystem(fs_name)
+    filesys = filesystem(protocol, kwargs)
     try:
         out = HelperOutput(
             {
                 "ok": True,
-                "value": filesys.open(path, mode="rb").read(),
+                "value": filesys.cat_file(path),
                 "path": path,
                 "timestamp": now,
                 "error": None,
