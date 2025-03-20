@@ -5,6 +5,8 @@ import {
   jpTreeItem
 } from '@jupyter/web-components';
 
+import { Signal } from '@lumino/signaling';
+
 import { INotebookTracker } from '@jupyterlab/notebook';
 
 import { fileIcon, folderIcon } from '@jupyterlab/ui-components';
@@ -20,21 +22,18 @@ export class FssTreeItem {
   sizeLbl: HTMLElement;
   dirSymbol: HTMLElement;
   container: HTMLElement;
-  clickSlots: any;
-  getBytesSlots: any;
-  uploadUserDataSlots: any;
   isDir = false;
   treeItemObserver: MutationObserver;
   pendingExpandAction = false;
   lazyLoadAutoExpand = true;
   clickAnywhereDoesAutoExpand = true;
   notebookTracker: INotebookTracker;
+  treeItemClicked: Signal<any, string>;
+  getBytesRequested: Signal<any, string>;
+  uploadUserDataRequested: Signal<any, any>;
 
   constructor(
     model: any,
-    clickSlots: any,
-    userGetBytesSlots: any,
-    uploadUserDataSlots: any,
     autoExpand: boolean,
     expandOnClickAnywhere: boolean,
     notebookTracker: INotebookTracker
@@ -50,12 +49,12 @@ export class FssTreeItem {
     root.setAttribute('name', 'jfss-treeitem-root');
     this.root = root;
     this.model = model;
-    this.clickSlots = clickSlots;
-    this.getBytesSlots = userGetBytesSlots; // TODO fix its horrible
-    this.uploadUserDataSlots = uploadUserDataSlots;
     this.lazyLoadAutoExpand = autoExpand;
     this.clickAnywhereDoesAutoExpand = expandOnClickAnywhere;
     this.notebookTracker = notebookTracker;
+    this.treeItemClicked = new Signal<this, string>(this);
+    this.getBytesRequested = new Signal<this, string>(this);
+    this.uploadUserDataRequested = new Signal<this, any>(this);
 
     // Use a MutationObserver on the root TreeItem's shadow DOM,
     // where the TreeItem's expand/collapse control will live once
@@ -111,10 +110,7 @@ export class FssTreeItem {
 
   handleRequestBytes() {
     Logger.debug('Treeitem get bytes');
-    for (const slot of this.getBytesSlots) {
-      Logger.debug(slot);
-      slot(this.root.dataset.fss);
-    }
+    this.getBytesRequested.emit(this.root.dataset.fss);
   }
 
   async handleUploadUserData(options: any) {
@@ -126,15 +122,21 @@ export class FssTreeItem {
       this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
     }
     Logger.debug('Treeitem upload user data');
-    for (const slot of this.uploadUserDataSlots) {
-      Logger.debug(slot);
-      await slot(
-        this.root.dataset.fss,
-        this.isDir,
-        is_browser_file_picker,
-        is_jup_browser_file
-      );
-    }
+    // for (const slot of this.uploadUserDataSlots) {
+    //   Logger.debug(slot);
+    //   await slot(
+    //     this.root.dataset.fss,
+    //     this.isDir,
+    //     is_browser_file_picker,
+    //     is_jup_browser_file
+    //   );
+    // }
+    this.uploadUserDataRequested.emit({
+      user_path: this.root.dataset.fss,
+      is_dir: this.isDir,
+      is_browser_file_picker: is_browser_file_picker,
+      is_jup_browser_file: is_jup_browser_file
+    });
   }
 
   setMetadata(user_path: string, size: string) {
@@ -225,9 +227,7 @@ export class FssTreeItem {
       }
       // Fire connected slots that were supplied to this item on init
       if (this.isDir) {
-        for (const slot of this.clickSlots) {
-          slot(this.root.dataset.fss);
-        }
+        this.treeItemClicked.emit(this.root.dataset.fss);
       } else {
         this.root.click();
       }

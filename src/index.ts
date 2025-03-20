@@ -1,5 +1,6 @@
 import { Buffer } from 'buffer';
 import * as path from 'path';
+import { inspect } from 'util';
 
 import {
   JupyterFrontEnd,
@@ -790,6 +791,24 @@ class FsspecWidget extends Widget {
     return this.elementHeap[ident.toString()];
   }
 
+  async handleTreeItemClicked(sender: any, userPath: string) {
+    Logger.debug(`Signal TI click: ${inspect(userPath)}`);
+    await this.lazyLoad(userPath);
+  }
+
+  handleUserGetBytesRequest(_sender: any, userPath: string) {
+    this.handleContextGetBytes(userPath);
+  }
+
+  async handleUploadUserDataRequest(sender: any, args: any) {
+    await this.handleContextUploadUserData(
+      args.user_path,
+      args.is_dir,
+      args.is_browser_file_picker,
+      args.is_jup_browser_file
+    );
+  }
+
   async updateFileBrowserView(startNode: any = null) {
     // Update/sync the tree view with the file data for this filesys
     Logger.info('Updating file browser view');
@@ -824,9 +843,6 @@ class FsspecWidget extends Widget {
         for (const [pathSegment, pathInfo] of Object.entries(childPaths)) {
           const item = new FssTreeItem(
             this.model,
-            [this.lazyLoad.bind(this)],
-            [this.handleContextGetBytes.bind(this)],
-            [this.handleContextUploadUserData.bind(this)],
             true,
             true,
             this.notebookTracker
@@ -836,6 +852,13 @@ class FsspecWidget extends Widget {
             (pathInfo as any).metadata.size
           );
           item.setText(pathSegment);
+          item.treeItemClicked.connect(this.handleTreeItemClicked.bind(this));
+          item.getBytesRequested.connect(
+            this.handleUserGetBytesRequest.bind(this)
+          );
+          item.uploadUserDataRequested.connect(
+            this.handleUploadUserDataRequest.bind(this)
+          );
           // (pathInfo as any).ui = item;
           elemParent.appendChild(item.root);
 
