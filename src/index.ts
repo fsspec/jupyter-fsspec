@@ -1059,7 +1059,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       // TODO verify filebrowserfactory and currentWidget are valid, file object is truthy etc.
       // Add Jupyter File Browser help
       app.commands.addCommand('jupyter_fsspec:filebrowser-context-upload', {
-        label: 'Set as fsspec upload target',
+        label: 'Select as Upload Source for FSSpec',
         caption:
           'Handles upload requests to configured fsspec filesystems from the FileBrowser',
         execute: async () => {

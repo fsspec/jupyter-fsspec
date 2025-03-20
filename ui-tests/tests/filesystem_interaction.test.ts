@@ -199,8 +199,8 @@ test('test copy path', async ({ page }) => {
   await page.getByText('mydocs', { exact: true }).click({ button: 'right' });
 
   // Wait for pop up
-  await expect.soft(page.getByText('Copy Path')).toBeVisible();
-  await page.getByText('Copy Path').click();
+  await expect.soft(page.getByText('Copy Path to Clipboard')).toBeVisible();
+  await page.getByText('Copy Path to Clipboard').click();
 
   const copiedText = await page.evaluate(() => navigator.clipboard.readText());
   expect(copiedText).toEqual('memory:///mymemoryfs/mydocs');
@@ -263,7 +263,7 @@ test('test refresh for updated config', async ({ page }) => {
   expect(updatedFilesystemsCount).toEqual(2);
 });
 
-test('copy open with code block', async ({ page }) => {
+test('insert open code snippet', async ({ page }) => {
   // activate extension from launcher page
   await page.goto();
   await page.getByText('FSSpec', { exact: true }).click();
@@ -273,8 +273,8 @@ test('copy open with code block', async ({ page }) => {
     .getByText('myfile.txt', { exact: true })
     .click({ button: 'right' });
 
-  await expect.soft(page.getByText('Copy `open` code block')).toBeVisible();
-  await page.getByText('Copy `open` code block').click();
+  await expect.soft(page.getByText('Insert `open` Code Snippet')).toBeVisible();
+  await page.getByText('Insert `open` Code Snippet').click();
 
   const copiedText = await page.evaluate(() => navigator.clipboard.readText());
   expect(copiedText).toEqual(
@@ -282,7 +282,7 @@ test('copy open with code block', async ({ page }) => {
   );
 });
 
-test('copy open with code block with active notebook cell', async ({
+test('insert open with code snippet with active notebook cell', async ({
   page
 }) => {
   await page.goto();
@@ -303,9 +303,9 @@ test('copy open with code block with active notebook cell', async ({
     .getByText('myfile.txt', { exact: true })
     .click({ button: 'right' });
 
-  // click copy code block
-  await expect.soft(page.getByText('Copy `open` code block')).toBeVisible();
-  await page.getByText('Copy `open` code block').click();
+  // click insert code snippet
+  await expect.soft(page.getByText('Insert `open` Code Snippet')).toBeVisible();
+  await page.getByText('Insert `open` Code Snippet').click();
 
   // verify the clipboard contents
   const copiedText = await page.evaluate(() => navigator.clipboard.readText());
@@ -360,7 +360,7 @@ test('upload file from the Jupyterlab file browser', async ({ page }) => {
   await page.getByRole('listitem', { name: 'Name: Untitled.ipynb' }).click({
     button: 'right'
   });
-  await page.getByText('Set as fsspec upload target').click();
+  await page.getByText('Select as Upload Source for FSSpec').click();
 
   const file_locator = page
     .locator('jp-tree-view')
@@ -375,7 +375,7 @@ test('upload file from the Jupyterlab file browser', async ({ page }) => {
   );
 
   // Wait for pop up
-  const command = 'Upload to path (from integrated file browser)';
+  const command = 'Upload from Jupyter File Browser';
   await expect.soft(page.getByText(command)).toBeVisible();
   await page.getByText(command).highlight();
   await page.getByText(command).click();
@@ -452,7 +452,7 @@ test('upload file from browser picker', async ({ page }) => {
   const filePickerPromise = page.waitForEvent('filechooser');
 
   // Wait for pop up
-  const command = 'Upload to path (Browser file picker)';
+  const command = 'Upload from Computer';
   await expect.soft(page.getByText(command)).toBeVisible();
   await page.getByText(command).highlight();
   await page.getByText(command).click();
@@ -532,7 +532,7 @@ test('upload file from helper', async ({ page }) => {
   );
 
   // Wait for pop up
-  const command = 'Upload to path (helper.user_data)';
+  const command = 'Upload from Helper Module';
   await expect.soft(page.getByText(command)).toBeVisible();
   await page.getByText(command).highlight();
   await page.getByText(command).click();
@@ -559,7 +559,7 @@ test('upload file from helper', async ({ page }) => {
   expect.soft(jsonResponse).toEqual(response_body);
 });
 
-test('verify option `send bytes to helper` is present', async ({ page }) => {
+test('verify option `Send to Helper Module` is present', async ({ page }) => {
   page.on('console', logMsg => console.log('[BROWSER OUTPUT] ', logMsg.text()));
 
   await page.goto();
@@ -575,7 +575,7 @@ test('verify option `send bytes to helper` is present', async ({ page }) => {
   await file_locator.click({ button: 'right' });
 
   // Wait for pop up
-  const command = 'Send bytes to helper';
+  const command = 'Send to Helper Module';
   await expect.soft(page.getByText(command)).toBeVisible();
   await page.getByText(command).click();
 });

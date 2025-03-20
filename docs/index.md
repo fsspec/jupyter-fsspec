@@ -28,15 +28,47 @@ you select one of them, you will see a file browser (tree view) of those files b
 Basic navigation works as you'd expect: Click to expand/collapse folders, and right click for
 context options (such as copying the path of the current file to the clipboard).
 
-### Uploading files
+### Uploading Files
 
-You can pick files to upload from multiple source:
+Uploading files to your FSSpec filesystems allows you to:
 
-- From bytes inside your active notebook kernel
-  - `import` the `jupyter_fsspec.helper` module and designate bytes for upload with `jupyter_fsspec.helper.set_user_data(some_bytes)`, then right click the file path OR folder you want to upload to in Jupyter FSSpec and choose `Upload (helper.user_data)`
-- Browser/local file picker
-- JupyterLab's intergrated file browser
-  - Just right click one of the files in the integrated file browser and choose `Set as fsspec upload target`, then right click the file path OR folder you want to upload to in Jupyter FSSpec and choose `Upload to path (from integrated file browser)`
+- Transfer data between your local environment and remote storage systems
+- Share notebooks with datasets across different computing environments
+- Back up your work to cloud storage or other remote locations
+- Prepare data for distributed processing in cloud environments
+
+You can upload files from multiple sources:
+
+- **From bytes inside your active notebook kernel:**
+
+  - Import the `jupyter_fsspec.helper` module
+  - Designate bytes for upload with
+    `jupyter_fsspec.helper.set_user_data(some_bytes)`
+  - Right-click the target folder or location in Jupyter FSSpec
+  - Select `Upload from Helper Module`
+  - _Useful for: Programmatically generated data, processed results, or content
+    modified in your notebook_
+
+- **From your local computer:**
+
+  - Right-click the target folder or location in Jupyter FSSpec
+  - Select `Upload from Computer`
+  - Choose a file from the browser's file picker
+  - _Useful for: New datasets, configuration files, or results from external
+    tools_
+
+- **From JupyterLab's integrated file browser:**
+  - Right-click a file in JupyterLab's File Browser
+  - Select `Select as Upload Source for FSSpec`
+  - Right-click the target folder or location in Jupyter FSSpec
+  - Select `Upload from Jupyter File Browser`
+  - _Useful for: Moving files between your JupyterLab workspace and remote
+    storage systems_
+
+**Note:** To transfer files between different remote filesystems (e.g., from S3
+to GCS), you'll need to use the `helper` module in your notebook to download
+from one source and upload to another. Direct remote-to-remote transfers are not
+currently supported through the UI.
 
 ## Config File
 

@@ -16,8 +16,12 @@ export class FssFilesysContextMenu {
     this.notebookTracker = notebookTracker;
 
     const actions = [
-      ['Copy Path', 'jfss-tree-context-item', 'copyPath'],
-      ['Copy `open` code block', 'jfss-tree-context-item', 'copyOpenCodeBlock'] // TODO: skip(?) if file path is directory
+      ['Copy Path to Clipboard', 'jfss-tree-context-item', 'copyPath'],
+      [
+        'Insert `open` Code Snippet',
+        'jfss-tree-context-item',
+        'copyOpenCodeBlock'
+      ] // TODO: skip(?) if file path is directory
     ];
     for (const action of actions) {
       this.createMenuItem(action[0], action[1], action[2]);
