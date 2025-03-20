@@ -278,7 +278,7 @@ test('insert open code snippet', async ({ page }) => {
 
   const copiedText = await page.evaluate(() => navigator.clipboard.readText());
   expect(copiedText).toEqual(
-    `with fsspec.open("memory:///mymemoryfs/myfile.txt", "rb") as f:\n   print(f.readline())`
+    `with fsspec.open("memory:///mymemoryfs/myfile.txt", "rb") as f:\n   ...`
   );
 });
 
@@ -297,7 +297,7 @@ test('insert open with code snippet with active notebook cell', async ({
   const cellText = '# This is a code cell.';
   await page.notebook.addCell('code', cellText);
 
-  const copyCodeBlock = `with fsspec.open("memory:///mymemoryfs/myfile.txt", "rb") as f:\n   print(f.readline())`;
+  const copyCodeBlock = `with fsspec.open("memory:///mymemoryfs/myfile.txt", "rb") as f:\n   ...`;
 
   await page
     .getByText('myfile.txt', { exact: true })
