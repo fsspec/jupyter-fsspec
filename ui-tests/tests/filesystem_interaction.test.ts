@@ -333,7 +333,7 @@ test('upload file from the Jupyterlab file browser', async ({ page }) => {
     'http://localhost:8888/jupyter_fsspec/files?action=write&key=mymem';
   const response_body = {
     status: 'success',
-    desctiption: 'Uploaded file'
+    description: 'Uploaded file'
   };
 
   await page.route(request_url + '**', route => {
@@ -410,7 +410,7 @@ test('upload file from browser picker', async ({ page }) => {
     'http://localhost:8888/jupyter_fsspec/files?action=write&key=mymem';
   const response_body = {
     status: 'success',
-    desctiption: 'uploaded file'
+    description: 'uploaded file'
   };
 
   await page.route(request_url + '**', route => {
@@ -487,7 +487,7 @@ test('upload file from helper', async ({ page }) => {
     'http://localhost:8888/jupyter_fsspec/files/transfer?action=upload';
   const response_body = {
     status: 'success',
-    desctiption: 'Uploaded file'
+    description: 'Uploaded file'
   };
 
   await page.route(request_url + '**', route => {
