@@ -101,6 +101,7 @@ class FileActionHandler(APIHandler):
         self.fs_manager = fs_manager
 
     # POST /jupyter_fsspec/files/action?key=my-key&item_path=/some_directory/file.txt
+    @tornado.web.authenticated
     async def post(self):
         """Move or copy the resource at the input path to destination path.
 
@@ -178,6 +179,7 @@ class FileTransferHandler(APIHandler):
         self.fs_manager = fs_manager
 
     # POST /jupyter_fsspec/files/action?key=my-key&item_path=/some_directory/file.txt
+    @tornado.web.authenticated
     async def post(self):
         """Upload/Download the resource at the input path to destination path.
 
@@ -272,6 +274,7 @@ class RenameFileHandler(APIHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
+    @tornado.web.authenticated
     async def post(self):
         request_data = json.loads(self.request.body.decode("utf-8"))
         try:
@@ -336,6 +339,7 @@ class FileSystemHandler(APIHandler):
 
     # GET
     # /files
+    @tornado.web.authenticated
     async def get(self):
         """Retrieve list of files for directories or contents for files.
 
@@ -454,6 +458,7 @@ class FileSystemHandler(APIHandler):
     # JSON Payload
     # item_path=/some_directory/file.txt
     # content
+    @tornado.web.authenticated
     async def post(self):
         """Create directories/files or perform other directory/file operations like move and copy
 
@@ -537,6 +542,7 @@ class FileSystemHandler(APIHandler):
     # PUT /jupyter_fsspec/files?key=my-key&item_path=/some_directory/file.txt
     # JSON Payload
     # content
+    @tornado.web.authenticated
     async def put(self):
         """Update ENTIRE content in file.
 
@@ -607,6 +613,7 @@ class FileSystemHandler(APIHandler):
         self.finish()
 
     # DELETE /jupyter_fsspec/files?key=my-key&item_path=/some_directory/file.txt
+    @tornado.web.authenticated
     async def delete(self):
         """Delete the resource at the input path.
 

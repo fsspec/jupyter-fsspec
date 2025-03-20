@@ -23,24 +23,20 @@ export class FssTreeItemContext {
     this.parentControl = parentControl;
 
     const actions = [
-      ['Copy Path', 'jfss-tree-context-item', 'copyPath'],
-      ['Send Bytes to helper', 'jfss-tree-context-item', 'getBytes'],
+      ['Copy Path to Clipboard', 'jfss-tree-context-item', 'copyPath'],
+      ['Send to Helper Module', 'jfss-tree-context-item', 'getBytes'],
+      ['Upload from Helper Module', 'jfss-tree-context-item', 'uploadUserData'],
+      ['Upload from Computer', 'jfss-tree-context-item', 'uploadBrowserFile'],
       [
-        'Upload to path (helper.user_data)',
-        'jfss-tree-context-item',
-        'uploadUserData'
-      ],
-      [
-        'Upload to path (Browser file picker)',
-        'jfss-tree-context-item',
-        'uploadBrowserFile'
-      ],
-      [
-        'Upload to path (from integrated file browser)',
+        'Upload from Jupyter File Browser',
         'jfss-tree-context-item',
         'uploadJupyterBrowserFile'
       ],
-      ['Copy `open` code block', 'jfss-tree-context-item', 'copyOpenCodeBlock'] // TODO: skip(?) if file path is directory
+      [
+        'Insert `open` Code Snippet',
+        'jfss-tree-context-item',
+        'copyOpenCodeBlock'
+      ] // TODO: skip(?) if file path is directory
     ];
     for (const action of actions) {
       this.createMenuItem(action[0], action[1], action[2]);
@@ -115,7 +111,7 @@ export class FssTreeItemContext {
       const openCodeBlock = `with fsspec.open("${path}", "rt") as f:\n   for line in f:\n      print(line)`;
       navigator.clipboard.writeText(openCodeBlock).then(
         () => {
-          console.log('Copied `open` code block');
+          console.log('Inserted `open` code block');
           console.log(openCodeBlock);
           this.root.remove();
         },
@@ -145,20 +141,23 @@ export class FssTreeItemContext {
         this.parentControl.handleRequestBytes();
       }
     } else if (event.target.dataset.fssContextType === 'uploadUserData') {
+      Logger.debug('XX1');
       if (this.parentControl) {
         this.parentControl.handleUploadUserData();
       }
     } else if (event.target.dataset.fssContextType === 'uploadBrowserFile') {
+      Logger.debug('XX2');
       if (this.parentControl) {
-        this.parentControl.handleUploadUserData({
+        this.parentControl.handleUploadFromBrowserPicker({
           is_browser_file_picker: true
         });
       }
     } else if (
       event.target.dataset.fssContextType === 'uploadJupyterBrowserFile'
     ) {
+      Logger.debug('XX3');
       if (this.parentControl) {
-        this.parentControl.handleUploadUserData({
+        this.parentControl.handleUploadFromJupyterBrowser({
           is_jup_browser_file: true
         });
       }
