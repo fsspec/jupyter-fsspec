@@ -117,9 +117,9 @@ def _get_fs(fs_name):
     # Get an fsspec filesystem from the manager
     # The fs_name is url encoded, we handle that here...TODO refactor that
     mgr = _get_manager()
-    fs = mgr.get_filesystem(fs_name)
-    if fs is not None and "instance" in fs:
-        return fs["instance"]  # TODO refactor
+    fs = mgr.construct_named_fs(fs_name)
+    if fs is not None:
+        return fs
     else:
         raise JupyterFsspecException("Error, could not find specified filesystem")
 

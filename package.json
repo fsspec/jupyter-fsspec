@@ -65,6 +65,8 @@
         "@jupyterlab/filebrowser": "^4.0.0",
         "@jupyterlab/settingregistry": "^4.0.0",
         "@jupyterlab/ui-components": "^4.0.0",
+        "@lumino/signaling": "^2.0.0",
+        "@lumino/widgets": "^2.5.0",
         "buffer": "^6.0.3",
         "path": "^0.12.7",
         "react": "^18.3.1",
@@ -95,6 +97,7 @@
         "stylelint-csstree-validator": "^3.0.0",
         "stylelint-prettier": "^4.0.0",
         "typescript": "~5.0.2",
+        "util": "^0.12.5",
         "yjs": "^13.5.0"
     },
     "resolutions": {
