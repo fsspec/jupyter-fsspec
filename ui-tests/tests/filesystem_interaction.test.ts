@@ -278,7 +278,7 @@ test('insert open code snippet', async ({ page }) => {
 
   const copiedText = await page.evaluate(() => navigator.clipboard.readText());
   expect(copiedText).toEqual(
-    `with fsspec.open("memory:///mymemoryfs/myfile.txt", "rt") as f:\n   for line in f:\n      print(line)`
+    `with fsspec.open("memory:///mymemoryfs/myfile.txt", "rb") as f:\n   ...`
   );
 });
 
@@ -297,7 +297,7 @@ test('insert open with code snippet with active notebook cell', async ({
   const cellText = '# This is a code cell.';
   await page.notebook.addCell('code', cellText);
 
-  const copyCodeBlock = `with fsspec.open("memory:///mymemoryfs/myfile.txt", "rt") as f:\n   for line in f:\n      print(line)`;
+  const copyCodeBlock = `with fsspec.open("memory:///mymemoryfs/myfile.txt", "rb") as f:\n   ...`;
 
   await page
     .getByText('myfile.txt', { exact: true })
@@ -333,7 +333,7 @@ test('upload file from the Jupyterlab file browser', async ({ page }) => {
     'http://localhost:8888/jupyter_fsspec/files?action=write&key=mymem';
   const response_body = {
     status: 'success',
-    desctiption: 'Uploaded file'
+    description: 'Uploaded file'
   };
 
   await page.route(request_url + '**', route => {
@@ -410,7 +410,7 @@ test('upload file from browser picker', async ({ page }) => {
     'http://localhost:8888/jupyter_fsspec/files?action=write&key=mymem';
   const response_body = {
     status: 'success',
-    desctiption: 'uploaded file'
+    description: 'uploaded file'
   };
 
   await page.route(request_url + '**', route => {
@@ -487,7 +487,7 @@ test('upload file from helper', async ({ page }) => {
     'http://localhost:8888/jupyter_fsspec/files/transfer?action=upload';
   const response_body = {
     status: 'success',
-    desctiption: 'Uploaded file'
+    description: 'Uploaded file'
   };
 
   await page.route(request_url + '**', route => {

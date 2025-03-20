@@ -93,7 +93,7 @@ export class FssFilesysContextMenu {
     const path = this.copyPath();
 
     if (path) {
-      const openCodeBlock = `with fsspec.open("${path}", "rt") as f:\n   for line in f:\n      print(line)`;
+      const openCodeBlock = `with fsspec.open("${path}", "rb") as f:\n   ...`;
       navigator.clipboard.writeText(openCodeBlock).then(
         () => {
           console.log('Copied `open` code block');
