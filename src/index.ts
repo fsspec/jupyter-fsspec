@@ -1307,17 +1307,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
     // Settings integration
     if (settingRegistry) {
       try {
-        // Load the plugin's settings
         const settings = await settingRegistry.load(plugin.id);
 
         logger.info('Settings loaded', {
           settings: settings.composite
         });
 
-        // Initialize logger with settings
         await initializeLogger(settingRegistry);
 
-        // Listen for setting changes if needed
         settings.changed.connect(() => {
           logger.debug('Settings changed', {
             newSettings: settings.composite

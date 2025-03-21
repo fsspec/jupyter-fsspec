@@ -11,7 +11,6 @@ export class FssFilesysContextMenu {
   private readonly logger: Logger;
 
   constructor(model: any, notebookTracker: INotebookTracker) {
-    // Initialize logger
     this.logger = Logger.getLogger('FssFilesysContextMenu');
 
     const root = document.createElement('div');
