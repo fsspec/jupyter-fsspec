@@ -82,3 +82,92 @@ More information are provided within the [ui-tests](./ui-tests/README.md) README
 ### Packaging the extension
 
 See [RELEASE](RELEASE.md)
+
+### Logging
+
+The extension uses a configurable logging system that supports different
+verbosity levels. When developing or debugging, you can adjust the log level to
+see more or less detailed information.
+
+#### Log Levels
+
+The following log levels are available (in order of increasing verbosity):
+
+- `NONE` (0): No logs
+- `ERROR` (1): Only error messages
+- `WARN` (2): Warnings and errors
+- `INFO` (3): Informational messages, warnings, and errors (default)
+- `DEBUG` (4): Debug messages and all above
+
+#### Setting the Log Level During Development
+
+There are several ways to change the log level during development:
+
+1. **Using the JupyterLab Settings UI:**
+
+   - Open JupyterLab
+   - Go to Settings → Settings Editor
+   - Select "jupyter-fsspec" in the left sidebar
+   - Set the `logLevel` value in the User Settings panel on the right:
+     ```json
+     {
+       "logLevel": "debug"
+     }
+     ```
+   - Click "Save Settings"
+
+2. **Programmatically in the browser console:**
+
+   ```javascript
+   // Set to debug level
+   window.jupyterFsspecLogConfig.setLevel(4);
+
+   // Set to error level only
+   window.jupyterFsspecLogConfig.setLevel(1);
+   ```
+
+3. **In your code during development:**
+
+   ```typescript
+   import { Logger } from './logger';
+
+   // Set log level for debugging
+   Logger.setLevel(Logger.DEBUG);
+
+   // Create a logger with context
+   const logger = Logger.getLogger('MyComponent');
+   logger.debug('This is a debug message');
+   ```
+
+#### Best Practices for Logging
+
+When adding logging to your code:
+
+1. Always use a contextual logger:
+
+   ```typescript
+   const logger = Logger.getLogger('ComponentName');
+   ```
+
+2. Choose the appropriate log level:
+
+   - `error`: For failures that prevent functionality
+   - `warn`: For issues that don't break functionality but are concerning
+   - `info`: For important events users should know about
+   - `debug`: For developer-focused details
+
+3. Include relevant data for debugging:
+
+   ```typescript
+   logger.debug('Processing data', {
+     count: items.length,
+     firstItem: items[0]
+   });
+   ```
+
+4. Log at entry/exit points of significant operations:
+   ```typescript
+   logger.info('Starting file upload...');
+   // ... operation code ...
+   logger.info('File upload completed');
+   ```

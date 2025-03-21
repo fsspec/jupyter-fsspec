@@ -1,37 +1,57 @@
-// A simple toggleable (on/off) logger with levels for debugging
+// Context aware logging system
+
+export enum LogLevel {
+  NONE = 0,
+  ERROR = 1,
+  WARN = 2,
+  INFO = 3,
+  DEBUG = 4
+}
+
+export class LogConfig {
+  private static _level: LogLevel = LogLevel.INFO;
+
+  static setLevel(level: LogLevel): void {
+    LogConfig._level = level;
+  }
+
+  static getLevel(): LogLevel {
+    return LogConfig._level;
+  }
+}
 
 export class Logger {
-  static NONE = 0;
-  static ERROR = 1;
-  static WARN = 2;
-  static INFO = 3;
-  static DEBUG = 4;
+  private context: string;
 
-  static level = Logger.INFO;
+  constructor(context: string) {
+    this.context = context;
+  }
 
-  static print(message: string, log_level: number) {
-    if (log_level && log_level <= Logger.level) {
-      console.log(message);
+  static getLogger(context: string): Logger {
+    return new Logger(context);
+  }
+
+  debug(message: string, ...args: any[]) {
+    if (LogConfig.getLevel() >= LogLevel.DEBUG) {
+      console.debug(`[DEBUG][${this.context}] ${message}`, ...args);
     }
   }
 
-  static debug(message: string) {
-    Logger.print(message, Logger.DEBUG);
+  info(message: string, ...args: any[]) {
+    if (LogConfig.getLevel() >= LogLevel.INFO) {
+      console.info(`[INFO][${this.context}] ${message}`, ...args);
+    }
   }
 
-  static info(message: string) {
-    Logger.print(message, Logger.INFO);
+  warn(message: string, ...args: any[]) {
+    if (LogConfig.getLevel() >= LogLevel.WARN) {
+      console.warn(`[WARN][${this.context}] ${message}`, ...args);
+    }
   }
 
-  static warn(message: string) {
-    Logger.print(message, Logger.WARN);
-  }
-
-  static error(message: string) {
-    Logger.print(message, Logger.ERROR);
-  }
-
-  static setLevel(value: any) {
-    Logger.level = value;
+  error(message: string, ...args: any[]) {
+    if (LogConfig.getLevel() >= LogLevel.ERROR) {
+      console.error(`[ERROR][${this.context}] ${message}`, ...args);
+    }
   }
 }
