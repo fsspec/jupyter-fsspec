@@ -1,22 +1,22 @@
 // Right-click/context menu for file items
 import { INotebookTracker } from '@jupyterlab/notebook';
-
 import { Logger } from './logger';
 
 export class FssTreeItemContext {
-  private readonly logger = Logger.getLogger('FssTreeItemContext');
-
   root: any;
   clicked = false;
   parentControl: any = null;
   model: any;
   notebookTracker: any;
+  private readonly logger: Logger;
 
   constructor(
     model: any,
     notebookTracker: INotebookTracker,
     parentControl: any
   ) {
+    this.logger = Logger.getLogger('FssTreeItemContext');
+
     const root = document.createElement('div');
     root.classList.add('jfss-tree-context-menu');
     this.root = root;
@@ -40,11 +40,17 @@ export class FssTreeItemContext {
         'copyOpenCodeBlock'
       ] // TODO: skip(?) if file path is directory
     ];
+
     for (const action of actions) {
       this.createMenuItem(action[0], action[1], action[2]);
     }
 
     root.addEventListener('mouseleave', this.handleMouseExit.bind(this), false);
+
+    this.logger.debug('Context menu initialized', {
+      itemCount: actions.length,
+      hasParentControl: !!parentControl
+    });
   }
 
   createMenuItem(text: string, cssClass: string, contextType: string) {
@@ -59,6 +65,11 @@ export class FssTreeItemContext {
 
     this.root.appendChild(menuItem);
 
+    this.logger.debug('Menu item created', {
+      text,
+      contextType
+    });
+
     return menuItem;
   }
 
@@ -71,7 +82,14 @@ export class FssTreeItemContext {
     if (protocol) {
       const canonical =
         protocol + '/' + this.root.dataset.fss.replace(/^\/+/, () => '');
+      this.logger.debug('Path generated', { path: canonical });
       return canonical;
+    } else {
+      this.logger.warn('Failed to generate path', {
+        reason: 'No protocol found',
+        info
+      });
+      return undefined;
     }
   }
 
@@ -82,14 +100,22 @@ export class FssTreeItemContext {
       navigator.clipboard.writeText(path).then(
         () => {
           // Success
-          console.log('Copy path: ' + path);
+          this.logger.info('Path copied to clipboard', { path });
           this.root.remove();
         },
-        () => {
-          console.log('Copy path failed: ' + path);
+        error => {
+          this.logger.error('Failed to copy path to clipboard', {
+            path,
+            error
+          });
           this.root.remove();
         }
       );
+    } else {
+      this.logger.error('Cannot copy path', {
+        reason: 'path is undefined'
+      });
+      this.root.remove();
     }
   }
 
@@ -102,10 +128,21 @@ export class FssTreeItemContext {
         const cellContent = activeCell.model.sharedModel.getSource();
         const newCellContent = cellContent + '\n' + codeBlock;
         activeCell.model.sharedModel.setSource(newCellContent);
-        console.log('Updated cell content to: ', newCellContent);
+        this.logger.debug('Updated cell content', {
+          oldLength: cellContent.length,
+          newLength: newCellContent.length,
+          notebookId: notebookPanel.id
+        });
+      } else {
+        this.logger.warn('No active cell found in notebook', {
+          notebookId: notebookPanel.id
+        });
       }
+    } else {
+      this.logger.warn('No active notebook found');
     }
   }
+
   copyOpenCodeBlock() {
     const path = this.copyPath();
 
@@ -113,55 +150,86 @@ export class FssTreeItemContext {
       const openCodeBlock = `with fsspec.open("${path}", "rt") as f:\n   for line in f:\n      print(line)`;
       navigator.clipboard.writeText(openCodeBlock).then(
         () => {
-          console.log('Inserted `open` code block');
-          console.log(openCodeBlock);
+          this.logger.info('Code snippet copied and inserted', {
+            operation: 'open',
+            path
+          });
+          this.logger.debug('Code snippet content', { content: openCodeBlock });
           this.root.remove();
         },
-        () => {
-          console.log('Failed to copy `open` code block');
+        error => {
+          this.logger.error('Failed to copy code snippet', {
+            operation: 'open',
+            path,
+            error
+          });
           this.root.remove();
         }
       );
 
       this.insertCodeBlock(openCodeBlock);
     } else {
-      console.log('Failed to copy `open` code block');
+      this.logger.error('Failed to copy code snippet', {
+        operation: 'open',
+        reason: 'path not available'
+      });
       this.root.remove();
     }
   }
 
   handleItemClick(event: any) {
-    // TODO multiple menu it
-    if (event.target.dataset.fssContextType === 'copyPath') {
+    const contextType = event.target.dataset.fssContextType;
+
+    this.logger.debug('Menu item clicked', {
+      type: contextType,
+      path: this.root.dataset.fss
+    });
+
+    if (contextType === 'copyPath') {
       this.copyPathToClipboard();
-    } else if (event.target.dataset.fssContextType === 'copyOpenCodeBlock') {
+    } else if (contextType === 'copyOpenCodeBlock') {
       this.copyOpenCodeBlock();
-    } else if (event.target.dataset.fssContextType === 'getBytes') {
-      this.logger.debug('Context item click');
-      this.logger.debug(`${this.parentControl}`);
+    } else if (contextType === 'getBytes') {
       if (this.parentControl) {
+        this.logger.debug('Requesting bytes from parent control', {
+          controlType: this.parentControl.constructor.name
+        });
         this.parentControl.handleRequestBytes();
+      } else {
+        this.logger.warn('Cannot request bytes: no parent control');
       }
-    } else if (event.target.dataset.fssContextType === 'uploadUserData') {
-      this.logger.debug('XX1');
+    } else if (contextType === 'uploadUserData') {
       if (this.parentControl) {
+        this.logger.debug('Requesting user data upload', {
+          path: this.root.dataset.fss
+        });
         this.parentControl.handleUploadUserData();
+      } else {
+        this.logger.warn('Cannot upload user data: no parent control');
       }
-    } else if (event.target.dataset.fssContextType === 'uploadBrowserFile') {
-      this.logger.debug('XX2');
+    } else if (contextType === 'uploadBrowserFile') {
       if (this.parentControl) {
+        this.logger.debug('Requesting browser file picker upload', {
+          path: this.root.dataset.fss
+        });
         this.parentControl.handleUploadFromBrowserPicker({
           is_browser_file_picker: true
         });
+      } else {
+        this.logger.warn('Cannot upload from browser: no parent control');
       }
-    } else if (
-      event.target.dataset.fssContextType === 'uploadJupyterBrowserFile'
-    ) {
-      this.logger.debug('XX3');
+    } else if (contextType === 'uploadJupyterBrowserFile') {
       if (this.parentControl) {
+        this.logger.debug('Requesting Jupyter browser file upload', {
+          path: this.root.dataset.fss
+        });
         this.parentControl.handleUploadFromJupyterBrowser({
           is_jup_browser_file: true
         });
+      } else {
+        this.logger.warn(
+          'Cannot upload from Jupyter browser: no parent control'
+        );
       }
     }
 
@@ -178,6 +246,7 @@ export class FssTreeItemContext {
 
   handleMouseExit(event: any) {
     event.preventDefault();
+    this.logger.debug('Context menu closed', { reason: 'mouse exit' });
     this.root.remove();
     return false;
   }

@@ -1,5 +1,5 @@
 import { LogConfig, LogLevel, Logger } from '../logger';
-import { initializeLogger } from '../logger-settings';
+import { initializeLogger } from '../loggerSettings';
 
 describe('Logger Settings Integration', () => {
   const originalConsole = {

@@ -30,7 +30,9 @@ export class FssFileUploadContextPopup extends Widget {
   }
 
   handlePathTextUpdate(event: any) {
-    this.logger.debug(`${event}`);
+    this.logger.debug('Path text update', {
+      event
+    });
   }
 
   getValue() {

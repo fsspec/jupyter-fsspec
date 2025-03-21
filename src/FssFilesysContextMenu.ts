@@ -1,5 +1,6 @@
 // Right-click/context menu for file items
 import { INotebookTracker } from '@jupyterlab/notebook';
+import { Logger } from './logger';
 
 export class FssFilesysContextMenu {
   root: any;
@@ -7,8 +8,12 @@ export class FssFilesysContextMenu {
   parentControl: any = null;
   model: any;
   notebookTracker: any;
+  private readonly logger: Logger;
 
   constructor(model: any, notebookTracker: INotebookTracker) {
+    // Initialize logger
+    this.logger = Logger.getLogger('FssFilesysContextMenu');
+
     const root = document.createElement('div');
     root.classList.add('jfss-tree-context-menu');
     this.root = root;
@@ -28,6 +33,7 @@ export class FssFilesysContextMenu {
     }
 
     root.addEventListener('mouseleave', this.handleMouseExit.bind(this), false);
+    this.logger.debug('Context menu initialized');
   }
 
   createMenuItem(text: string, cssClass: string, contextType: string) {
@@ -41,6 +47,7 @@ export class FssFilesysContextMenu {
     menuItem.addEventListener('mouseleave', this.handleItemUnhover.bind(this));
 
     this.root.appendChild(menuItem);
+    this.logger.debug('Created menu item', { text, contextType });
 
     return menuItem;
   }
@@ -54,7 +61,14 @@ export class FssFilesysContextMenu {
     if (protocol) {
       const canonical =
         protocol + '/' + this.root.dataset.fss.replace(/^\/+/, () => '');
+      this.logger.debug('Generated path', { path: canonical });
       return canonical;
+    } else {
+      this.logger.warn('Failed to generate path', {
+        reason: 'No protocol found',
+        info: info
+      });
+      return undefined;
     }
   }
 
@@ -65,14 +79,20 @@ export class FssFilesysContextMenu {
       navigator.clipboard.writeText(path).then(
         () => {
           // Success
-          console.log('Copy path: ' + path);
+          this.logger.info('Path copied to clipboard', { path });
           this.root.remove();
         },
-        () => {
-          console.log('Copy path failed: ' + path);
+        error => {
+          this.logger.error('Failed to copy path to clipboard', {
+            path,
+            error
+          });
           this.root.remove();
         }
       );
+    } else {
+      this.logger.error('Cannot copy path', { reason: 'path is undefined' });
+      this.root.remove();
     }
   }
 
@@ -85,10 +105,21 @@ export class FssFilesysContextMenu {
         const cellContent = activeCell.model.sharedModel.getSource();
         const newCellContent = cellContent + '\n' + codeBlock;
         activeCell.model.sharedModel.setSource(newCellContent);
-        console.log('Updated cell content to: ', newCellContent);
+        this.logger.debug('Updated cell content', {
+          oldLength: cellContent.length,
+          newLength: newCellContent.length,
+          notebookType: notebookPanel.content.model.type
+        });
+      } else {
+        this.logger.warn('No active cell found in notebook', {
+          notebookId: notebookPanel.id
+        });
       }
+    } else {
+      this.logger.warn('No active notebook found');
     }
   }
+
   copyOpenCodeBlock() {
     const path = this.copyPath();
 
@@ -96,25 +127,38 @@ export class FssFilesysContextMenu {
       const openCodeBlock = `with fsspec.open("${path}", "rt") as f:\n   for line in f:\n      print(line)`;
       navigator.clipboard.writeText(openCodeBlock).then(
         () => {
-          console.log('Copied `open` code block');
-          console.log(openCodeBlock);
+          this.logger.info('Copied code snippet to clipboard', {
+            operation: 'open',
+            path
+          });
+          this.logger.debug('Code block content', { content: openCodeBlock });
           this.root.remove();
         },
-        () => {
-          console.log('Failed to copy `open` code block');
+        error => {
+          this.logger.error('Failed to copy code snippet to clipboard', {
+            operation: 'open',
+            path,
+            error
+          });
           this.root.remove();
         }
       );
 
       this.insertCodeBlock(openCodeBlock);
     } else {
-      console.log('Failed to copy `open` code block');
+      this.logger.error('Failed to copy code snippet', {
+        operation: 'open',
+        reason: 'path not available'
+      });
       this.root.remove();
     }
   }
 
   handleItemClick(event: any) {
-    // TODO multiple menu it
+    this.logger.debug('Menu item clicked', {
+      type: event.target.dataset.fssContextType
+    });
+
     if (event.target.dataset.fssContextType === 'copyPath') {
       this.copyPathToClipboard();
     } else if (event.target.dataset.fssContextType === 'copyOpenCodeBlock') {
@@ -134,6 +178,7 @@ export class FssFilesysContextMenu {
 
   handleMouseExit(event: any) {
     event.preventDefault();
+    this.logger.debug('Context menu closed', { reason: 'mouse exit' });
     this.root.remove();
     return false;
   }

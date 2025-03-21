@@ -13,8 +13,6 @@ import { FssTreeItemContext } from './FssTreeItemContext';
 import { Logger } from './logger';
 
 export class FssTreeItem {
-  private readonly logger = Logger.getLogger('FssTreeItem');
-
   root: any;
   model: any;
   // icon: HTMLElement;
@@ -33,6 +31,7 @@ export class FssTreeItem {
   lazyLoadAutoExpand = true;
   clickAnywhereDoesAutoExpand = true;
   notebookTracker: INotebookTracker;
+  private readonly logger: Logger;
 
   constructor(
     model: any,
@@ -47,12 +46,14 @@ export class FssTreeItem {
     expandOnClickAnywhere: boolean,
     notebookTracker: INotebookTracker
   ) {
+    this.logger = Logger.getLogger('FssTreeItem');
+
     // The TreeItem component is the root and handles
     // tree structure functionality in the UI
     // We use the tagName `jp-tree-item` for Notebook 7 compatibility
     if (!customElements.get('jp-tree-item')) {
       provideJupyterDesignSystem().register(jpTreeItem());
-      console.log('`jpTreeItem` was registered!');
+      this.logger.info('jpTreeItem web component registered');
     }
     const root = document.createElement('jp-tree-item');
     root.setAttribute('name', 'jfss-treeitem-root');
@@ -112,34 +113,62 @@ export class FssTreeItem {
     // Start observing for changes to the TreeItem's shadow root
     if (this.root.shadowRoot) {
       this.treeItemObserver.observe(this.root.shadowRoot, observeOptions);
+      this.logger.debug('MutationObserver attached to tree item shadow root');
+    } else {
+      this.logger.warn(
+        'Shadow root not available for tree item, observer not attached'
+      );
     }
+
+    this.logger.debug('Tree item constructed', {
+      autoExpand,
+      expandOnClickAnywhere
+    });
   }
 
   appendChild(elem: any) {
+    this.logger.debug('Appending child element to tree item', {
+      childTagName: elem.tagName,
+      childId: elem.id || 'none'
+    });
     this.root.appendChild(elem);
   }
 
   handleRequestBytes() {
-    this.logger.debug('Treeitem get bytes');
+    this.logger.debug('Processing request for bytes', {
+      path: this.root.dataset.fss,
+      slotCount: this.getBytesSlots.length
+    });
+
     for (const slot of this.getBytesSlots) {
-      this.logger.debug(slot);
+      this.logger.debug('Invoking get bytes slot');
       slot(this.root.dataset.fss);
     }
   }
 
   async handleUploadFromBrowserPicker(options: any) {
     this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
-    this.logger.debug('Treeitem upload user data');
+    this.logger.debug('Handling upload from browser picker', {
+      path: this.root.dataset.fss,
+      isDirectory: this.isDir,
+      options
+    });
+
     for (const slot of this.uploadFromBrowserPickerSlots) {
-      this.logger.debug(slot);
+      this.logger.debug('Invoking browser picker upload slot');
       await slot(this.root.dataset.fss, this.isDir);
     }
   }
 
   async handleUploadFromJupyterBrowser(options: any) {
-    this.logger.debug('Treeitem upload user data');
+    this.logger.debug('Handling upload from Jupyter browser', {
+      path: this.root.dataset.fss,
+      isDirectory: this.isDir,
+      options
+    });
+
     for (const slot of this.uploadFromJupyterBrowserSlots) {
-      this.logger.debug(slot);
+      this.logger.debug('Invoking Jupyter browser upload slot');
       await slot(this.root.dataset.fss, this.isDir);
     }
   }
@@ -152,9 +181,17 @@ export class FssTreeItem {
       is_jup_browser_file = options.is_jup_browser_file;
       this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
     }
-    this.logger.debug('Treeitem upload user data');
+
+    this.logger.debug('Handling user data upload', {
+      path: this.root.dataset.fss,
+      isDirectory: this.isDir,
+      isBrowserFilePicker: is_browser_file_picker,
+      isJupyterBrowserFile: is_jup_browser_file,
+      options
+    });
+
     for (const slot of this.uploadUserDataSlots) {
-      this.logger.debug(slot);
+      this.logger.debug('Invoking user data upload slot');
       await slot(
         this.root.dataset.fss,
         this.isDir,
@@ -165,6 +202,11 @@ export class FssTreeItem {
   }
 
   setMetadata(user_path: string, size: string) {
+    this.logger.debug('Setting item metadata', {
+      path: user_path,
+      size
+    });
+
     this.root.dataset.fss = user_path;
     this.root.dataset.fsize = size;
 
@@ -179,10 +221,13 @@ export class FssTreeItem {
   }
 
   setText(value: string) {
+    this.logger.debug('Setting item text', { value });
     this.nameLbl.innerText = value;
   }
 
   setType(symbol: 'dir' | 'file') {
+    this.logger.debug('Setting item type', { type: symbol });
+
     this.dirSymbol.replaceChildren();
     this.dirSymbol.style.visibility = 'visible';
 
@@ -205,6 +250,11 @@ export class FssTreeItem {
     // we save the user from having to click twice on a folder (once to lazy-load
     // and another time to expand) when they want to expand it
     if (this.lazyLoadAutoExpand && this.pendingExpandAction) {
+      this.logger.debug('Processing DOM mutation', {
+        pendingExpandAction: this.pendingExpandAction,
+        recordCount: records.length
+      });
+
       for (const rec of records) {
         const addedNodes = rec?.addedNodes;
         if (addedNodes) {
@@ -213,6 +263,9 @@ export class FssTreeItem {
               node?.classList &&
               node.classList.contains('expand-collapse-button')
             ) {
+              this.logger.debug(
+                'Expand-collapse button detected, auto-expanding'
+              );
               node.click();
               this.root.scrollTo();
               this.pendingExpandAction = false;
@@ -230,6 +283,13 @@ export class FssTreeItem {
       this.container.contains(event.target) ||
       this.root.shadowRoot.contains(event.target)
     ) {
+      this.logger.debug('Tree item clicked', {
+        path: this.root.dataset.fss,
+        isDirectory: this.isDir,
+        clientX: event.clientX,
+        clientY: event.clientY
+      });
+
       // Handles normal click events on the TreeItem (unlike the MutationObserver system
       // which is for handling folder auto-expand after lazy load)
       if (this.clickAnywhereDoesAutoExpand) {
@@ -244,9 +304,19 @@ export class FssTreeItem {
             event.clientY < expRect.top ||
             event.clientY > expRect.bottom
           ) {
-            this.logger.debug(
-              '--> Click outside expander, force expander click'
-            );
+            this.logger.debug('Click outside expander detected', {
+              clickPosition: {
+                x: event.clientX,
+                y: event.clientY
+              },
+              expanderBounds: {
+                left: expRect.left,
+                right: expRect.right,
+                top: expRect.top,
+                bottom: expRect.bottom
+              }
+            });
+
             expander.click();
             this.root.scrollTo();
           }
@@ -254,10 +324,15 @@ export class FssTreeItem {
       }
       // Fire connected slots that were supplied to this item on init
       if (this.isDir) {
+        this.logger.debug('Invoking directory click slots', {
+          slotCount: this.clickSlots.length
+        });
+
         for (const slot of this.clickSlots) {
           slot(this.root.dataset.fss);
         }
       } else {
+        this.logger.debug('Invoking file click handler');
         this.root.click();
       }
     }
@@ -269,6 +344,10 @@ export class FssTreeItem {
     // ready...a flag is set here to indicate that an expand action is desired,
     // which is used by the MutationObserver member var's handler to find the
     // expand/collapse Element when it is added so that it can be click()'d
+    this.logger.debug('Setting pending expand action', {
+      path: this.root.dataset.fss
+    });
+
     this.pendingExpandAction = true;
   }
 
@@ -281,8 +360,16 @@ export class FssTreeItem {
     if (!event.shiftKey) {
       event.preventDefault();
     } else {
+      this.logger.debug('Default context menu shown (shift+click)');
       return;
     }
+
+    this.logger.debug('Opening context menu', {
+      path: this.root.dataset.fss,
+      isDirectory: this.isDir,
+      clientX: event.clientX,
+      clientY: event.clientY
+    });
 
     // Make/add the context menu
     const context = new FssTreeItemContext(
@@ -301,6 +388,8 @@ export class FssTreeItem {
     let xCoord = event.clientX - parentRect.x;
     let yCoord = event.clientY - parentRect.y;
     const spacing = 12;
+
+    let positionMode = 'topLeft';
     if (
       xCoord + contextRect.width > window.innerWidth ||
       yCoord + contextRect.height > window.innerHeight
@@ -312,11 +401,21 @@ export class FssTreeItem {
       // Shift the menu so the mouse is inside it, not at the corner/edge
       xCoord += spacing;
       yCoord += spacing;
+      positionMode = 'bottomRight';
     } else {
       // Shift the menu so the mouse is inside it, not at the corner/edge
       xCoord -= spacing;
       yCoord -= spacing;
     }
+
+    this.logger.debug('Positioned context menu', {
+      mode: positionMode,
+      position: { x: xCoord, y: yCoord },
+      viewportConstraints: {
+        width: window.innerWidth,
+        height: window.innerHeight
+      }
+    });
 
     context.root.style.left = `${xCoord}` + 'px';
     context.root.style.top = `${yCoord}` + 'px';
