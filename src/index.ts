@@ -27,6 +27,7 @@ import { FssFileUploadContextPopup } from './fileUploadContextPopup';
 import { Widget } from '@lumino/widgets';
 
 import { Logger } from './logger';
+import { initializeLogger } from './loggerSettings';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -1300,18 +1301,29 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     // Settings integration
     if (settingRegistry) {
-      settingRegistry
-        .load(plugin.id)
-        .then(settings => {
-          logger.info('Settings loaded', {
-            settings: settings.composite
-          });
-        })
-        .catch(reason => {
-          logger.error('Failed to load settings for jupyterFsspec', {
-            reason
+      try {
+        // Load the plugin's settings
+        const settings = await settingRegistry.load(plugin.id);
+
+        logger.info('Settings loaded', {
+          settings: settings.composite
+        });
+
+        // Initialize logger with settings
+        await initializeLogger(settingRegistry);
+
+        // Listen for setting changes if needed
+        settings.changed.connect(() => {
+          logger.debug('Settings changed', {
+            newSettings: settings.composite
           });
         });
+      } catch (error) {
+        logger.error('Failed to load settings', {
+          error,
+          pluginId: plugin.id
+        });
+      }
     }
   }
 };

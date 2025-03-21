@@ -106,7 +106,7 @@ There are several ways to change the log level during development:
 1. **Using the JupyterLab Settings UI:**
 
    - Open JupyterLab
-   - Go to Settings → Advanced Settings Editor
+   - Go to Settings → Settings Editor
    - Select "jupyter-fsspec" in the left sidebar
    - Set the `logLevel` value in the User Settings panel on the right:
      ```json
