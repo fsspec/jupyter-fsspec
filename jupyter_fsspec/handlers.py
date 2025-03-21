@@ -453,7 +453,8 @@ class FileSystemHandler(APIHandler):
             {info: item_dict[info] for info in detail_to_keep if info in item_dict}
             for item_dict in result
         ]
-        response["content"] = filtered_result
+        mapped_result = self.fs_manager.map_paths(item_path, key, filtered_result)
+        response["content"] = mapped_result
         self.write(response)
         self.finish()
 
