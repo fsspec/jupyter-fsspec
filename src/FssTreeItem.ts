@@ -13,6 +13,8 @@ import { FssTreeItemContext } from './FssTreeItemContext';
 import { Logger } from './logger';
 
 export class FssTreeItem {
+  private readonly logger = Logger.getLogger('FssTreeItem');
+
   root: any;
   model: any;
   // icon: HTMLElement;
@@ -118,26 +120,26 @@ export class FssTreeItem {
   }
 
   handleRequestBytes() {
-    Logger.debug('Treeitem get bytes');
+    this.logger.debug('Treeitem get bytes');
     for (const slot of this.getBytesSlots) {
-      Logger.debug(slot);
+      this.logger.debug(slot);
       slot(this.root.dataset.fss);
     }
   }
 
   async handleUploadFromBrowserPicker(options: any) {
     this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
-    Logger.debug('Treeitem upload user data');
+    this.logger.debug('Treeitem upload user data');
     for (const slot of this.uploadFromBrowserPickerSlots) {
-      Logger.debug(slot);
+      this.logger.debug(slot);
       await slot(this.root.dataset.fss, this.isDir);
     }
   }
 
   async handleUploadFromJupyterBrowser(options: any) {
-    Logger.debug('Treeitem upload user data');
+    this.logger.debug('Treeitem upload user data');
     for (const slot of this.uploadFromJupyterBrowserSlots) {
-      Logger.debug(slot);
+      this.logger.debug(slot);
       await slot(this.root.dataset.fss, this.isDir);
     }
   }
@@ -150,9 +152,9 @@ export class FssTreeItem {
       is_jup_browser_file = options.is_jup_browser_file;
       this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
     }
-    Logger.debug('Treeitem upload user data');
+    this.logger.debug('Treeitem upload user data');
     for (const slot of this.uploadUserDataSlots) {
-      Logger.debug(slot);
+      this.logger.debug(slot);
       await slot(
         this.root.dataset.fss,
         this.isDir,
@@ -242,7 +244,9 @@ export class FssTreeItem {
             event.clientY < expRect.top ||
             event.clientY > expRect.bottom
           ) {
-            Logger.debug('--> Click outside expander, force expander click');
+            this.logger.debug(
+              '--> Click outside expander, force expander click'
+            );
             expander.click();
             this.root.scrollTo();
           }

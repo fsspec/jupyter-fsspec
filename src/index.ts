@@ -57,6 +57,8 @@ from jupyter_fsspec import helper as _jupyter_fsshelper
 `;
 
 class FsspecWidget extends Widget {
+  private readonly logger = Logger.getLogger('FsspecWidget');
+
   upperArea: any;
   model: any;
   selectedFsLabel: any;
@@ -89,10 +91,10 @@ class FsspecWidget extends Widget {
     app: any,
     fileBrowserFactory: any
   ) {
-    Logger.debug(`DEBUGax1 ${app.serviceManager}`);
-    Logger.debug(`  ${app.serviceManager}`);
-
     super();
+    this.logger.debug(`DEBUGax1 ${app.serviceManager}`);
+    this.logger.debug(`  ${app.serviceManager}`);
+
     this.model = model;
     this.notebookTracker = notebookTracker;
     this.fileBrowserFactory = fileBrowserFactory;
@@ -272,17 +274,17 @@ class FsspecWidget extends Widget {
 
   // navigateToPath(userPath:  string) {
   //   // TODO subdirs need to be lazy loaded individually to avoid inaccurate/unpopulated subdir contents in browser view
-  //   Logger.debug(`Navigate to path ${userPath}`);
+  //   this.logger.debug(`Navigate to path ${userPath}`);
   //   // let currentNode = this.dirTree;
   //   for (const segment of userPath
   //     .split('/')
   //     .filter((c: any) => c.length > 0)) {
-  //       Logger.debug(`  segment: ${segment}`);
+  //       this.logger.debug(`  segment: ${segment}`);
   //   }
 
   //   this.lazyLoad(userPath);
   //   let node = this.getNodeForPath(userPath);
-  //   Logger.debug(`Nav to: ${node}`);
+  //   this.logger.debug(`Nav to: ${node}`);
   //   return node;
   // }
 
@@ -297,7 +299,7 @@ class FsspecWidget extends Widget {
       return result;
     }
     return null;
-    Logger.debug(`Popup path ${result?.value}`);
+    this.logger.debug(`Popup path ${result?.value}`);
     // TODO cancel when no path provided, IF user specified upload to folder
   }
 
@@ -305,22 +307,22 @@ class FsspecWidget extends Widget {
     const target = this.notebookTracker.currentWidget;
 
     if (!target || target.isDisposed) {
-      Logger.error('Invalid target widget');
+      this.logger.error('Invalid target widget');
       return null;
     }
 
     if (target?.context?.sessionContext?.session) {
       const kernel = target.context.sessionContext.session.kernel;
       if (!kernel) {
-        Logger.error('Error fetching kernel from active widget!');
+        this.logger.error('Error fetching kernel from active widget!');
         return null;
       }
-      Logger.debug('Kernel: ' + kernel);
-      // Logger.debug(
+      this.logger.debug('Kernel: ' + kernel);
+      // this.logger.debug(
       //   `this.savedSnapshotPathField.value is : ${this.savedSnapshotPathField.value}`
       // );
       const userCode = CODE_UPLOADUSERDATA;
-      Logger.debug(userCode);
+      this.logger.debug(userCode);
       const shellFuture = kernel.requestExecute({
         code: 'from jupyter_fsspec import helper as _jupyter_fsshelper',
         user_expressions: {
@@ -329,10 +331,10 @@ class FsspecWidget extends Widget {
       });
       try {
         const reply: any = await shellFuture.done;
-        Logger.debug(`DEBUGx1 ${JSON.stringify(reply.content)}`);
+        this.logger.debug(`DEBUGx1 ${JSON.stringify(reply.content)}`);
         let tempfilePath =
           reply.content.user_expressions.jfss_data.data['text/plain'];
-        Logger.debug(`AA1 ${tempfilePath}`);
+        this.logger.debug(`AA1 ${tempfilePath}`);
         // Strip out the quotes
         tempfilePath = tempfilePath.replace(
           /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
@@ -340,15 +342,15 @@ class FsspecWidget extends Widget {
             return ''; // Removes matching chars
           }
         );
-        Logger.debug(`AA2 "${tempfilePath}"`);
+        this.logger.debug(`AA2 "${tempfilePath}"`);
         if (!tempfilePath) {
           // TODO yuck
-          Logger.error('Error obtaining tempfile path!');
+          this.logger.error('Error obtaining tempfile path!');
           return null;
         }
         return tempfilePath;
       } catch (e) {
-        Logger.debug(`${e}\nError on kernel execution, read more above.`);
+        this.logger.debug(`${e}\nError on kernel execution, read more above.`);
         return null;
       }
       // kernel
@@ -359,7 +361,7 @@ class FsspecWidget extends Widget {
       //     }
       //   })
       //   .done.then((message: any) => {
-      //     Logger.debug(message);
+      //     this.logger.debug(message);
 
       //     // Grab the value (this is the python repr() of our user expression
       //     // according to the jupyter messaging protocol, it will have quotes)
@@ -368,13 +370,13 @@ class FsspecWidget extends Widget {
       //       message?.content?.user_expressions?.jfss_data.data;
       //     if (message_content) {
       //       tempfilePath = message_content['text/plain'];
-      //       Logger.debug(`Tempfile path is ${tempfilePath}`);
+      //       this.logger.debug(`Tempfile path is ${tempfilePath}`);
       //     } else {
-      //       Logger.error('Error uploading data');
+      //       this.logger.error('Error uploading data');
       //       return;
       //     }
       //     if (!tempfilePath) {
-      //       Logger.error('Error ');
+      //       this.logger.error('Error ');
       //       return;
       //     }
 
@@ -393,7 +395,7 @@ class FsspecWidget extends Widget {
       //       }
       //     );
       //     if (!tempfilePath) {  // TODO yuck
-      //       Logger.error('Error ');
+      //       this.logger.error('Error ');
       //       return null;
       //     }
 
@@ -401,7 +403,7 @@ class FsspecWidget extends Widget {
       //   })
       //   // temp1.content.user_expressions.jfss_data.data
       //   .catch(() => {
-      //     Logger.error('Error loading on kernel');
+      //     this.logger.error('Error loading on kernel');
       //   });
     }
     return null;
@@ -420,22 +422,22 @@ class FsspecWidget extends Widget {
     userFile: any,
     fileBrowser: any
   ) {
-    // Logger.debug(
+    // this.logger.debug(
     //   `FBrowser choose: B ${fileBrowser}} / D "${fileBrowser.model.driveName}" / R "${fileBrowser.model.rootPath}"`
     // );
-    // Logger.debug(`  pth    ${userFile.value.path}`);
-    // Logger.debug(`  srvpth ${userFile.value.serverPath}`);
-    // Logger.debug(`  sz     ${userFile.value.size}`);
-    // Logger.debug(`  type   ${userFile.value.type}`);
-    // Logger.debug(`  mtype  ${userFile.value.mimetype}`);
-    // Logger.debug(`  fmt    ${userFile.value.format}`);
-    // Logger.debug(`  wrt    ${userFile.value.writable}`);
+    // this.logger.debug(`  pth    ${userFile.value.path}`);
+    // this.logger.debug(`  srvpth ${userFile.value.serverPath}`);
+    // this.logger.debug(`  sz     ${userFile.value.size}`);
+    // this.logger.debug(`  type   ${userFile.value.type}`);
+    // this.logger.debug(`  mtype  ${userFile.value.mimetype}`);
+    // this.logger.debug(`  fmt    ${userFile.value.format}`);
+    // this.logger.debug(`  wrt    ${userFile.value.writable}`);
 
     const fileData = await this.app.serviceManager.contents.get(
       userFile.value.path,
       { content: true, format: 'base64', type: 'base64' }
     );
-    // Logger.debug(`xFILE CONTs:\n${JSON.stringify(fileData)}`);
+    // this.logger.debug(`xFILE CONTs:\n${JSON.stringify(fileData)}`);
     this.queuedJupyterFileBrowserUploadInfo = { fileData: fileData };
   }
 
@@ -449,7 +451,7 @@ class FsspecWidget extends Widget {
     if (this.openInputHidden.files.length > 0) {
       fileData = this.openInputHidden.files[0];
       this.queuedPickerUploadInfo['fileData'] = fileData;
-      Logger.debug(`FData ${fileData}`);
+      this.logger.debug(`FData ${fileData}`);
       this.handleBrowserPickerUpload(
         this.queuedPickerUploadInfo.user_path,
         this.queuedPickerUploadInfo.is_dir,
@@ -467,33 +469,33 @@ class FsspecWidget extends Widget {
   }
 
   async handleJupyterFileBrowserUpload(user_path: string, is_dir: boolean) {
-    Logger.debug('BB a1');
+    this.logger.debug('BB a1');
 
     // Get the desired path for this upload from a dialog box
-    Logger.debug(`Upath ${user_path}`);
+    this.logger.debug(`Upath ${user_path}`);
     if (is_dir) {
       // TODO make dialog box and grab filename when uploading to folder
       const result: any = await this.promptForFilename();
-      Logger.debug(`Resultvalue ${result?.value}`);
+      this.logger.debug(`Resultvalue ${result?.value}`);
       if (result?.value) {
         user_path += '/' + result.value;
       } else {
-        Logger.error('Error, no filename provided!');
+        this.logger.error('Error, no filename provided!');
         return;
       }
-      Logger.debug(`Popup path ${result?.value}`);
+      this.logger.debug(`Popup path ${result?.value}`);
     }
-    Logger.debug(`Upath2 ${user_path}`);
+    this.logger.debug(`Upath2 ${user_path}`);
 
     if (this.queuedJupyterFileBrowserUploadInfo) {
       // We have file information from the Lab file browser
-      Logger.debug('Jup file browser result get!');
-      Logger.debug(
+      this.logger.debug('Jup file browser result get!');
+      this.logger.debug(
         `Dump jbrowser info ${JSON.stringify(this.queuedJupyterFileBrowserUploadInfo)}`
       );
       const base64String =
         this.queuedJupyterFileBrowserUploadInfo.fileData.content;
-      Logger.debug(`B64 content str:\n${base64String}`);
+      this.logger.debug(`B64 content str:\n${base64String}`);
 
       // TODO error handling and data checks
       await this.model.post(
@@ -502,13 +504,13 @@ class FsspecWidget extends Widget {
         base64String,
         true
       );
-      Logger.debug('Finish upload');
+      this.logger.debug('Finish upload');
 
       this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
 
       return;
     } else {
-      Logger.error('Error, no Jupyter file browser data available!');
+      this.logger.error('Error, no Jupyter file browser data available!');
       return;
     }
   }
@@ -519,23 +521,23 @@ class FsspecWidget extends Widget {
     is_browser_file_picker: boolean,
     is_jup_browser_file: boolean
   ) {
-    Logger.debug('BB a2');
+    this.logger.debug('BB a2');
 
     // Get the desired path for this upload from a dialog box
-    Logger.debug(`Upath ${user_path}`);
+    this.logger.debug(`Upath ${user_path}`);
     if (is_dir) {
       // TODO make dialog box and grab filename when uploading to folder
       const result: any = await this.promptForFilename();
-      Logger.debug(`Resultvalue ${result?.value}`);
+      this.logger.debug(`Resultvalue ${result?.value}`);
       if (result?.value) {
         user_path += '/' + result.value;
       } else {
-        Logger.error('Error, no filename provided!');
+        this.logger.error('Error, no filename provided!');
         return;
       }
-      Logger.debug(`Popup path ${result?.value}`);
+      this.logger.debug(`Popup path ${result?.value}`);
     }
-    Logger.debug(`Upath2 ${user_path}`);
+    this.logger.debug(`Upath2 ${user_path}`);
 
     // Get the path of the file to upload
     if (!this.queuedPickerUploadInfo) {
@@ -547,16 +549,16 @@ class FsspecWidget extends Widget {
         fileData: null
       };
       this.openInputHidden.click();
-      Logger.debug('WAIT FOR FILE PICKER');
+      this.logger.debug('WAIT FOR FILE PICKER');
       return;
     } else if (this.queuedPickerUploadInfo) {
       // We have obtained file info from the user's selection (our call above)
-      Logger.debug('File Result get!');
-      Logger.debug(
+      this.logger.debug('File Result get!');
+      this.logger.debug(
         `Dump picker info ${JSON.stringify(this.queuedPickerUploadInfo)}`
       );
-      // Logger.debug(`File ${this.queuedPickerUploadInfo.fileData.name}`);
-      // Logger.debug(
+      // this.logger.debug(`File ${this.queuedPickerUploadInfo.fileData.name}`);
+      // this.logger.debug(
       //   `File ${this.queuedPickerUploadInfo.fileData.webkitRelativePath}`
       // );
 
@@ -570,13 +572,13 @@ class FsspecWidget extends Widget {
         base64String,
         true
       );
-      Logger.debug('Finish upload');
+      this.logger.debug('Finish upload');
 
       this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
 
       return;
     } else {
-      Logger.error('Error, no browser file data available!');
+      this.logger.error('Error, no browser file data available!');
       return;
     }
   }
@@ -587,47 +589,47 @@ class FsspecWidget extends Widget {
     is_browser_file_picker: boolean,
     is_jup_browser_file: boolean
   ) {
-    Logger.debug('BB a3');
+    this.logger.debug('BB a3');
     const target = this.notebookTracker.currentWidget;
 
     if (!is_browser_file_picker && !is_jup_browser_file) {
       // Only check for current notebook when uploading from user kernel
       // TODO cleanup this horrendous mess and pull these apart into discrete units
       if (!target || target.isDisposed) {
-        Logger.error('Invalid target widget');
+        this.logger.error('Invalid target widget');
         return;
       }
     }
 
-    // Logger.debug('FileBrowser items!!');
+    // this.logger.debug('FileBrowser items!!');
     // for (const item of this.fileBrowser.items()) {
-    //   Logger.debug(`${item}`);
+    //   this.logger.debug(`${item}`);
     // }
 
     // Get the desired path for this upload from a dialog box
-    Logger.debug(`Upath ${user_path}`);
+    this.logger.debug(`Upath ${user_path}`);
     if (is_dir) {
       // TODO make dialog box and grab filename when uploading to folder
       const result: any = await this.promptForFilename();
-      Logger.debug(`Resultvalue ${result?.value}`);
+      this.logger.debug(`Resultvalue ${result?.value}`);
       if (result?.value) {
         user_path += '/' + result.value;
       } else {
-        Logger.error('Error, no filename provided!');
+        this.logger.error('Error, no filename provided!');
         return;
       }
-      Logger.debug(`Popup path ${result?.value}`);
+      this.logger.debug(`Popup path ${result?.value}`);
     }
-    Logger.debug(`Upath2 ${user_path}`);
+    this.logger.debug(`Upath2 ${user_path}`);
 
     // Get the path of the file to upload
     let tempfilePath: any = '';
     // We are obtaining bytes from the user's kernel, get a
     // serialized tempfile path from the server
     tempfilePath = await this.getKernelUserBytesTempfilePath();
-    Logger.debug(`Debugx2: ${tempfilePath}`);
+    this.logger.debug(`Debugx2: ${tempfilePath}`);
     if (!tempfilePath) {
-      Logger.error('Error fetching serialized user_data!');
+      this.logger.error('Error fetching serialized user_data!');
       return;
     }
 
@@ -639,7 +641,7 @@ class FsspecWidget extends Widget {
       'upload'
     );
     // let foo = this.navigateToPath(user_path);
-    // Logger.debug(`Finish upload to ${foo}`);
+    // this.logger.debug(`Finish upload to ${foo}`);
     this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
   }
 
@@ -647,21 +649,21 @@ class FsspecWidget extends Widget {
     const target = this.notebookTracker.currentWidget;
 
     if (!target || target.isDisposed) {
-      Logger.debug('Invalid target widget');
+      this.logger.debug('Invalid target widget');
       return;
     }
 
-    Logger.debug('INDEX handle context get bytes');
+    this.logger.debug('INDEX handle context get bytes');
 
     // console.log('Session: ' + target.context.sessionContext.session);
     if (target?.context?.sessionContext?.session) {
       const kernel = target.context.sessionContext.session.kernel;
       if (!kernel) {
-        Logger.error('Error fetching kernel from active widget!');
+        this.logger.error('Error fetching kernel from active widget!');
         return;
       }
-      Logger.debug('Kernel: ' + kernel);
-      // Logger.debug(
+      this.logger.debug('Kernel: ' + kernel);
+      // this.logger.debug(
       //   `this.savedSnapshotPathField.value is : ${this.savedSnapshotPathField.value}`
       // );
       let getBytesCode = CODE_GETBYTES.replace(
@@ -676,7 +678,7 @@ class FsspecWidget extends Widget {
           return user_path;
         }
       );
-      Logger.debug(getBytesCode);
+      this.logger.debug(getBytesCode);
       kernel
         .requestExecute({
           code: getBytesCode,
@@ -685,10 +687,10 @@ class FsspecWidget extends Widget {
           }
         })
         .done.then((message: any) => {
-          Logger.error(message);
+          this.logger.error(message);
         })
         .catch(() => {
-          Logger.error('Error loading on kernel');
+          this.logger.error('Error loading on kernel');
         });
     }
   }
@@ -696,14 +698,14 @@ class FsspecWidget extends Widget {
   async fetchConfig() {
     this.selectedFsLabel.innerText = '<Select a filesystem>';
     await this.model.refreshConfig();
-    Logger.debug(
+    this.logger.debug(
       `[FSSpec] Refresh config:\n${JSON.stringify(this.model.userFilesystems)}`
     );
     this.populateFilesystems();
   }
 
   populateFilesystems() {
-    Logger.debug(
+    this.logger.debug(
       `[FSSpec] Populate filesystems: \n${JSON.stringify(this.model.userFilesystems)}`
     );
 
@@ -739,7 +741,7 @@ class FsspecWidget extends Widget {
       // Set clicked FS to selected state (+colorize), deselect others
       if (!(fsElem.dataset.fssname in this.sourcesHeap)) {
         // This should never happen
-        Logger.error('Error selecting filesystem');
+        this.logger.error('Error selecting filesystem');
         break;
       }
 
@@ -796,23 +798,23 @@ class FsspecWidget extends Widget {
 
   async lazyLoad(source_path: string) {
     // Fetch files for a given folder and update the dir tree with the results
-    Logger.info(`Calling lazy load for ${source_path}`);
+    this.logger.info(`Calling lazy load for ${source_path}`);
     const response = await this.model.listDirectory(
       this.model.userFilesystems[this.model.activeFilesystem].key,
       source_path
     );
     if (response?.status !== 'success' || !response?.content) {
       // TODO refactor validation
-      Logger.error(`Error fetching files for path ${source_path}`); // TODO jupyter info print
+      this.logger.error(`Error fetching files for path ${source_path}`); // TODO jupyter info print
       return;
     }
-    Logger.debug(`Response: (${JSON.stringify(response)})`);
+    this.logger.debug(`Response: (${JSON.stringify(response)})`);
 
     // Get the dir tree node for this path (updates go into this subtree)
     const nodeForPath = this.getNodeForPath(source_path);
-    // Logger.debug(`Found node: ${JSON.stringify(nodeForPath)}`);
+    // this.logger.debug(`Found node: ${JSON.stringify(nodeForPath)}`);
     if (!nodeForPath) {
-      Logger.error(`Error: Bad path for ${source_path}`);
+      this.logger.error(`Error: Bad path for ${source_path}`);
       return;
     }
     if (!nodeForPath.fetch) {
@@ -820,10 +822,12 @@ class FsspecWidget extends Widget {
       // Update the dir tree/data
       this.updateTree(nodeForPath, response['content'], source_path);
       nodeForPath.fetch = true;
-      // Logger.debug(`After fetch: ${JSON.stringify(nodeForPath)}`);
+      // this.logger.debug(`After fetch: ${JSON.stringify(nodeForPath)}`);
     } else {
       // Already fetched this child path, ignore and return
-      Logger.info('Skipping lazy load, already fetched for ${source_path}');
+      this.logger.info(
+        'Skipping lazy load, already fetched for ${source_path}'
+      );
       return;
     }
 
@@ -832,7 +836,7 @@ class FsspecWidget extends Widget {
     if (nodeForPath.id.toString() in this.elementHeap) {
       const uiElement = this.elementHeap[nodeForPath.id.toString()];
       uiElement.expandItem();
-      // Logger.debug(`[FSSpec] StartNode children after lazy load:\n\n${uiElement.root.innerHTML}`);
+      // this.logger.debug(`[FSSpec] StartNode children after lazy load:\n\n${uiElement.root.innerHTML}`);
     }
   }
 
@@ -842,7 +846,7 @@ class FsspecWidget extends Widget {
 
   async updateFileBrowserView(startNode: any = null) {
     // Update/sync the tree view with the file data for this filesys
-    Logger.info('Updating file browser view');
+    this.logger.info('Updating file browser view');
     let dirTree: any = this.dirTree;
     let buildTargets: any = { '/': [this.treeView, dirTree.children] };
 
@@ -927,7 +931,9 @@ class FsspecWidget extends Widget {
       this.model.userFilesystems[this.model.activeFilesystem].key
     );
     if (!response) {
-      Logger.error('Error fetching files for filesystem: response is null');
+      this.logger.error(
+        'Error fetching files for filesystem: response is null'
+      );
       return;
     }
 
@@ -937,7 +943,7 @@ class FsspecWidget extends Widget {
       !('content' in response)
     ) {
       // TODO refactor validation
-      Logger.error(`Error fetching files for filesystem ${fsname}`); // TODO jupyter info print
+      this.logger.error(`Error fetching files for filesystem ${fsname}`); // TODO jupyter info print
       return;
     }
     const pathInfos = response['content'].sort((a: any, b: any) => {
@@ -1034,15 +1040,16 @@ const plugin: JupyterFrontEndPlugin<void> = {
     fileBrowserFactory: IFileBrowserFactory,
     settingRegistry: ISettingRegistry | null
   ) => {
-    console.log('JupyterLab extension jupyterFsspec is activated!');
-    Logger.setLevel(Logger.DEBUG);
+    const logger = Logger.getLogger('JupyterFsspec');
+
+    logger.info('JupyterLab extension jupyterFsspec is activated!');
 
     if (app['namespace'] !== 'Jupyter Notebook') {
       // Auto initialize the model
       const fsspecModel = new FsspecModel();
       await fsspecModel.initialize();
 
-      Logger.debug(`Activate, fbrowser is ${Object.keys(fileBrowserFactory)}`);
+      logger.debug(`Activate, fbrowser is ${Object.keys(fileBrowserFactory)}`);
       console.log('########');
       console.log(fileBrowserFactory);
       console.log('########');
@@ -1129,10 +1136,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
     //   settingRegistry
     //     .load(plugin.id)
     //     .then(settings => {
-    //       Logger.info(`[FSSpec] Settings loaded: ${settings.composite}`);
+    //       this.logger.info(`[FSSpec] Settings loaded: ${settings.composite}`);
     //     })
     //     .catch(reason => {
-    //       Logger.error(`[FSSpec] Failed to load settings for jupyterFsspec: ${reason}`);
+    //       this.logger.error(`[FSSpec] Failed to load settings for jupyterFsspec: ${reason}`);
     //     });
     // }
   }

@@ -4,6 +4,8 @@ import { INotebookTracker } from '@jupyterlab/notebook';
 import { Logger } from './logger';
 
 export class FssTreeItemContext {
+  private readonly logger = Logger.getLogger('FssTreeItemContext');
+
   root: any;
   clicked = false;
   parentControl: any = null;
@@ -135,18 +137,18 @@ export class FssTreeItemContext {
     } else if (event.target.dataset.fssContextType === 'copyOpenCodeBlock') {
       this.copyOpenCodeBlock();
     } else if (event.target.dataset.fssContextType === 'getBytes') {
-      Logger.debug('Context item click');
-      Logger.debug(`${this.parentControl}`);
+      this.logger.debug('Context item click');
+      this.logger.debug(`${this.parentControl}`);
       if (this.parentControl) {
         this.parentControl.handleRequestBytes();
       }
     } else if (event.target.dataset.fssContextType === 'uploadUserData') {
-      Logger.debug('XX1');
+      this.logger.debug('XX1');
       if (this.parentControl) {
         this.parentControl.handleUploadUserData();
       }
     } else if (event.target.dataset.fssContextType === 'uploadBrowserFile') {
-      Logger.debug('XX2');
+      this.logger.debug('XX2');
       if (this.parentControl) {
         this.parentControl.handleUploadFromBrowserPicker({
           is_browser_file_picker: true
@@ -155,7 +157,7 @@ export class FssTreeItemContext {
     } else if (
       event.target.dataset.fssContextType === 'uploadJupyterBrowserFile'
     ) {
-      Logger.debug('XX3');
+      this.logger.debug('XX3');
       if (this.parentControl) {
         this.parentControl.handleUploadFromJupyterBrowser({
           is_jup_browser_file: true

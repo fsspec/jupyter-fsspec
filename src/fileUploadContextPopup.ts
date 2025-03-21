@@ -3,6 +3,8 @@ import { Widget } from '@lumino/widgets';
 import { Logger } from './logger';
 
 export class FssFileUploadContextPopup extends Widget {
+  private readonly logger = Logger.getLogger('FssFileUploadContextPopup');
+
   root: any;
   pathField: any;
 
@@ -28,7 +30,7 @@ export class FssFileUploadContextPopup extends Widget {
   }
 
   handlePathTextUpdate(event: any) {
-    Logger.debug(`${event}`);
+    this.logger.debug(`${event}`);
   }
 
   getValue() {
