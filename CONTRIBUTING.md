@@ -120,10 +120,10 @@ There are several ways to change the log level during development:
 
    ```javascript
    // Set to debug level
-   require('jupyterFsspec').Logger.setLevel(4);
+   window.jupyterFsspecLogConfig.setLevel(4);
 
    // Set to error level only
-   require('jupyterFsspec').Logger.setLevel(1);
+   window.jupyterFsspecLogConfig.setLevel(1);
    ```
 
 3. **In your code during development:**

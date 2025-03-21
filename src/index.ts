@@ -26,7 +26,7 @@ import { FssFileUploadContextPopup } from './fileUploadContextPopup';
 
 import { Widget } from '@lumino/widgets';
 
-import { Logger } from './logger';
+import { Logger, LogConfig } from './logger';
 import { initializeLogger } from './loggerSettings';
 
 declare global {
@@ -1196,6 +1196,11 @@ const plugin: JupyterFrontEndPlugin<void> = {
     settingRegistry: ISettingRegistry | null
   ) => {
     const logger = Logger.getLogger('JupyterFsspec');
+
+    // Expose the log config to the debug console
+    if (typeof window !== 'undefined') {
+      (window as any).jupyterFsspecLogConfig = LogConfig;
+    }
 
     logger.info('JupyterLab extension jupyterFsspec is activated!');
 
