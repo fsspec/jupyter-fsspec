@@ -1131,17 +1131,21 @@ const plugin: JupyterFrontEndPlugin<void> = {
       });
     }
 
-    // // TODO finish this
-    // if (settingRegistry) {
-    //   settingRegistry
-    //     .load(plugin.id)
-    //     .then(settings => {
-    //       this.logger.info(`[FSSpec] Settings loaded: ${settings.composite}`);
-    //     })
-    //     .catch(reason => {
-    //       this.logger.error(`[FSSpec] Failed to load settings for jupyterFsspec: ${reason}`);
-    //     });
-    // }
+    // Settings integration
+    if (settingRegistry) {
+      settingRegistry
+        .load(plugin.id)
+        .then(settings => {
+          logger.info('Settings loaded', {
+            settings: settings.composite
+          });
+        })
+        .catch(reason => {
+          logger.error('Failed to load settings for jupyterFsspec', {
+            reason
+          });
+        });
+    }
   }
 };
 
