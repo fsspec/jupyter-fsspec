@@ -49,7 +49,7 @@ class JFS(AbstractFileSystem):
 
         if detail:
             return out
-        return [_["name"] for _ in out]
+        return sorted(_["name"] for _ in out)
 
     def _open(
         self,
