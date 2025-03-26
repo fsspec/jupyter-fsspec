@@ -64,7 +64,7 @@ class FsspecConfigHandler(APIHandler):
         self.fs_manager = fs_manager
 
     @tornado.web.authenticated
-    def get(self):
+    async def get(self):
         """Retrieve filesystems information from configuration file.
 
         :return: dict with filesystems key and list of filesystem information objects
@@ -99,7 +99,7 @@ class FsspecConfigHandler(APIHandler):
                 "content": file_systems,
             }
         )
-        self.finish()
+        await self.finish()
 
 
 # ====================================================================================
@@ -177,7 +177,7 @@ class FileActionHandler(APIHandler):
             self.set_status(500)
 
         self.write(response)
-        self.finish()
+        await self.finish()
 
 
 # ====================================================================================
@@ -271,7 +271,7 @@ class FileTransferHandler(APIHandler):
             self.set_status(500)
 
         self.write(response)
-        self.finish()
+        await self.finish()
 
 
 # ====================================================================================
@@ -323,7 +323,7 @@ class RenameFileHandler(APIHandler):
             self.set_status(500)
 
         self.write(response)
-        self.finish()
+        await self.finish()
 
 
 class FileContentsHandler(APIHandler):
@@ -376,7 +376,7 @@ class FileContentsHandler(APIHandler):
         self.set_header("Content-Type", "application/octet-stream")
         self.set_status(200)
         self.write(result)
-        self.finish()
+        await self.finish()
 
 
 # ====================================================================================
@@ -457,7 +457,7 @@ class FileSystemHandler(APIHandler):
         mapped_result = self.fs_manager.map_paths(root_path, key, filtered_result)
         response["content"] = mapped_result
         self.write(response)
-        self.finish()
+        await self.finish()
 
     # POST /jupyter_fsspec/files?key=my-key
     # JSON Payload
@@ -542,7 +542,7 @@ class FileSystemHandler(APIHandler):
             logger.error(f"Error calling post handler: {e}")
             self.set_status(500)
         self.write(response)
-        self.finish()
+        await self.finish()
 
     # PUT /jupyter_fsspec/files?key=my-key&item_path=/some_directory/file.txt
     # JSON Payload
@@ -615,7 +615,7 @@ class FileSystemHandler(APIHandler):
             self.set_status(500)
 
         self.write(response)
-        self.finish()
+        await self.finish()
 
     # DELETE /jupyter_fsspec/files?key=my-key&item_path=/some_directory/file.txt
     @tornado.web.authenticated
@@ -665,7 +665,7 @@ class FileSystemHandler(APIHandler):
             self.set_status(500)
 
         self.write(response)
-        self.finish()
+        await self.finish()
 
 
 def setup_handlers(web_app):
