@@ -137,7 +137,7 @@ async def test_post_files(fs_manager_instance, jp_fetch):
 
     # Post new file with base64 encoded content
     filepath = "test_dir/test_end.png"
-    content = load_image_as_base64("test_end.png")
+    content = load_image_as_base64("jupyter_fsspec/tests/test_end.png")
     # File does not already exist
     assert not mem_fs.exists(filepath)
     file_payload = {
