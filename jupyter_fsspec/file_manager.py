@@ -96,7 +96,7 @@ class FileSystemManager:
         placeholder_config = {
             "sources": [
                 {"name": "test", "path": "memory://mytests"},
-                {"name": "test1", "path": "/testing", "protocol": "memory"},
+                {"name": "test1", "path": "memory://testing"},
             ]
         }
 
@@ -125,7 +125,8 @@ class FileSystemManager:
         for fs_config in self.config.get("sources", []):
             config = Source(**fs_config)
             fs_name = config.name
-            fs_path = config.path
+            fs_path = config.path  # Strip protocol from path?
+            logger.debug(f"fs_path: {fs_path}")
             fs_protocol = config.protocol
             args = config.args
             kwargs = config.kwargs
@@ -181,6 +182,9 @@ class FileSystemManager:
         protocol = self.get_filesystem_protocol(key)
         logger.debug("protocol: %s", protocol)
         logger.debug("initial root path: %s", root_path)
+
+        if not root_path:
+            return file_obj_list
 
         if protocol == "file://":
             root = strip_protocol(root_path)

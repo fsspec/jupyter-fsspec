@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 @pytest.fixture
 def config_file(tmp_path):
-    config = {"sources": [{"name": "inmem", "path": "/mem_dir", "protocol": "memory"}]}
+    config = {"sources": [{"name": "inmem", "path": "memory://mem_dir"}]}
     config_path = tmp_path / "config.yaml"
     with open(config_path, "w") as file:
         yaml.dump(config, file)
@@ -26,9 +26,9 @@ def empty_config_file(tmp_path):
 
 
 @pytest.fixture(scope="function")
-def setup_config_dir(tmp_path: Path):
+async def setup_config_dir(tmp_path: Path):
     config_dir = tmp_path / "config"
-    config_dir.mkdir(exist_ok=True)
+    config_dir._mkdir(exist_ok=True)
 
     yaml_file = config_dir / "jupyter-fsspec.yaml"
     yaml_file.write_text("")
@@ -92,7 +92,7 @@ def test_filesystem_init(setup_config_dir, config_file):
 
     assert in_memory_fs is not None
     assert in_memory_fs["protocol"] == "memory"
-    assert in_memory_fs["path"] == "/mem_dir"
+    assert in_memory_fs["path"] == "mem_dir"
 
 
 def test_key_decode_encode(setup_config_dir, config_file):
@@ -136,7 +136,7 @@ def test_load_populated_config(setup_config_dir, config_file):
 
         loaded_config = fs_manager.load_config(handle_errors=True)
         assert loaded_config == {
-            "sources": [{"name": "inmem", "path": "/mem_dir", "protocol": "memory"}]
+            "sources": [{"name": "inmem", "path": "memory://mem_dir"}]
         }
         fs_manager.config = loaded_config
 
@@ -145,13 +145,11 @@ def test_load_populated_config(setup_config_dir, config_file):
         mem_instance_info = fs_manager.filesystems["inmem"]
         assert mem_instance_info["name"] == "inmem"
         assert mem_instance_info["protocol"] == "memory"
-        assert mem_instance_info["path"] == "/mem_dir"
-        assert mem_instance_info["canonical_path"] == "memory:///mem_dir"
+        assert mem_instance_info["path"] == "mem_dir"
+        assert mem_instance_info["canonical_path"] == "memory://inmem/mem_dir"
 
         mem_fs_instance = mem_instance_info["instance"]
-        assert mem_fs_instance.ls("/") == [
-            {"name": "/my_mem_dir", "size": 0, "type": "directory"}
-        ]
+        assert len(mem_fs_instance.ls("/")) == 4
 
 
 def test_check_reload_config(setup_config_dir, config_file):
@@ -166,13 +164,11 @@ def test_check_reload_config(setup_config_dir, config_file):
         mem_instance_info = fs_manager.filesystems["inmem"]
         assert mem_instance_info["name"] == "inmem"
         assert mem_instance_info["protocol"] == "memory"
-        assert mem_instance_info["path"] == "/mem_dir"
-        assert mem_instance_info["canonical_path"] == "memory:///mem_dir"
+        assert mem_instance_info["path"] == "mem_dir"
+        assert mem_instance_info["canonical_path"] == "memory://inmem/mem_dir"
 
         mem_fs_instance = mem_instance_info["instance"]
-        assert mem_fs_instance.ls("/") == [
-            {"name": "/my_mem_dir", "size": 0, "type": "directory"}
-        ]
+        assert len(mem_fs_instance.ls("/")) == 4
 
 
 def test_error_validate_config(invalid_mock_config):

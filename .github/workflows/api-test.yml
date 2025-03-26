@@ -23,4 +23,6 @@ jobs:
         pip install .[test]
 
     - name: API Tests
-      run: pytest -s -v
+      run: |
+        cd jupyter_fsspec/tests
+        pytest -s -v

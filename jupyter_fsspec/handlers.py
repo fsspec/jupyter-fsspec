@@ -226,7 +226,6 @@ class FileTransferHandler(APIHandler):
                 fs, dest_path = self.fs_manager.validate_fs(
                     "post", dest_fs_key, dest_path
                 )
-
                 fs_instance = fs["instance"]
                 try:
                     with handle_exception(self):
@@ -453,7 +452,9 @@ class FileSystemHandler(APIHandler):
             {info: item_dict[info] for info in detail_to_keep if info in item_dict}
             for item_dict in result
         ]
-        mapped_result = self.fs_manager.map_paths(item_path, key, filtered_result)
+        response["content"] = filtered_result
+        root_path = self.fs_manager.name_to_prefix[key]
+        mapped_result = self.fs_manager.map_paths(root_path, key, filtered_result)
         response["content"] = mapped_result
         self.write(response)
         self.finish()
