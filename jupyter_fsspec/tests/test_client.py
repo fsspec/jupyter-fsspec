@@ -85,3 +85,10 @@ def test_errors(fs):
         fs.cat_file("testmem/notafile")
     with pytest.raises(FileNotFoundError):
         fs.cat_file("notakey/afile")
+
+
+def test_roundtrip_fileio(fs):
+    with fs.open("testmem/afile2", "wb") as f:
+        f.write(b"hello2")
+    with fs.open("testmem/afile2", "rb") as f:
+        assert f.read() == b"hello2"

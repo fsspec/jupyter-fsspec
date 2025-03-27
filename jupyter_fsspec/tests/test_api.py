@@ -1,7 +1,6 @@
 import json
 import pytest
 from tornado.httpclient import HTTPClientError
-from jupyter_fsspec.utils import load_image_as_base64
 # TODO: Testing: different file types, received expected errors
 
 
@@ -113,68 +112,33 @@ async def test_post_files(fs_manager_instance, jp_fetch):
     filepath = "test_dir/file2.txt"
     # File does not already exist
     assert not mem_fs.exists(filepath)
-    content = b"\00"
+    content = "Héllo".encode()
 
     file_response = await jp_fetch(
         "jupyter_fsspec",
         "files",
         "contents",
         method="POST",
-        params={"key": mem_key},
+        params={"key": mem_key, "item_path": filepath},
         body=content,
     )
-    assert file_response.code == 200
-
-    file_json_body = file_response.body.decode("utf-8")
-    file_body = json.loads(file_json_body)
-    assert file_body["status"] == "success"
-    assert file_body["description"] == "Wrote test_dir/file2.txt."
+    assert file_response.code == 201
     assert mem_fs.exists(filepath)
+    assert mem_fs.cat_file(filepath) == content
 
-    # Post new file with base64 encoded content
-    filepath = "test_dir/test_end.png"
-    content = load_image_as_base64("jupyter_fsspec/tests/test_end.png")
-    # File does not already exist
-    assert not mem_fs.exists(filepath)
-    file_payload = {
-        "key": mem_key,
-        "item_path": filepath,
-        "content": content,
-        "base64": True,
-    }
+    content = b""
+
     file_response = await jp_fetch(
         "jupyter_fsspec",
         "files",
+        "contents",
         method="POST",
-        params={"key": mem_key},
-        body=json.dumps(file_payload),
+        params={"key": mem_key, "item_path": filepath},
+        body=content,
     )
-    assert file_response.code == 200
-
-    file_json_body = file_response.body.decode("utf-8")
-    file_body = json.loads(file_json_body)
-    assert file_body["status"] == "success"
-    assert file_body["description"] == "Wrote test_dir/test_end.png."
+    assert file_response.code == 201
     assert mem_fs.exists(filepath)
-
-    # Post directory
-    newdirpath = "test_dir/subdir/"
-    # Directory does not already exist
-    assert not mem_fs.exists(newdirpath)
-    dir_payload = {"key": mem_key, "item_path": newdirpath}
-    dir_response = await jp_fetch(
-        "jupyter_fsspec",
-        "files",
-        method="POST",
-        params={"key": mem_key},
-        body=json.dumps(dir_payload),
-    )
-    assert dir_response.code == 200
-    dir_body_json = dir_response.body.decode("utf-8")
-    dir_body = json.loads(dir_body_json)
-
-    assert dir_body["status"] == "success"
-    assert dir_body["description"] == "Wrote test_dir/subdir/."
+    assert mem_fs.cat_file(filepath) == content
 
 
 async def test_delete_files(fs_manager_instance, jp_fetch):

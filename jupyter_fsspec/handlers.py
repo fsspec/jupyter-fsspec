@@ -387,7 +387,6 @@ class FileContentsHandler(APIHandler):
 
         fs, item_path = self.fs_manager.validate_fs("post", key, item_path)
         fs_instance = fs["instance"]
-        is_async = fs_instance.async_impl
 
         try:
             with handle_exception(self):
@@ -476,91 +475,6 @@ class FileSystemHandler(APIHandler):
         root_path = self.fs_manager.name_to_prefix[key]
         mapped_result = self.fs_manager.map_paths(root_path, key, filtered_result)
         response["content"] = mapped_result
-        self.write(response)
-        await self.finish()
-
-    # POST /jupyter_fsspec/files?key=my-key
-    # JSON Payload
-    # item_path=/some_directory/file.txt
-    # content
-    @tornado.web.authenticated
-    async def post(self):
-        """Create directories/files or perform other directory/file operations like move and copy
-
-        :param [key]: [Query arg string used to retrieve the appropriate filesystem instance]
-        :param [item_path]: [Query arg string path to file or directory to be retrieved]
-        :param [content]: [Request body property file content, or directory name]
-
-        :return: dict with a status, description and (optionally) error
-        :rtype: dict
-        """
-        request_data = json.loads(self.request.body.decode("utf-8"))
-        try:
-            with handle_exception(
-                self, status_code=400, default_msg="Error processing request payload."
-            ):
-                post_request = PostRequest(**request_data)
-        except JupyterFsspecException:
-            return
-
-        key = post_request.key
-        req_item_path = post_request.item_path
-        content = post_request.content
-        is_base64 = post_request.base64
-        if is_base64:
-            content = await self.process_content(content)
-
-        fs, item_path = self.fs_manager.validate_fs("post", key, req_item_path)
-        fs_instance = fs["instance"]
-        is_async = fs_instance.async_impl
-        response = {}
-
-        try:
-            # directory expect item_path to end with `/`
-            if item_path.endswith("/"):
-                # content is then expected to be null
-                try:
-                    with handle_exception(self):
-                        (
-                            await fs_instance._mkdir(item_path, exists_ok=True)
-                            if is_async
-                            else fs_instance.mkdir(item_path, exists_ok=True)
-                        )
-                except JupyterFsspecException:
-                    return
-            else:
-                # file name expected in item_path
-                try:
-                    with handle_exception(self):
-                        (
-                            await fs_instance._touch(item_path)
-                            if is_async
-                            else await fs_instance.touch(item_path)
-                        )
-                except JupyterFsspecException:
-                    return
-
-                if content:
-                    if not isinstance(content, bytes):
-                        content = str.encode(content)
-
-                try:
-                    with handle_exception(self):
-                        (
-                            await fs_instance._pipe(item_path, content)
-                            if is_async
-                            else fs_instance.pipe(item_path, content)
-                        )
-                except JupyterFsspecException:
-                    return
-
-            self.set_status(200)
-            response["status"] = "success"
-            response["description"] = f"Wrote {item_path}."
-        except Exception as e:
-            traceback.print_exc()
-            logger.error(f"Error calling post handler: {e}")
-            self.set_status(500)
         self.write(response)
         await self.finish()
 

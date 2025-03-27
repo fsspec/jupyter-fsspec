@@ -21,14 +21,16 @@ class JFS(AbstractFileSystem):
         key, *relpath = path.split("/", 1)
         return key, relpath[0] if relpath else ""
 
-    def _call(self, path, method="GET", range=None, binary=False, **kw):
+    def _call(self, path, method="GET", range=None, binary=False, data=None, **kw):
         logger.debug("request: %s %s %s", path, method, kw)
         headers = {}
         if range:
             headers["Range"] = f"bytes={range[0]}-{range[1]}"
         r = self.session.request(
-            method, f"{self.base_url}/{path}", params=kw, headers=headers
+            method, f"{self.base_url}/{path}", params=kw, headers=headers, data=data
         )
+        if r.status_code == 404:
+            raise FileNotFoundError(path)
         r.raise_for_status()
         if binary:
             return r.content
@@ -68,7 +70,24 @@ class JFS(AbstractFileSystem):
             "jupyter_fsspec/files/contents", key=key, item_path=relpath, binary=True
         )
 
+    def pipe_file(self, path, value, mode="overwrite", **kwargs):
+        key, relpath = self._split_path(path)
+        self._call(
+            "jupyter_fsspec/files/contents",
+            key=key,
+            item_path=relpath,
+            method="POST",
+            binary=True,
+            data=value,
+        )
+
 
 class JFile(AbstractBufferedFile):
     def _fetch_range(self, start, end):
-        return self.fs._cat_file(self.path, start, end)
+        return self.fs.cat_file(self.path, start, end)
+
+    def _upload_chunk(self, final=False):
+        if final:
+            self.fs.pipe_file(self.path, self.buffer.getvalue())
+            return True
+        return False
