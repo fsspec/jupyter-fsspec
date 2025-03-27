@@ -113,19 +113,15 @@ async def test_post_files(fs_manager_instance, jp_fetch):
     filepath = "test_dir/file2.txt"
     # File does not already exist
     assert not mem_fs.exists(filepath)
-    content = "VGhpcyBpcyBzb21lIHNhbXBsZSBlbmNvZGVkIHRleHQu"
-    file_payload = {
-        "key": mem_key,
-        "item_path": filepath,
-        "content": content,
-        "base64": True,
-    }
+    content = b"\00"
+
     file_response = await jp_fetch(
         "jupyter_fsspec",
         "files",
+        "contents",
         method="POST",
         params={"key": mem_key},
-        body=json.dumps(file_payload),
+        body=content,
     )
     assert file_response.code == 200
 

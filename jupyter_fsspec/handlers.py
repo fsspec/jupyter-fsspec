@@ -378,6 +378,26 @@ class FileContentsHandler(APIHandler):
         self.write(result)
         await self.finish()
 
+    @tornado.web.authenticated
+    async def post(self):
+        body = self.request.body
+        request_data = {k: self.get_argument(k) for k in self.request.arguments}
+        key = request_data["key"]
+        item_path = request_data["item_path"]
+
+        fs, item_path = self.fs_manager.validate_fs("post", key, item_path)
+        fs_instance = fs["instance"]
+        is_async = fs_instance.async_impl
+
+        try:
+            with handle_exception(self):
+                await fs_instance._pipe_file(item_path, body)
+        except JupyterFsspecException:
+            return
+
+        self.set_status(201)
+        await self.finish()
+
 
 # ====================================================================================
 # CRUD for FileSystem
