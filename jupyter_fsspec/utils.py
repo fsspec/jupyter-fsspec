@@ -11,7 +11,7 @@ def parse_range(range_header):
         raise ValueError("Invalid Range header format")
 
     start = int(match.group(1))
-    end = match.group(2)
+    end = int(match.group(2))
 
     if end is None:
         end = None  # TODO: set upper limit to file size

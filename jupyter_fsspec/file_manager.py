@@ -1,6 +1,7 @@
 from jupyter_core.paths import jupyter_config_dir
 from .models import Source, Config
 from fsspec.utils import infer_storage_options
+from fsspec.core import strip_protocol
 from fsspec.implementations.asyn_wrapper import AsyncFileSystemWrapper
 import fsspec
 import os
@@ -18,6 +19,7 @@ logger.setLevel(logging.INFO)
 class FileSystemManager:
     def __init__(self, config_file):
         self.filesystems = {}
+        self.name_to_prefix = {}
         self.base_dir = jupyter_config_dir()
         logger.info(f"Using Jupyter config directory: {self.base_dir}")
         self.config_path = os.path.join(self.base_dir, config_file)
@@ -94,7 +96,7 @@ class FileSystemManager:
         placeholder_config = {
             "sources": [
                 {"name": "test", "path": "memory://mytests"},
-                {"name": "test1", "path": "/testing", "protocol": "memory"},
+                {"name": "test1", "path": "memory://testing"},
             ]
         }
 
@@ -117,27 +119,26 @@ class FileSystemManager:
 
     def initialize_filesystems(self):
         new_filesystems = {}
+        name_to_prefix = {}
 
         # Init filesystem
         for fs_config in self.config.get("sources", []):
             config = Source(**fs_config)
             fs_name = config.name
-            fs_path = config.path
+            fs_path = config.path  # Strip protocol from path?
+            logger.debug(f"fs_path: {fs_path}")
             fs_protocol = config.protocol
             args = config.args
             kwargs = config.kwargs
 
-            if fs_protocol is None:
+            if fs_protocol is None:  # Remove this check to assume URL path
                 if fs_path:
                     fs_protocol = self._get_protocol_from_path(fs_path)
-
-            # TODO: support for case no path
-            # if not fs_path:
-            #     logger.error(
-            #         f"Filesystem '{fs_name}' with protocol 'fs_protocol' requires 'path'"
-            #     )
+            logger.debug("fs_protocol: %s", fs_protocol)
 
             key = self._encode_key(fs_config)
+
+            # fs_path should always be a URL
 
             fs_class = fsspec.get_filesystem_class(fs_protocol)
             if fs_class.async_impl:
@@ -145,20 +146,63 @@ class FileSystemManager:
             else:
                 sync_fs = fsspec.filesystem(fs_protocol, *args, **kwargs)
                 fs = AsyncFileSystemWrapper(sync_fs)
+            logger.debug("fs_path: %s", fs_path)
 
+            # split_path includes just prefix (no protocol)
+            split_path_list = fs_path.split("//", 1)
+            prefix_path = "" if len(split_path_list) <= 1 else split_path_list[1]
+            logger.debug("prefix path: %s", prefix_path)
+
+            canonical_path = fs_protocol + "://" + key + "/" + prefix_path
+            logger.debug("canonical_path: %s", canonical_path)
             # Store the filesystem instance
             new_filesystems[key] = {
                 "instance": fs,
                 "name": fs_name,
-                "protocol": fs_protocol,
-                "path": fs._strip_protocol(fs_path),
-                "canonical_path": fs.unstrip_protocol(fs_path),
+                "protocol": fs_protocol,  # TODO: remove
+                "path": prefix_path,
+                "canonical_path": canonical_path,
             }
+
+            name_to_prefix[fs_name] = prefix_path
             logger.debug(
                 f"Initialized filesystem '{fs_name}' with protocol '{fs_protocol}' at path '{fs_path}'"
             )
 
+        logger.debug("path prefix: %s", name_to_prefix)
         self.filesystems = new_filesystems
+        self.name_to_prefix = name_to_prefix
+
+    # Same as client.py
+    def split_path(self, path):
+        key, *relpath = path.split("/", 1)
+        return key, relpath[0] if relpath else ""
+
+    def map_paths(self, root_path, key, file_obj_list):
+        protocol = self.get_filesystem_protocol(key)
+        logger.debug("protocol: %s", protocol)
+        logger.debug("initial root path: %s", root_path)
+
+        if not root_path:
+            return file_obj_list
+
+        if protocol == "file://":
+            root = strip_protocol(root_path)
+        else:
+            root = self.name_to_prefix[key]
+        logger.debug("filesystem root: %s", root)
+
+        # TODO: error handling for relative_path
+        for item in file_obj_list:
+            if "name" in item:
+                file_name = item["name"]
+                split_paths = file_name.split(root, 1)
+                logger.debug("split file name: %s", split_paths)
+                relative_path = (
+                    split_paths[1] if len(split_paths) > 1 else split_paths[0]
+                )
+                item["name"] = key + relative_path
+        return file_obj_list
 
     def check_reload_config(self):
         new_config_content = self.load_config()
@@ -177,9 +221,10 @@ class FileSystemManager:
 
         fs = self.get_filesystem(key)
 
+        # TODO: Add test for empty item_path => root
         if not item_path:
-            if str(type) != "range" and request_type == "get":
-                item_path = self.filesystems[key]["path"]
+            if request_type == "get":
+                item_path = ""
             else:
                 raise ValueError("Missing required parameter `item_path`")
 
