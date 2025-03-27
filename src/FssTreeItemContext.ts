@@ -104,6 +104,7 @@ export class FssTreeItemContext {
       }
     }
   }
+
   copyOpenCodeBlock() {
     const path = this.copyPath();
 
@@ -129,7 +130,7 @@ export class FssTreeItemContext {
   }
 
   handleItemClick(event: any) {
-    // TODO multiple menu it
+    console.log('sig1');
     if (event.target.dataset.fssContextType === 'copyPath') {
       this.copyPathToClipboard();
     } else if (event.target.dataset.fssContextType === 'copyOpenCodeBlock') {
@@ -143,12 +144,13 @@ export class FssTreeItemContext {
     } else if (event.target.dataset.fssContextType === 'uploadUserData') {
       Logger.debug('XX1');
       if (this.parentControl) {
-        this.parentControl.handleUploadUserData();
+        this.parentControl.handleUploadRequest();
       }
     } else if (event.target.dataset.fssContextType === 'uploadBrowserFile') {
       Logger.debug('XX2');
+      console.log('sig2');
       if (this.parentControl) {
-        this.parentControl.handleUploadFromBrowserPicker({
+        this.parentControl.handleUploadRequest({
           is_browser_file_picker: true
         });
       }
@@ -157,13 +159,15 @@ export class FssTreeItemContext {
     ) {
       Logger.debug('XX3');
       if (this.parentControl) {
-        this.parentControl.handleUploadFromJupyterBrowser({
+        this.parentControl.handleUploadRequest({
           is_jup_browser_file: true
         });
       }
     }
 
+    console.log('sig3');
     this.root.remove();
+    console.log('sig4');
   }
 
   handleItemHover(event: any) {

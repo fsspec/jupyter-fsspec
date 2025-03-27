@@ -30,7 +30,7 @@ export class FssTreeItem {
   notebookTracker: INotebookTracker;
   treeItemClicked: Signal<any, string>;
   getBytesRequested: Signal<any, string>;
-  uploadUserDataRequested: Signal<any, any>;
+  uploadRequested: Signal<any, any>; // All upload requests go here (kernel user_data, browser picker etc.)
 
   constructor(
     model: any,
@@ -54,7 +54,7 @@ export class FssTreeItem {
     this.notebookTracker = notebookTracker;
     this.treeItemClicked = new Signal<this, string>(this);
     this.getBytesRequested = new Signal<this, string>(this);
-    this.uploadUserDataRequested = new Signal<this, any>(this);
+    this.uploadRequested = new Signal<this, any>(this);
 
     // Use a MutationObserver on the root TreeItem's shadow DOM,
     // where the TreeItem's expand/collapse control will live once
@@ -113,7 +113,9 @@ export class FssTreeItem {
     this.getBytesRequested.emit(this.root.dataset.fss);
   }
 
-  async handleUploadUserData(options: any) {
+  async handleUploadRequest(options: any) {
+    // Uploads can come from different places, gather info and emit it here
+    // (so that connected slots can route the request to the right place)
     let is_browser_file_picker = false;
     let is_jup_browser_file = false;
     if (options) {
@@ -122,16 +124,7 @@ export class FssTreeItem {
       this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
     }
     Logger.debug('Treeitem upload user data');
-    // for (const slot of this.uploadUserDataSlots) {
-    //   Logger.debug(slot);
-    //   await slot(
-    //     this.root.dataset.fss,
-    //     this.isDir,
-    //     is_browser_file_picker,
-    //     is_jup_browser_file
-    //   );
-    // }
-    this.uploadUserDataRequested.emit({
+    this.uploadRequested.emit({
       user_path: this.root.dataset.fss,
       is_dir: this.isDir,
       is_browser_file_picker: is_browser_file_picker,

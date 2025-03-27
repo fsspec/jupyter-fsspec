@@ -406,6 +406,7 @@ test('upload file from the Jupyterlab file browser', async ({ page }) => {
 });
 
 test('upload file from browser picker', async ({ page }) => {
+  // page.on('console', msg => console.log(msg.text())); // For debugging console capture
   const request_url =
     'http://localhost:8888/jupyter_fsspec/files?action=write&key=mymem';
   const response_body = {

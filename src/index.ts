@@ -453,9 +453,7 @@ class FsspecWidget extends Widget {
       Logger.debug(`FData ${fileData}`);
       this.handleBrowserPickerUpload(
         this.queuedPickerUploadInfo.user_path,
-        this.queuedPickerUploadInfo.is_dir,
-        this.queuedPickerUploadInfo.is_browser_file_picker,
-        false
+        this.queuedPickerUploadInfo.is_dir
       );
       this.queuedPickerUploadInfo = null;
       this.openInputHidden.value = null;
@@ -514,12 +512,7 @@ class FsspecWidget extends Widget {
     }
   }
 
-  async handleBrowserPickerUpload(
-    user_path: string,
-    is_dir: boolean,
-    is_browser_file_picker: boolean,
-    is_jup_browser_file: boolean
-  ) {
+  async handleBrowserPickerUpload(user_path: string, is_dir: boolean) {
     Logger.debug('BB a2');
 
     // Get the desired path for this upload from a dialog box
@@ -544,7 +537,7 @@ class FsspecWidget extends Widget {
       this.queuedPickerUploadInfo = {
         user_path: user_path,
         is_dir: is_dir,
-        is_browser_file_picker: is_browser_file_picker,
+        is_browser_file_picker: true,
         fileData: null
       };
       this.openInputHidden.click();
@@ -582,22 +575,12 @@ class FsspecWidget extends Widget {
     }
   }
 
-  async handleKernelHelperUpload(
-    user_path: string,
-    is_dir: boolean,
-    is_browser_file_picker: boolean,
-    is_jup_browser_file: boolean
-  ) {
+  async handleKernelHelperUpload(user_path: string, is_dir: boolean) {
     Logger.debug('BB a3');
     const target = this.notebookTracker.currentWidget;
-
-    if (!is_browser_file_picker && !is_jup_browser_file) {
-      // Only check for current notebook when uploading from user kernel
-      // TODO cleanup this horrendous mess and pull these apart into discrete units
-      if (!target || target.isDisposed) {
-        Logger.error('Invalid target widget');
-        return;
-      }
+    if (!target || target.isDisposed) {
+      Logger.error('Invalid target widget');
+      return;
     }
 
     // Logger.debug('FileBrowser items!!');
@@ -633,7 +616,7 @@ class FsspecWidget extends Widget {
     }
 
     // TODO error handling
-    this.model.upload(
+    await this.model.upload(
       this.model.activeFilesystem,
       tempfilePath,
       user_path,
@@ -641,7 +624,7 @@ class FsspecWidget extends Widget {
     );
     // let foo = this.navigateToPath(user_path);
     // Logger.debug(`Finish upload to ${foo}`);
-    this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
+    await this.fetchAndDisplayFileInfo(this.model.activeFilesystem);
   }
 
   handleContextGetBytes(user_path: string) {
@@ -850,13 +833,20 @@ class FsspecWidget extends Widget {
     this.handleContextGetBytes(userPath);
   }
 
-  async handleUploadUserDataRequest(sender: any, args: any) {
-    await this.handleKernelHelperUpload(
-      args.user_path,
-      args.is_dir,
-      args.is_browser_file_picker,
-      args.is_jup_browser_file
-    );
+  async handleUploadRequest(sender: any, args: any) {
+    // Routes all upload requests (kernel user_data, browser picker, etc.)
+    if (args.is_browser_file_picker && args.is_jup_browser_file) {
+      Logger.error('Bad upload request (conflicting source values');
+      return;
+    }
+
+    if (args.is_browser_file_picker) {
+      await this.handleBrowserPickerUpload(args.user_path, args.is_dir);
+    } else if (args.is_jup_browser_file) {
+      await this.handleJupyterFileBrowserUpload(args.user_path, args.is_dir);
+    } else {
+      await this.handleKernelHelperUpload(args.user_path, args.is_dir);
+    }
   }
 
   async updateFileBrowserView(startNode: any = null) {
@@ -906,9 +896,7 @@ class FsspecWidget extends Widget {
           item.getBytesRequested.connect(
             this.handleUserGetBytesRequest.bind(this)
           );
-          item.uploadUserDataRequested.connect(
-            this.handleUploadUserDataRequest.bind(this)
-          );
+          item.uploadRequested.connect(this.handleUploadRequest.bind(this));
           // (pathInfo as any).ui = item;
           elemParent.appendChild(item.root);
 
@@ -943,6 +931,7 @@ class FsspecWidget extends Widget {
   }
 
   async fetchAndDisplayFileInfo(fsname: string) {
+    Logger.debug('FETCH AND DISP');
     // Fetch files for this filesystem
     const response = await this.model.listDirectory(
       this.model.userFilesystems[this.model.activeFilesystem].key
@@ -973,7 +962,7 @@ class FsspecWidget extends Widget {
       pathInfos,
       this.model.userFilesystems[fsname].path
     );
-    this.updateFileBrowserView();
+    await this.updateFileBrowserView();
   }
 
   updateTree(tree: any, pathInfoList: any, rootPath: string) {
