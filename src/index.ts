@@ -801,7 +801,8 @@ class FsspecWidget extends Widget {
       this.model.userFilesystems[this.model.activeFilesystem].key,
       source_path
     );
-    if (response?.status !== 'success' || !response?.content) {
+    // TODO: Check for status/description?
+    if (!response?.content) {
       // TODO refactor validation
       Logger.error(`Error fetching files for path ${source_path}`); // TODO jupyter info print
       return;
@@ -927,17 +928,12 @@ class FsspecWidget extends Widget {
       this.model.userFilesystems[this.model.activeFilesystem].key
     );
     if (!response) {
-      Logger.error('Error fetching files for filesystem: response is null');
+      Logger.error('Error fetching files for filesystem');
       return;
     }
 
-    if (
-      !('status' in response) ||
-      !(response.status === 'success') ||
-      !('content' in response)
-    ) {
-      // TODO refactor validation
-      Logger.error(`Error fetching files for filesystem ${fsname}`); // TODO jupyter info print
+    if (!response.content) {
+      Logger.error('Error retrieving content from filesystem');
       return;
     }
     const pathInfos = response['content'].sort((a: any, b: any) => {

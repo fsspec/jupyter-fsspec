@@ -64,7 +64,7 @@ def test_ls_root(fs):
 def test_ls_nonroot(fs):
     out = fs.ls("testmem", detail=True)
     assert len(out) == 1
-    assert out[0]["name"] == ["afile"]
+    assert out[0]["name"] == "testmem/afile"
     assert out[0]["size"] == len(b"hello")
     with pytest.raises(requests.exceptions.HTTPError):
         fs.ls("notakey")

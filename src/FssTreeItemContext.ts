@@ -65,16 +65,7 @@ export class FssTreeItemContext {
   }
 
   copyPath() {
-    const info = this.model.getActiveFilesystemInfo();
-    const protocol = info?.canonical_path.slice(
-      0,
-      info.canonical_path.length - info.path.length
-    );
-    if (protocol) {
-      const canonical =
-        protocol + '/' + this.root.dataset.fss.replace(/^\/+/, () => '');
-      return canonical;
-    }
+    return this.root.dataset.fss.replace(/^\/+/, () => '');
   }
 
   copyPathToClipboard() {
