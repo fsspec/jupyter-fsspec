@@ -73,15 +73,15 @@ currently supported through the UI.
 ## Config File
 
 To define your `fsspec` filesystems, you will need to list them in the Jupyter config folder,
-inside a file named `~/.jupyter/jupyter-fsspec.yaml`. Here's a sample file:
+inside a file named `~/.jupyter/jupyter-fsspec.yaml`. Here's a sample file where for the local
+filesystem instances, `file://Users/finnmertens` is the server root path:
 
 ```
 sources:
   - name: "Cell filter repo"
-    path: "/Users/finnmertens/cfilter/jupyterlab"
-    protocol: "file"
+    path: "file://Users/finnmertens/cfilter/jupyterlab"
   - name: "Averager project"
-    path: "file:///Users/finnmertens/averager"
+    path: "file://Users/finnmertens/averager"
   - name: "Remote MyBucket
     path: "s3://mybucket"
     args: []
@@ -91,16 +91,16 @@ sources:
       secret: "my-secret-key"
       client_kwargs:
         endpoint_url: "https://s3.provider.com"
+  - name: "MemFS"
+    path: "memory://sample"
 ```
 
-The config file has a list of sources, where each item needs a name and a path. The name
-is a unique identifier, so don't use duplicate names.
+The config file has a list of sources, where each item needs a name and a path URL. The name
+is a unique identifier, so it should not be duplicated. The type of filesystem `fsspec` should
+construct is required in the path URL as the protocol `file://` etc. If you provide the
+`protocol` argument it will be ignored.
 
-You can also optionally specify a protocol (which is the type of filesystem `fsspec` should
-construct). If you prefer you can omit the `protocol` argument and include the protocol in the
-path instead (like in the second entry).
-
-Last, you can pass additional arguments to the `fsspec` filesystem contructor by using the
+Lastly, you can pass additional arguments to the `fsspec` filesystem contructor by using the
 `args` and/or `kwargs` keys. You can check the `fsspec` docs for the available options that
 each filesystem implementation offers.
 
