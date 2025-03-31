@@ -5,6 +5,7 @@ import traceback
 import json
 import logging
 import tornado
+import os
 from contextlib import contextmanager
 
 
@@ -327,9 +328,15 @@ class RenameFileHandler(APIHandler):
 
 
 class FileContentsHandler(APIHandler):
+    def check_xsrf_cookie(self):
+        if os.getenv("JUPYTER_FSSPEC_DISABLE_XSRF", "0") == "1":
+            return  # Skip XSRF check in dev/test
+        super().check_xsrf_cookie()
+
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
+    @tornado.web.authenticated
     async def get(self):
         request_data = {k: self.get_argument(k) for k in self.request.arguments}
         try:

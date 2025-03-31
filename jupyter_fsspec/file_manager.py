@@ -221,15 +221,32 @@ class FileSystemManager:
 
         fs = self.get_filesystem(key)
 
+        if fs is None:
+            raise ValueError(f"No filesystem found for key: {key}")
+
         # TODO: Add test for empty item_path => root
-        if not item_path:
+        if item_path == "":
             if request_type == "get":
-                item_path = ""
+                item_path = "" if fs["protocol"] == "file://" else fs["path"]
+                print(f"returning early item_path: {item_path}")
+                return fs, item_path
             else:
                 raise ValueError("Missing required parameter `item_path`")
 
-        if fs is None:
-            raise ValueError(f"No filesystem found for key: {key}")
+        # fs has prefix_path and name(key)
+        # prefix_path is the path URL without the protocol
+        prefix_path = fs["path"]
+
+        # check item_path includes name(key) => remove it
+        key_slash = key + "/"
+        if key_slash in item_path:
+            item_path = item_path.replace(key_slash, "")
+        elif key in item_path:
+            item_path = item_path.replace(key, "")
+
+        # check item_path includes prefix_path
+        if prefix_path not in item_path:
+            item_path = prefix_path + "/" + item_path
 
         return fs, item_path
 

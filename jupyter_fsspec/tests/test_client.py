@@ -26,6 +26,7 @@ def server(tmpdir):
      anon: True
 """
     env = os.environ.copy()
+    os.environ["JUPYTER_FSSPEC_DISABLE_XSRF"] = "1"
     fn = f"{tmpdir}/jupyter-fsspec.yaml"
     with open(fn, "wt") as f:
         f.write(conf)
@@ -65,7 +66,7 @@ def test_ls_nonroot(fs):
     assert len(out) == 1
     assert out[0]["name"] == ["afile"]
     assert out[0]["size"] == len(b"hello")
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(requests.exceptions.HTTPError):
         fs.ls("notakey")
     # deeper levels to come
 
@@ -81,9 +82,9 @@ def test_file(fs):
 
 
 def test_errors(fs):
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(requests.exceptions.HTTPError):
         fs.cat_file("testmem/notafile")
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(requests.exceptions.HTTPError):
         fs.cat_file("notakey/afile")
 
 
