@@ -183,7 +183,7 @@ class FileSystemManager:
         logger.debug("protocol: %s", protocol)
         logger.debug("initial root path: %s", root_path)
 
-        if not root_path:
+        if not root_path and not (protocol == "file://"):
             return file_obj_list
 
         if protocol == "file://":
