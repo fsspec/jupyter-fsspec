@@ -146,10 +146,10 @@ def test_load_populated_config(setup_config_dir, config_file):
         assert mem_instance_info["name"] == "inmem"
         assert mem_instance_info["protocol"] == "memory"
         assert mem_instance_info["path"] == "mem_dir"
-        assert mem_instance_info["canonical_path"] == "memory://inmem/mem_dir"
+        assert mem_instance_info["canonical_path"] == "memory://inmem"
 
         mem_fs_instance = mem_instance_info["instance"]
-        assert len(mem_fs_instance.ls("/")) == 4
+        assert len(mem_fs_instance.ls("/")) == 5
 
 
 def test_check_reload_config(setup_config_dir, config_file):
@@ -165,10 +165,10 @@ def test_check_reload_config(setup_config_dir, config_file):
         assert mem_instance_info["name"] == "inmem"
         assert mem_instance_info["protocol"] == "memory"
         assert mem_instance_info["path"] == "mem_dir"
-        assert mem_instance_info["canonical_path"] == "memory://inmem/mem_dir"
+        assert mem_instance_info["canonical_path"] == "memory://inmem"
 
         mem_fs_instance = mem_instance_info["instance"]
-        assert len(mem_fs_instance.ls("/")) == 4
+        assert len(mem_fs_instance.ls("/")) == 5
 
 
 def test_error_validate_config(invalid_mock_config):

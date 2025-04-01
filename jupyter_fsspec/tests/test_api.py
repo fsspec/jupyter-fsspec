@@ -15,7 +15,7 @@ async def test_get_config(setup_config_file_fs, jp_fetch):
         body["description"]
         == "Retrieved available filesystems from configuration file."
     )
-    assert len(body["content"]) == 4
+    assert len(body["content"]) == 5
 
 
 @pytest.mark.no_setup_config_file_fs
@@ -52,7 +52,7 @@ async def test_empty_config(empty_config, jp_fetch):
 
 async def test_get_files_memory(fs_manager_instance, jp_fetch):
     fs_manager = await fs_manager_instance
-    mem_key = "TestMem Source"
+    mem_key = "TestsMemSource"
     mem_fs_info = fs_manager.get_filesystem(mem_key)
     mem_fs = mem_fs_info["instance"]
     mem_item_path = mem_fs_info["path"]
@@ -101,9 +101,33 @@ async def test_get_files_memory(fs_manager_instance, jp_fetch):
     assert range_file_res.body == b"Test con"
 
 
+async def test_get_empty_memory(fs_manager_instance_empty_mem, jp_fetch):
+    fs_manager = await fs_manager_instance_empty_mem
+    mem_key = "empty_test_mem"
+    mem_fs_info = fs_manager.get_filesystem(mem_key)
+    mem_fs = mem_fs_info["instance"]
+    mem_item_path = mem_fs_info["path"]
+    assert mem_fs is not None
+
+    # Read empty directory
+    assert mem_fs.exists(mem_item_path)
+    dir_response = await jp_fetch(
+        "jupyter_fsspec",
+        "files",
+        method="GET",
+        params={"key": mem_key, "item_path": mem_item_path},
+        allow_nonstandard_methods=True,
+    )
+
+    assert dir_response.code == 200
+    json_body = dir_response.body.decode("utf-8")
+    body = json.loads(json_body)
+    assert len(body["content"]) == 0
+
+
 async def test_post_files(fs_manager_instance, jp_fetch):
     fs_manager = await fs_manager_instance
-    mem_key = "TestMem Source"
+    mem_key = "TestsMemSource"
     mem_fs_info = fs_manager.get_filesystem(mem_key)
     mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None
@@ -143,7 +167,7 @@ async def test_post_files(fs_manager_instance, jp_fetch):
 
 async def test_delete_files(fs_manager_instance, jp_fetch):
     fs_manager = await fs_manager_instance
-    mem_key = "TestMem Source"
+    mem_key = "TestsMemSource"
     mem_fs_info = fs_manager.get_filesystem(mem_key)
     mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None
@@ -194,7 +218,7 @@ async def test_delete_files(fs_manager_instance, jp_fetch):
 async def test_put_files(fs_manager_instance, jp_fetch):
     # PUT replace entire resource
     fs_manager = await fs_manager_instance
-    mem_key = "TestMem Source"
+    mem_key = "TestsMemSource"
     mem_fs_info = fs_manager.get_filesystem(mem_key)
     mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None
@@ -236,7 +260,7 @@ async def test_put_files(fs_manager_instance, jp_fetch):
 
 async def test_rename_files(fs_manager_instance, jp_fetch):
     fs_manager = await fs_manager_instance
-    mem_key = "TestMem Source"
+    mem_key = "TestsMemSource"
     mem_fs_info = fs_manager.get_filesystem(mem_key)
     mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None

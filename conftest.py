@@ -135,9 +135,6 @@ def setup_config_file_fs(tmp_path: Path, setup_tmp_local):
     empty_tmp_local = setup_tmp_local[1]
     config_dir = tmp_path / "config"
     config_dir.mkdir(exist_ok=True)
-    print(f"@@@@ config_dir is: {config_dir}")
-    print(f"@@@@ tmp_local is: {tmp_local}")
-    print(f"@@@@ empty_tmp_local is: {empty_tmp_local}")
 
     yaml_content = f"""sources:
   - name: "TestSourceAWS"
@@ -152,9 +149,11 @@ def setup_config_file_fs(tmp_path: Path, setup_tmp_local):
     path: "file://{tmp_local}"
   - name: "TestEmptyLocalDir"
     path: "file://{empty_tmp_local}"
-  - name: "TestMem Source"
-    path: "/my_mem_dir"
-    protocol: "memory"
+  - name: "TestsMemSource"
+    path: "memory://"
+    protocol: "file"
+  - name: "empty_test_mem"
+    path: "memory://empty"
     """
     yaml_file = config_dir / "jupyter-fsspec.yaml"
     yaml_file.write_text(yaml_content)
@@ -169,13 +168,29 @@ def setup_config_file_fs(tmp_path: Path, setup_tmp_local):
 
 
 @pytest.fixture(scope="function")
+async def fs_manager_instance_empty_mem(setup_config_file_fs, s3_client):
+    fs_manager = setup_config_file_fs
+    fs_info = fs_manager.get_filesystem("empty_test_mem")
+    mem_fs = fs_info["instance"]
+    mem_fs_path = fs_info["path"]
+    if not mem_fs:
+        print("In memory filesystem not found")
+    if await mem_fs._exists(mem_fs_path):
+        await mem_fs._rm(mem_fs_path, recursive=True)
+
+    await mem_fs._mkdir(mem_fs_path)
+    return fs_manager
+
+
+@pytest.fixture(scope="function")
 async def fs_manager_instance(setup_config_file_fs, s3_client):
     fs_manager = setup_config_file_fs
-    fs_info = fs_manager.get_filesystem("TestMem Source")
-    print(f"fs_info: {fs_info}")
+    fs_info = fs_manager.get_filesystem("TestsMemSource")
     mem_fs = fs_info["instance"]
 
-    if mem_fs:
+    if not mem_fs:
+        print("In memory filesystem not found")
+    else:
         if await mem_fs._exists("test_dir"):
             await mem_fs._rm("test_dir", recursive=True)
         if await mem_fs._exists("second_dir"):
@@ -187,9 +202,6 @@ async def fs_manager_instance(setup_config_file_fs, s3_client):
         await mem_fs._mkdir("second_dir", exist_ok=True)
 
         await mem_fs._pipe("test_dir/file1.txt", b"Test content")
-    else:
-        print("In memory filesystem NOT FOUND")
-
     return fs_manager
 
 
