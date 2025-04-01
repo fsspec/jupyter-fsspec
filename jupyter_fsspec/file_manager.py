@@ -95,7 +95,7 @@ class FileSystemManager:
         config_path = self.config_path
         placeholder_config = {
             "sources": [
-                {"name": "test", "path": "memory://mytests"},
+                {"name": "test", "path": "memory://"},
                 {"name": "test1", "path": "memory://testing"},
             ]
         }
@@ -125,20 +125,21 @@ class FileSystemManager:
         for fs_config in self.config.get("sources", []):
             config = Source(**fs_config)
             fs_name = config.name
-            fs_path = config.path  # Strip protocol from path?
-            logger.debug(f"fs_path: {fs_path}")
-            fs_protocol = config.protocol
+            fs_path = config.path  # path should always be a URL
             args = config.args
             kwargs = config.kwargs
 
-            if fs_protocol is None:  # Remove this check to assume URL path
-                if fs_path:
-                    fs_protocol = self._get_protocol_from_path(fs_path)
-            logger.debug("fs_protocol: %s", fs_protocol)
+            fs_protocol = self._get_protocol_from_path(fs_path)
+            split_path_list = fs_path.split("://", 1)
+            protocol_path = split_path_list[0] + "://"
+            prefix_path = "" if len(split_path_list) <= 1 else split_path_list[1]
 
             key = self._encode_key(fs_config)
 
-            # fs_path should always be a URL
+            canonical_path = protocol_path + key
+            logger.debug("fs_protocol: %s", fs_protocol)
+            logger.debug("prefix_path: %s", prefix_path)
+            logger.debug("canonical_path: %s", canonical_path)
 
             fs_class = fsspec.get_filesystem_class(fs_protocol)
             if fs_class.async_impl:
@@ -148,18 +149,12 @@ class FileSystemManager:
                 fs = AsyncFileSystemWrapper(sync_fs)
             logger.debug("fs_path: %s", fs_path)
 
-            # split_path includes just prefix (no protocol)
-            split_path_list = fs_path.split("//", 1)
-            prefix_path = "" if len(split_path_list) <= 1 else split_path_list[1]
-            logger.debug("prefix path: %s", prefix_path)
-
-            canonical_path = fs_protocol + "://" + key + "/" + prefix_path
-            logger.debug("canonical_path: %s", canonical_path)
             # Store the filesystem instance
             new_filesystems[key] = {
                 "instance": fs,
                 "name": fs_name,
-                "protocol": fs_protocol,  # TODO: remove
+                "protocol": fs_protocol,
+                "path_url": fs_path,
                 "path": prefix_path,
                 "canonical_path": canonical_path,
             }
@@ -228,7 +223,6 @@ class FileSystemManager:
         if item_path == "":
             if request_type == "get":
                 item_path = "" if fs["protocol"] == "file://" else fs["path"]
-                print(f"returning early item_path: {item_path}")
                 return fs, item_path
             else:
                 raise ValueError("Missing required parameter `item_path`")
@@ -245,7 +239,9 @@ class FileSystemManager:
             item_path = item_path.replace(key, "")
 
         # check item_path includes prefix_path
-        if prefix_path not in item_path:
+        if (prefix_path not in item_path) and (
+            fs["protocol"] == "file" or fs["protocol"] == "memory"
+        ):
             item_path = prefix_path + "/" + item_path
 
         return fs, item_path
