@@ -1,7 +1,7 @@
 // Element for displaying a single fsspec filesystem
 
 import { FssFilesysContextMenu } from './FssFilesysContextMenu';
-// import { Logger } from "./logger"
+import { Logger } from './logger';
 import { INotebookTracker } from '@jupyterlab/notebook';
 
 const HOVER = 'var(--jp-layout-color3)';
@@ -20,6 +20,7 @@ class FssFilesysItem {
   _selected = false;
   _hovered = false;
   notebookTracker: INotebookTracker;
+  private readonly logger: Logger;
 
   constructor(
     model: any,
@@ -27,6 +28,8 @@ class FssFilesysItem {
     userClickSlots: any,
     notebookTracker: INotebookTracker
   ) {
+    this.logger = Logger.getLogger('FssFilesysItem');
+
     this.model = model;
     this.filesysName = fsInfo.name;
     this.filesysProtocol = fsInfo.protocol;
@@ -60,6 +63,12 @@ class FssFilesysItem {
 
     fsItem.addEventListener('click', this.handleClick.bind(this));
     fsItem.addEventListener('contextmenu', this.handleContext.bind(this));
+
+    this.logger.debug('Filesystem item initialized', {
+      name: this.filesysName,
+      protocol: this.filesysProtocol,
+      path: fsInfo.path
+    });
   }
 
   handleContext(event: any) {
@@ -71,8 +80,15 @@ class FssFilesysItem {
     if (!event.shiftKey) {
       event.preventDefault();
     } else {
+      this.logger.debug('Default context menu shown (shift+click)');
       return;
     }
+
+    this.logger.debug('Opening custom context menu', {
+      filesystem: this.filesysName,
+      clientX: event.clientX,
+      clientY: event.clientY
+    });
 
     // Make/add the context menu
     const context = new FssFilesysContextMenu(this.model, this.notebookTracker);
@@ -98,10 +114,21 @@ class FssFilesysItem {
       // Shift the menu so the mouse is inside it, not at the corner/edge
       xCoord += spacing;
       yCoord += spacing;
+
+      this.logger.debug('Context menu positioned at bottom right', {
+        x: xCoord,
+        y: yCoord,
+        reason: 'viewport constraints'
+      });
     } else {
       // Shift the menu so the mouse is inside it, not at the corner/edge
       xCoord -= spacing;
       yCoord -= spacing;
+
+      this.logger.debug('Context menu positioned at top left', {
+        x: xCoord,
+        y: yCoord
+      });
     }
 
     context.root.style.left = `${xCoord}` + 'px';
@@ -109,10 +136,20 @@ class FssFilesysItem {
   }
 
   setMetadata(value: string) {
+    this.logger.debug('Setting filesystem metadata', {
+      filesystem: this.filesysName,
+      value
+    });
     this.root.dataset.fss = value;
   }
 
   set selected(value: boolean) {
+    this.logger.debug('Selection state changed', {
+      filesystem: this.filesysName,
+      selected: value,
+      previousState: this._selected
+    });
+
     this._selected = value;
     if (value) {
       this.root.style.backgroundColor = SELECTED;
@@ -122,6 +159,14 @@ class FssFilesysItem {
   }
 
   set hovered(state: boolean) {
+    if (this._hovered !== state) {
+      this.logger.debug('Hover state changed', {
+        filesystem: this.filesysName,
+        hovered: state,
+        selected: this._selected
+      });
+    }
+
     this._hovered = state;
     if (this._selected) {
       this.root.style.backgroundColor = SELECTED;
@@ -143,6 +188,12 @@ class FssFilesysItem {
   }
 
   handleClick(_event: any) {
+    this.logger.info('Filesystem selected', {
+      name: this.filesysName,
+      protocol: this.filesysProtocol,
+      path: this.fsInfo.path
+    });
+
     this.selected = true;
     for (const slot of this.clickSlots) {
       slot(this.fsInfo);

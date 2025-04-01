@@ -1,9 +1,17 @@
 {
   "jupyter.lab.shortcuts": [],
-  "title": "jupyterFsspec",
-  "description": "jupyterFsspec settings.",
+  "title": "Jupyter Fsspec",
+  "description": "Settings for the jupyter-fsspec extension.",
   "type": "object",
-  "properties": {},
+  "properties": {
+    "logLevel": {
+      "type": "string",
+      "title": "Log Level",
+      "description": "Set the verbosity of logging (none, error, warn, info, debug)",
+      "enum": ["none", "error", "warn", "info", "debug"],
+      "default": "info"
+    }
+  },
   "additionalProperties": false,
   "jupyter.lab.menus": {
     "main": [

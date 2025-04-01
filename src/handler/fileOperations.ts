@@ -19,6 +19,8 @@ declare global {
 }
 
 export class FsspecModel {
+  private readonly logger = Logger.getLogger('FsspecModel');
+
   activeFilesystem: string = '';
   userFilesystems: any = {};
   retry = 0;
@@ -34,13 +36,14 @@ export class FsspecModel {
       this.userFilesystems = {};
       try {
         for (let i = 0; i < retry; i++) {
-          Logger.info('[FSSpec] Attempting to read config file...');
+          this.logger.info('Attempting to read config file...', {
+            attempt: i + 1
+          });
           const result = await this.getStoredFilesystems();
           if (result?.status === 'success') {
-            // TODO report config entry errors
-            Logger.info(
-              `[FSSpec] Successfully retrieved config:${JSON.stringify(result)}`
-            );
+            this.logger.info('Successfully retrieved config', {
+              filesystems: Object.keys(result.filesystems || {}).length
+            });
             this.userFilesystems = result.filesystems;
 
             // Set active filesystem to first
@@ -49,19 +52,17 @@ export class FsspecModel {
             }
             break;
           } else {
-            // TODO handle no config file
-            Logger.error(
-              '[FSSpec] Error fetching filesystems from user config'
-            );
+            this.logger.error('Error fetching filesystems from user config', {
+              attempt: i + 1,
+              maxRetries: retry
+            });
             if (i + 1 < retry) {
-              Logger.info('[FSSpec]   retrying...');
+              this.logger.info('Retrying config fetch');
             }
           }
         }
       } catch (error) {
-        Logger.error(
-          `[FSSpec] Error: Unknown error initializing fsspec model:\n${error}`
-        );
+        this.logger.error('Unknown error initializing fsspec model', { error });
       }
     }
   }
@@ -69,12 +70,14 @@ export class FsspecModel {
   // Store model on the window as global app state
   storeApplicationState() {
     window.fsspecModel = this;
+    this.logger.debug('Model stored in global state');
   }
 
   // ====================================================================
   // FileSystem API calls
   // ====================================================================
   setActiveFilesystem(name: string): void {
+    this.logger.debug('Setting active filesystem', { name });
     this.activeFilesystem = name;
   }
 
@@ -87,18 +90,18 @@ export class FsspecModel {
   }
 
   async refreshConfig() {
-    // TODO fix/refactor
     this.userFilesystems = {};
-    Logger.debug('[FSSpec] Refresh config requested');
+    this.logger.debug('Refresh config requested');
     try {
       for (let i = 0; i < this.retry; i++) {
-        Logger.info('[FSSpec] Attempting to read config file...');
-        const result = await this.getStoredFilesystems(); // This is a result dict, not a response
+        this.logger.info('Attempting to read config file...', {
+          attempt: i + 1
+        });
+        const result = await this.getStoredFilesystems();
         if (result?.status === 'success') {
-          // TODO report config entry errors
-          Logger.info(
-            `[FSSpec] Successfully retrieved config:${JSON.stringify(result)}`
-          );
+          this.logger.info('Successfully retrieved config', {
+            filesystems: Object.keys(result.filesystems || {}).length
+          });
           this.userFilesystems = result.filesystems;
 
           // Set active filesystem to first
@@ -107,17 +110,17 @@ export class FsspecModel {
           }
           break;
         } else {
-          // TODO handle no config file
-          Logger.error('[FSSpec] Error fetching filesystems from user config');
+          this.logger.error('Error fetching filesystems from user config', {
+            attempt: i + 1,
+            maxRetries: this.retry
+          });
           if (i + 1 < this.retry) {
-            Logger.info('[FSSpec]   retrying...');
+            this.logger.info('Retrying config fetch');
           }
         }
       }
     } catch (error) {
-      Logger.error(
-        `[FSSpec] Error: Unknown error initializing fsspec model:\n${error}`
-      );
+      this.logger.error('Unknown error initializing fsspec model', { error });
     }
   }
 
@@ -130,39 +133,29 @@ export class FsspecModel {
     };
     try {
       const response = await requestAPI<any>('config');
-      Logger.debug(`[FSSpec] Request config:\n${JSON.stringify(response)}`);
+      this.logger.debug('Request config received', { response });
+
       if (response?.status === 'success' && response?.content) {
         for (const filesysInfo of response.content) {
           if (filesysInfo?.name) {
-            Logger.debug(
-              `[FSSpec] Found filesystem: ${JSON.stringify(filesysInfo)}`
-            );
+            this.logger.debug('Found filesystem', {
+              filesystem: filesysInfo.name
+            });
             filesystems[filesysInfo.name] = filesysInfo;
           } else {
-            // TODO better handling for partial errors
-            Logger.error(
-              `[FSSpec] Error, filesystem from config is missing a name: ${filesysInfo}`
-            );
+            this.logger.error('Filesystem from config is missing a name', {
+              filesystem: filesysInfo
+            });
           }
         }
       } else {
-        Logger.error('[FSSpec] Error fetching config from server...');
+        this.logger.error('Error fetching config from server', {
+          status: response?.status
+        });
         result.status = 'failure';
       }
-      // // const fetchedFilesystems = response['content'];
-      // // console.log(fetchedFilesystems);
-      // // Map names to filesys metadata
-      // for (const filesysInfo of fetchedFilesystems) {
-      //   if ('name' in filesysInfo) {
-      //     filesystems[filesysInfo.name] = filesysInfo;
-      //   } else {
-      //     console.error(
-      //       `Filesystem from config is missing a name: ${filesysInfo}`
-      //     );
-      //   }
-      // }
     } catch (error) {
-      Logger.error(`[FSSpec] Error: Unknown error fetching config:\n${error}`);
+      this.logger.error('Unknown error fetching config', { error });
       result.status = 'failure';
     }
 
@@ -183,9 +176,18 @@ export class FsspecModel {
       const response = await requestAPI<any>(`fsspec?${query.toString()}`, {
         method: 'GET'
       });
-      console.log('response is: ', response);
+      this.logger.debug('Content retrieved', {
+        key,
+        path: item_path,
+        status: response?.status
+      });
+      return response;
     } catch (error) {
-      console.error('Failed to fetch filysystems: ', error);
+      this.logger.error('Failed to fetch content', {
+        key,
+        path: item_path,
+        error
+      });
       return null;
     }
   }
@@ -209,9 +211,20 @@ export class FsspecModel {
           Range: `${start}-${end}`
         }
       });
-      console.log('response is: ', response);
+      this.logger.debug('Range content retrieved', {
+        key,
+        path: item_path,
+        range: `${start}-${end}`,
+        status: response?.status
+      });
+      return response;
     } catch (error) {
-      console.error('Failed to fetch filysystems: ', error);
+      this.logger.error('Failed to fetch range content', {
+        key,
+        path: item_path,
+        range: `${start}-${end}`,
+        error
+      });
       return null;
     }
   }
@@ -233,9 +246,18 @@ export class FsspecModel {
           'Content-Type': 'application/json'
         }
       });
-      console.log('response is: ', response);
+      this.logger.info('File deleted', {
+        key,
+        path: item_path,
+        status: response?.status
+      });
+      return response;
     } catch (error) {
-      console.error('Failed to delete: ', error);
+      this.logger.error('Failed to delete file', {
+        key,
+        path: item_path,
+        error
+      });
       return null;
     }
   }
@@ -253,9 +275,18 @@ export class FsspecModel {
           'Content-Type': 'application/json'
         }
       });
-      console.log('response is: ', response);
+      this.logger.info('Directory deleted', {
+        key,
+        path: item_path,
+        status: response?.status
+      });
+      return response;
     } catch (error) {
-      console.error('Failed to delete: ', error);
+      this.logger.error('Failed to delete directory', {
+        key,
+        path: item_path,
+        error
+      });
       return null;
     }
   }
@@ -285,9 +316,21 @@ export class FsspecModel {
           'Content-Type': 'application/json'
         }
       });
-      console.log('response is: ', response);
+      this.logger.info('File created/updated', {
+        key,
+        path: item_path,
+        isBase64: base64,
+        contentLength: content.length,
+        status: response?.status
+      });
+      return response;
     } catch (error) {
-      console.error('Failed to post: ', error);
+      this.logger.error('Failed to create/update file', {
+        key,
+        path: item_path,
+        isBase64: base64,
+        error
+      });
       return null;
     }
   }
@@ -299,7 +342,12 @@ export class FsspecModel {
     action: string = 'write'
   ): Promise<any> {
     try {
-      console.log('postDir');
+      this.logger.debug('Creating directory', {
+        key,
+        path: item_path,
+        action
+      });
+
       const query = new URLSearchParams({
         action: action
       });
@@ -315,9 +363,22 @@ export class FsspecModel {
           'Content-Type': 'application/json'
         }
       });
-      console.log('response is: ', response);
+
+      this.logger.info('Directory operation completed', {
+        key,
+        path: item_path,
+        action,
+        status: response?.status
+      });
+
+      return response;
     } catch (error) {
-      console.error('Failed to post: ', error);
+      this.logger.error('Failed to perform directory operation', {
+        key,
+        path: item_path,
+        action,
+        error
+      });
       return null;
     }
   }
@@ -334,7 +395,7 @@ export class FsspecModel {
         key: key,
         local_path,
         remote_path,
-        destination_key: key, // TODO fix this, need to specify source and dest fs keys, AND paths for each
+        destination_key: key,
         action: action
       });
 
@@ -348,9 +409,22 @@ export class FsspecModel {
           }
         }
       );
-      console.log('response: ', response);
+
+      this.logger.info('File uploaded', {
+        key,
+        localPath: local_path,
+        remotePath: remote_path,
+        status: response?.status
+      });
+
+      return response;
     } catch (error) {
-      console.error('Failed to upload: ', error);
+      this.logger.error('Failed to upload file', {
+        key,
+        localPath: local_path,
+        remotePath: remote_path,
+        error
+      });
       return null;
     }
   }
@@ -368,15 +442,33 @@ export class FsspecModel {
         remote_path,
         local_path
       });
-      await requestAPI<any>(`files/transfer?${query.toString()}`, {
-        method: 'POST',
-        body: reqBody,
-        headers: {
-          'Content-Type': 'application/json'
+      const response = await requestAPI<any>(
+        `files/transfer?${query.toString()}`,
+        {
+          method: 'POST',
+          body: reqBody,
+          headers: {
+            'Content-Type': 'application/json'
+          }
         }
+      );
+
+      this.logger.info('File downloaded', {
+        key,
+        remotePath: remote_path,
+        localPath: local_path,
+        status: response?.status
       });
+
+      return response;
     } catch (error) {
-      console.error('Failed to download: ', error);
+      this.logger.error('Failed to download file', {
+        key,
+        remotePath: remote_path,
+        localPath: local_path,
+        error
+      });
+      return null;
     }
   }
 
@@ -391,15 +483,30 @@ export class FsspecModel {
         remote_path,
         local_path
       });
-      await requestAPI<any>('sync', {
+      const response = await requestAPI<any>('sync', {
         method: 'POST',
         body: reqBody,
         headers: {
           'Content-Type': 'application/json'
         }
       });
+
+      this.logger.info('Sync push completed (local to remote)', {
+        key,
+        remotePath: remote_path,
+        localPath: local_path,
+        status: response?.status
+      });
+
+      return response;
     } catch (error) {
-      console.error('Failed to sync local to remote: ', error);
+      this.logger.error('Failed to sync local to remote', {
+        key,
+        remotePath: remote_path,
+        localPath: local_path,
+        error
+      });
+      return null;
     }
   }
 
@@ -414,49 +521,42 @@ export class FsspecModel {
         remote_path,
         local_path
       });
-      await requestAPI<any>('sync', {
+      const response = await requestAPI<any>('sync', {
         method: 'GET',
         body: reqBody,
         headers: {
           'Content-Type': 'application/json'
         }
       });
+
+      this.logger.info('Sync pull completed (remote to local)', {
+        key,
+        remotePath: remote_path,
+        localPath: local_path,
+        status: response?.status
+      });
+
+      return response;
     } catch (error) {
-      console.error('Failed to sync remote to local: ', error);
+      this.logger.error('Failed to sync remote to local', {
+        key,
+        remotePath: remote_path,
+        localPath: local_path,
+        error
+      });
+      return null;
     }
   }
-
-  // async update(
-  //   key: any = 'local%7CSourceDisk%7C.',
-  //   item_path = '',
-  //   content = ''
-  // ): Promise<any> {
-  //   try {
-  //     console.log('postDir');
-  //     const reqBody = JSON.stringify({
-  //       key: key,
-  //       item_path:
-  //         '/Users/rosioreyes/Desktop/notebooks/eg_notebooks/sample_dir',
-  //       content: 'fsspec_generated_folder'
-  //     });
-  //     const response = await requestAPI<any>('fsspec', {
-  //       method: 'PUT',
-  //       body: reqBody,
-  //       headers: {
-  //         'Content-Type': 'application/json'
-  //       }
-  //     });
-  //     console.log('response is: ', response);
-  //   } catch (error) {
-  //     console.error('Failed to post: ', error);
-  //     return null;
-  //   }
-  // }
 
   /* TODO: modify, overwrites file entirely*/
   async update(key: string, item_path: string, content: string): Promise<any> {
     try {
-      console.log('postDir');
+      this.logger.debug('Updating file', {
+        key,
+        path: item_path,
+        contentLength: content.length
+      });
+
       const reqBody = JSON.stringify({
         key,
         item_path,
@@ -469,9 +569,20 @@ export class FsspecModel {
           'Content-Type': 'application/json'
         }
       });
-      console.log('response is: ', response);
+
+      this.logger.info('File updated', {
+        key,
+        path: item_path,
+        status: response?.status
+      });
+
+      return response;
     } catch (error) {
-      console.error('Failed to post: ', error);
+      this.logger.error('Failed to update file', {
+        key,
+        path: item_path,
+        error
+      });
       return null;
     }
   }
@@ -482,7 +593,12 @@ export class FsspecModel {
     content: string
   ): Promise<any> {
     try {
-      console.log('postDir');
+      this.logger.debug('Moving file/directory', {
+        key,
+        path: item_path,
+        destination: content
+      });
+
       const query = new URLSearchParams({
         action: 'move'
       });
@@ -499,9 +615,22 @@ export class FsspecModel {
           'Content-Type': 'application/json'
         }
       });
-      console.log('response is: ', response);
+
+      this.logger.info('File/directory moved', {
+        key,
+        path: item_path,
+        destination: content,
+        status: response?.status
+      });
+
+      return response;
     } catch (error) {
-      console.error('Failed to post: ', error);
+      this.logger.error('Failed to move file/directory', {
+        key,
+        path: item_path,
+        destination: content,
+        error
+      });
       return null;
     }
   }
@@ -510,15 +639,26 @@ export class FsspecModel {
     // Return list of files for active FS
     // Return list of cached file systems?
     if (!this.activeFilesystem) {
+      this.logger.error('No active filesystem set');
       throw new Error('No active filesystem set.');
     }
     try {
-      return await this.walkDirectory(
+      const response = await this.walkDirectory(
         this.userFilesystems[this.activeFilesystem].key,
         'find'
       );
+
+      this.logger.debug('Listed active filesystem', {
+        filesystem: this.activeFilesystem,
+        itemCount: response?.content?.length
+      });
+
+      return response;
     } catch (error) {
-      console.error('Failed to list currently active file system: ', error);
+      this.logger.error('Failed to list active filesystem', {
+        filesystem: this.activeFilesystem,
+        error
+      });
       return null;
     }
   }
@@ -533,11 +673,23 @@ export class FsspecModel {
     });
 
     try {
-      return await requestAPI<any>(`fsspec?${query.toString()}`, {
+      const response = await requestAPI<any>(`fsspec?${query.toString()}`, {
         method: 'GET'
       });
+
+      this.logger.debug('File content retrieved', {
+        path,
+        name,
+        contentSize: response?.content?.length
+      });
+
+      return response;
     } catch (error) {
-      console.error(`Failed to fetch file content at ${path}: `, error);
+      this.logger.error('Failed to fetch file content', {
+        path,
+        name,
+        error
+      });
       return null;
     }
   }
@@ -551,12 +703,33 @@ export class FsspecModel {
     if (type !== '') {
       query = new URLSearchParams({ key, item_path, type });
     }
+
+    this.logger.debug('Walking directory', {
+      key,
+      path: item_path,
+      type
+    });
+
     try {
-      return await requestAPI<any>(`fsspec?${query.toString()}`, {
+      const response = await requestAPI<any>(`fsspec?${query.toString()}`, {
         method: 'GET'
       });
+
+      this.logger.debug('Directory walk completed', {
+        key,
+        path: item_path,
+        type,
+        itemCount: response?.content?.length
+      });
+
+      return response;
     } catch (error) {
-      console.error(`Failed to list filesystem ${key}: `, error);
+      this.logger.error('Failed to walk directory', {
+        key,
+        path: item_path,
+        type,
+        error
+      });
       return null;
     }
   }
@@ -567,18 +740,33 @@ export class FsspecModel {
     type: string = 'default'
   ): Promise<any> {
     const query = new URLSearchParams({ key, item_path, type }).toString();
-    let result = null;
 
-    Logger.debug(`[FSSpec] Fetching files -> ${query}`);
+    this.logger.debug('Listing directory', {
+      key,
+      path: item_path,
+      type
+    });
+
     try {
-      result = await requestAPI<any>(`files?${query}`, {
+      const result = await requestAPI<any>(`files?${query}`, {
         method: 'GET'
       });
-    } catch (error) {
-      Logger.error(`[FSSpec] Failed to list filesystem ${error}: `);
-    }
 
-    return result;
+      this.logger.debug('Directory listing completed', {
+        key,
+        path: item_path,
+        itemCount: result?.content?.length
+      });
+
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to list directory', {
+        key,
+        path: item_path,
+        error
+      });
+      return null;
+    }
   }
 
   async updateFile(
@@ -587,7 +775,13 @@ export class FsspecModel {
     backend: string = 'local',
     content: string // Update function for different content
   ): Promise<any> {
-    console.log('updateFile function');
+    this.logger.debug('Updating file content', {
+      path,
+      recursive,
+      backend,
+      contentLength: content.length
+    });
+
     let requestBody: any;
 
     if (typeof content === 'string') {
@@ -600,14 +794,29 @@ export class FsspecModel {
       action: 'write',
       content: requestBody
     });
-    console.log('endpoint is: ');
-    console.log(`fsspec?${query.toString()}`);
+
+    this.logger.debug('Update file request prepared', {
+      endpoint: `fsspec?${query.toString()}`
+    });
+
     try {
-      return await requestAPI<any>(`fsspec?${query.toString()}`, {
+      const response = await requestAPI<any>(`fsspec?${query.toString()}`, {
         method: 'POST'
       });
+
+      this.logger.info('File updated', {
+        path,
+        backend,
+        status: response?.status
+      });
+
+      return response;
     } catch (error) {
-      console.error(`Failed to update file at ${path}: `, path);
+      this.logger.error('Failed to update file', {
+        path,
+        backend,
+        error
+      });
       return null;
     }
   }
@@ -618,6 +827,13 @@ export class FsspecModel {
     recursive: boolean = false,
     backend: string = 'local'
   ): Promise<any> {
+    this.logger.debug('Copying file', {
+      srcPath,
+      destPath,
+      recursive,
+      backend
+    });
+
     const body = JSON.stringify({
       action: 'copy',
       path: srcPath,
@@ -627,15 +843,31 @@ export class FsspecModel {
     });
 
     try {
-      return await requestAPI<any>('fsspec', {
+      const response = await requestAPI<any>('fsspec', {
         method: 'POST',
         body: body,
         headers: {
           'Content-Type': 'application/json'
         }
       });
+
+      this.logger.info('File copied', {
+        srcPath,
+        destPath,
+        recursive,
+        backend,
+        status: response?.status
+      });
+
+      return response;
     } catch (error) {
-      console.error(`Failed to copy file ${srcPath} to ${destPath}: `, error);
+      this.logger.error('Failed to copy file', {
+        srcPath,
+        destPath,
+        recursive,
+        backend,
+        error
+      });
       return null;
     }
   }
