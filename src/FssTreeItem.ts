@@ -5,6 +5,8 @@ import {
   jpTreeItem
 } from '@jupyter/web-components';
 
+import { Signal } from '@lumino/signaling';
+
 import { INotebookTracker } from '@jupyterlab/notebook';
 
 import { fileIcon, folderIcon } from '@jupyterlab/ui-components';
@@ -20,11 +22,6 @@ export class FssTreeItem {
   sizeLbl: HTMLElement;
   dirSymbol: HTMLElement;
   container: HTMLElement;
-  clickSlots: any;
-  getBytesSlots: any;
-  uploadUserDataSlots: any;
-  uploadFromBrowserPickerSlots: any;
-  uploadFromJupyterBrowserSlots: any;
   isDir = false;
   treeItemObserver: MutationObserver;
   pendingExpandAction = false;
@@ -32,16 +29,12 @@ export class FssTreeItem {
   clickAnywhereDoesAutoExpand = true;
   notebookTracker: INotebookTracker;
   private readonly logger: Logger;
+  treeItemClicked: Signal<any, string>;
+  getBytesRequested: Signal<any, string>;
+  uploadRequested: Signal<any, any>; // All upload requests go here (kernel user_data, browser picker etc.)
 
   constructor(
     model: any,
-    clickSlots: any,
-    userGetBytesSlots: any,
-    uploadUserDataSlots: any,
-
-    uploadFromBrowserPickerSlots: any,
-    uploadFromJupyterBrowserSlots: any,
-
     autoExpand: boolean,
     expandOnClickAnywhere: boolean,
     notebookTracker: INotebookTracker
@@ -59,14 +52,12 @@ export class FssTreeItem {
     root.setAttribute('name', 'jfss-treeitem-root');
     this.root = root;
     this.model = model;
-    this.clickSlots = clickSlots;
-    this.getBytesSlots = userGetBytesSlots; // TODO fix its horrible
-    this.uploadUserDataSlots = uploadUserDataSlots;
-    this.uploadFromBrowserPickerSlots = uploadFromBrowserPickerSlots;
-    this.uploadFromJupyterBrowserSlots = uploadFromJupyterBrowserSlots;
     this.lazyLoadAutoExpand = autoExpand;
     this.clickAnywhereDoesAutoExpand = expandOnClickAnywhere;
     this.notebookTracker = notebookTracker;
+    this.treeItemClicked = new Signal<this, string>(this);
+    this.getBytesRequested = new Signal<this, string>(this);
+    this.uploadRequested = new Signal<this, any>(this);
 
     // Use a MutationObserver on the root TreeItem's shadow DOM,
     // where the TreeItem's expand/collapse control will live once
@@ -136,44 +127,16 @@ export class FssTreeItem {
 
   handleRequestBytes() {
     this.logger.debug('Processing request for bytes', {
-      path: this.root.dataset.fss,
-      slotCount: this.getBytesSlots.length
+      path: this.root.dataset.fss
     });
 
-    for (const slot of this.getBytesSlots) {
-      this.logger.debug('Invoking get bytes slot');
-      slot(this.root.dataset.fss);
-    }
+    this.getBytesRequested.emit(this.root.dataset.fss);
   }
 
-  async handleUploadFromBrowserPicker(options: any) {
-    this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
-    this.logger.debug('Handling upload from browser picker', {
-      path: this.root.dataset.fss,
-      isDirectory: this.isDir,
-      options
-    });
+  async handleUploadRequest(options: any) {
+    // Uploads can come from different places, gather info and emit it here
+    // (so that connected slots can route the request to the right place)
 
-    for (const slot of this.uploadFromBrowserPickerSlots) {
-      this.logger.debug('Invoking browser picker upload slot');
-      await slot(this.root.dataset.fss, this.isDir);
-    }
-  }
-
-  async handleUploadFromJupyterBrowser(options: any) {
-    this.logger.debug('Handling upload from Jupyter browser', {
-      path: this.root.dataset.fss,
-      isDirectory: this.isDir,
-      options
-    });
-
-    for (const slot of this.uploadFromJupyterBrowserSlots) {
-      this.logger.debug('Invoking Jupyter browser upload slot');
-      await slot(this.root.dataset.fss, this.isDir);
-    }
-  }
-
-  async handleUploadUserData(options: any) {
     let is_browser_file_picker = false;
     let is_jup_browser_file = false;
     if (options) {
@@ -182,23 +145,18 @@ export class FssTreeItem {
       this.model.queuedPickerUploadInfo = {}; // Context click always resets this data
     }
 
-    this.logger.debug('Handling user data upload', {
+    this.logger.debug('Handling upload request', {
       path: this.root.dataset.fss,
       isDirectory: this.isDir,
-      isBrowserFilePicker: is_browser_file_picker,
-      isJupyterBrowserFile: is_jup_browser_file,
       options
     });
 
-    for (const slot of this.uploadUserDataSlots) {
-      this.logger.debug('Invoking user data upload slot');
-      await slot(
-        this.root.dataset.fss,
-        this.isDir,
-        is_browser_file_picker,
-        is_jup_browser_file
-      );
-    }
+    this.uploadRequested.emit({
+      user_path: this.root.dataset.fss,
+      is_dir: this.isDir,
+      is_browser_file_picker: is_browser_file_picker,
+      is_jup_browser_file: is_jup_browser_file
+    });
   }
 
   setMetadata(user_path: string, size: string) {
@@ -324,13 +282,8 @@ export class FssTreeItem {
       }
       // Fire connected slots that were supplied to this item on init
       if (this.isDir) {
-        this.logger.debug('Invoking directory click slots', {
-          slotCount: this.clickSlots.length
-        });
-
-        for (const slot of this.clickSlots) {
-          slot(this.root.dataset.fss);
-        }
+        this.logger.debug('Invoking directory click slots');
+        this.treeItemClicked.emit(this.root.dataset.fss);
       } else {
         this.logger.debug('Invoking file click handler');
         this.root.click();
