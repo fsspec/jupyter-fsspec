@@ -117,6 +117,21 @@ class FileSystemManager:
         protocol = storage_options.get("protocol", "file")
         return protocol
 
+    @staticmethod
+    def construct_fs(fs_protocol, asynchronous, *args, **kwargs):
+        return fsspec.filesystem(
+            fs_protocol, asynchronous=asynchronous, *args, **kwargs
+        )
+
+    def construct_named_fs(self, fs_name, asynchronous=False):
+        if fs_name in self.filesystems:
+            fs_info = self.filesystems[fs_name]
+            fs_protocol = fs_info["protocol"]
+            return FileSystemManager.construct_fs(
+                fs_protocol, asynchronous, *fs_info["args"], **fs_info["kwargs"]
+            )
+        return None
+
     def initialize_filesystems(self):
         new_filesystems = {}
         name_to_prefix = {}
@@ -133,7 +148,7 @@ class FileSystemManager:
             split_path_list = fs_path.split("://", 1)
             protocol_path = split_path_list[0] + "://"
             prefix_path = "" if len(split_path_list) <= 1 else split_path_list[1]
-
+            name_to_prefix[fs_name] = prefix_path
             key = self._encode_key(fs_config)
 
             canonical_path = protocol_path + key
@@ -150,21 +165,32 @@ class FileSystemManager:
             logger.debug("fs_path: %s", fs_path)
 
             # Store the filesystem instance
-            new_filesystems[key] = {
-                "instance": fs,
+            fs_info = {
+                "instance": None,
                 "name": fs_name,
                 "protocol": fs_protocol,
-                "path_url": fs_path,
                 "path": prefix_path,
+                "path_url": fs_path,
                 "canonical_path": canonical_path,
+                "args": args,
+                "kwargs": kwargs,
             }
+            new_filesystems[key] = fs_info
+            fs_class = fsspec.get_filesystem_class(fs_protocol)
+            if fs_class.async_impl:
+                fs = FileSystemManager.construct_fs(fs_protocol, True, *args, **kwargs)
+                fs_info["instance"] = fs
+            else:
+                sync_fs = FileSystemManager.construct_fs(
+                    fs_protocol, False, *args, **kwargs
+                )
+                fs = AsyncFileSystemWrapper(sync_fs)
+                fs_info["instance"] = fs
 
-            name_to_prefix[fs_name] = prefix_path
             logger.debug(
                 f"Initialized filesystem '{fs_name}' with protocol '{fs_protocol}' at path '{fs_path}'"
             )
 
-        logger.debug("path prefix: %s", name_to_prefix)
         self.filesystems = new_filesystems
         self.name_to_prefix = name_to_prefix
 

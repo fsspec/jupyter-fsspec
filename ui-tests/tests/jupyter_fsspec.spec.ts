@@ -15,7 +15,11 @@ test('should emit an activation console message', async ({ page }) => {
 
   await page.goto();
 
-  expect(
-    logs.filter(s => s === 'JupyterLab extension jupyterFsspec is activated!')
-  ).toHaveLength(1);
+  const activationLogs = logs.filter(log => {
+    return log.includes('JupyterLab extension jupyterFsspec is activated!');
+  });
+
+  expect(activationLogs).toHaveLength(1);
+
+  expect(activationLogs[0]).toContain('[INFO]');
 });
