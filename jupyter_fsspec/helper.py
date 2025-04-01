@@ -7,8 +7,7 @@ import tempfile
 import traceback
 from base64 import standard_b64encode
 
-import fsspec
-
+from .file_manager import FileSystemManager
 from .exceptions import JupyterFsspecException
 
 
@@ -104,18 +103,41 @@ class HelperOutput:
         return string_rep
 
 
-_get_fs = fsspec.filesystem
+def _get_manager(cached=True):
+    # Get and cache a manager: The manager handles the config and filesystem
+    # construction using the same underlying machinery used by the frontend extension.
+    # The manager is cached to avoid hitting the disk/config file multiple times.
+    global _manager
+    if not cached or _manager is None:
+        _manager = FileSystemManager.create_default()
+    return _manager
 
 
-def fs(protocol, kwargs):
+def _get_fs(fs_name):
+    # Get an fsspec filesystem from the manager
+    # The fs_name is url encoded, we handle that here...TODO refactor that
+    mgr = _get_manager()
+    fs = mgr.construct_named_fs(fs_name)
+    if fs is not None:
+        return fs
+    else:
+        raise JupyterFsspecException("Error, could not find specified filesystem")
+
+
+def reload():
+    # Get a new manager/re-read the config file
+    return _get_manager(False)
+
+
+def fs(fs_name):
     # (Public API) Return an fsspec filesystem from the manager
-    return _get_fs(protocol, **kwargs)
+    return _get_fs(fs_name)
 
 
 filesystem = fs  # Alias for matching fsspec call
 
 
-def _request_bytes(protocol, kwargs, path):
+def _request_bytes(fs_name, path):
     global out
 
     # Empty results first
@@ -125,12 +147,12 @@ def _request_bytes(protocol, kwargs, path):
     blank["path"] = path
     out = HelperOutput(blank)
 
-    filesys = filesystem(protocol, kwargs)
+    filesys = filesystem(fs_name)
     try:
         out = HelperOutput(
             {
                 "ok": True,
-                "value": filesys.cat_file(path),
+                "value": filesys.open(path, mode="rb").read(),
                 "path": path,
                 "timestamp": now,
                 "error": None,
