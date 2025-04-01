@@ -206,7 +206,7 @@ export class FssTreeItemContext {
       } else {
         this.logger.warn('Cannot upload user data: no parent control');
       }
-    } else if (event.target.dataset.fssContextType === 'uploadBrowserFile') {
+    } else if (contextType === 'uploadBrowserFile') {
       this.logger.debug('Requesting browser file picker upload', {
         path: this.root.dataset.fss
       });
