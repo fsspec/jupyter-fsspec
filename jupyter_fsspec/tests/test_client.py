@@ -62,6 +62,7 @@ def test_ls_root(fs):
 
 
 def test_ls_nonroot(fs):
+    fs.dircache.clear()
     out = fs.ls("testmem", detail=True)
     assert len(out) == 1
     assert out[0]["name"] == "testmem/afile"
