@@ -210,7 +210,6 @@ export class FssTreeItemContext {
       this.logger.debug('Requesting browser file picker upload', {
         path: this.root.dataset.fss
       });
-      console.log('sig2');
       if (this.parentControl) {
         this.parentControl.handleUploadRequest({
           is_browser_file_picker: true
