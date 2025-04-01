@@ -147,7 +147,7 @@ export class FssTreeItemContext {
     const path = this.copyPath();
 
     if (path) {
-      const openCodeBlock = `with fsspec.open("${path}", "rt") as f:\n   for line in f:\n      print(line)`;
+      const openCodeBlock = `with fsspec.open("${path}", "rb") as f:\n   ...`;
       navigator.clipboard.writeText(openCodeBlock).then(
         () => {
           this.logger.info('Code snippet copied and inserted', {
@@ -179,7 +179,6 @@ export class FssTreeItemContext {
 
   handleItemClick(event: any) {
     const contextType = event.target.dataset.fssContextType;
-
     this.logger.debug('Menu item clicked', {
       type: contextType,
       path: this.root.dataset.fss
@@ -203,16 +202,17 @@ export class FssTreeItemContext {
         this.logger.debug('Requesting user data upload', {
           path: this.root.dataset.fss
         });
-        this.parentControl.handleUploadUserData();
+        this.parentControl.handleUploadRequest();
       } else {
         this.logger.warn('Cannot upload user data: no parent control');
       }
-    } else if (contextType === 'uploadBrowserFile') {
+    } else if (event.target.dataset.fssContextType === 'uploadBrowserFile') {
+      this.logger.debug('Requesting browser file picker upload', {
+        path: this.root.dataset.fss
+      });
+      console.log('sig2');
       if (this.parentControl) {
-        this.logger.debug('Requesting browser file picker upload', {
-          path: this.root.dataset.fss
-        });
-        this.parentControl.handleUploadFromBrowserPicker({
+        this.parentControl.handleUploadRequest({
           is_browser_file_picker: true
         });
       } else {
@@ -223,7 +223,7 @@ export class FssTreeItemContext {
         this.logger.debug('Requesting Jupyter browser file upload', {
           path: this.root.dataset.fss
         });
-        this.parentControl.handleUploadFromJupyterBrowser({
+        this.parentControl.handleUploadRequest({
           is_jup_browser_file: true
         });
       } else {
@@ -232,7 +232,6 @@ export class FssTreeItemContext {
         );
       }
     }
-
     this.root.remove();
   }
 
