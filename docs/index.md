@@ -100,7 +100,8 @@ is a unique identifier, so it should not be duplicated. The type of filesystem `
 construct is required in the path URL as the protocol `file://` etc. For local filesystems,
 when the path is provided with no prefix in the protocol URL e.g. `memory://` or `file://`,
 the filesystem will be instantiated at the root of the corresponding filesystem.
-If you provide the `protocol` argument it will be ignored.
+If you provide the `protocol` argument it will be ignored. The config file path URL
+option accepts directory paths but does not support specifying specific files paths.
 
 Lastly, you can pass additional arguments to the `fsspec` filesystem contructor by using the
 `args` and/or `kwargs` keys. You can check the `fsspec` docs for the available options that
