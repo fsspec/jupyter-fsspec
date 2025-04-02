@@ -82,13 +82,12 @@ class FsspecConfigHandler(APIHandler):
         for fs in self.fs_manager.filesystems:
             fs_info = self.fs_manager.filesystems[fs]
             instance = {
-                "key": fs,
+                "key": fs,  # name of filesystem
                 "name": fs_info["name"],
                 "protocol": fs_info["protocol"],
                 "path": fs_info["name"],
                 "prefix_path": fs_info["path"],
                 "canonical_path": fs_info["canonical_path"],
-                "prefix": self.fs_manager.name_to_prefix.get(fs_info["name"], ""),
                 "kwargs": fs_info["instance"].storage_options,
             }
             file_systems.append(instance)
