@@ -26,7 +26,6 @@ def server(tmpdir):
      anon: True
 """
     env = os.environ.copy()
-    os.environ["JUPYTER_FSSPEC_DISABLE_XSRF"] = "1"
     fn = f"{tmpdir}/jupyter-fsspec.yaml"
     with open(fn, "wt") as f:
         f.write(conf)

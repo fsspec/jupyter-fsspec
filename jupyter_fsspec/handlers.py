@@ -5,7 +5,6 @@ import traceback
 import json
 import logging
 import tornado
-import os
 from contextlib import contextmanager
 
 
@@ -328,8 +327,8 @@ class RenameFileHandler(APIHandler):
 
 class FileContentsHandler(APIHandler):
     def check_xsrf_cookie(self):
-        if os.getenv("JUPYTER_FSSPEC_DISABLE_XSRF", "0") == "1":
-            return  # Skip XSRF check in dev/test
+        if self.request.headers.get("X-JFS-Client") == "non-browser":
+            return  # Skip XSRF check for non-browser client
         super().check_xsrf_cookie()
 
     def initialize(self, fs_manager):

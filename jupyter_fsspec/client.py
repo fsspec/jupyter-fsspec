@@ -23,7 +23,7 @@ class JFS(AbstractFileSystem):
 
     def _call(self, path, method="GET", range=None, binary=False, data=None, **kw):
         logger.debug("request: %s %s %s", path, method, kw)
-        headers = {}
+        headers = {"X-JFS-Client": "non-browser"}
         if range:
             headers["Range"] = f"bytes={range[0]}-{range[1]}"
         r = self.session.request(
