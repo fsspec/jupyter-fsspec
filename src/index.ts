@@ -419,7 +419,7 @@ class FsspecWidget extends Widget {
       userFile.value.path,
       { content: true, format: 'base64', type: 'base64' }
     );
-    console.log('@@@@@', fileData);
+
     this.logger.debug('File content retrieved', {
       format: fileData.format,
       contentSize: fileData?.content?.length
