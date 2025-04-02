@@ -334,18 +334,11 @@ test('insert open with code snippet with active notebook cell', async ({
 
 test('upload file from the Jupyterlab file browser', async ({ page }) => {
   page.on('console', logMsg => console.log('[BROWSER OUTPUT] ', logMsg.text()));
-  const request_url =
-    'http://localhost:8888/jupyter_fsspec/files/contents?key=mymem&item_path=%2Fmymem%2Fmyfile.txt';
-  const response_body = {
-    status: 'success',
-    description: 'Uploaded file'
-  };
+  const request_url = 'http://localhost:8888/jupyter_fsspec/files/contents';
 
   await page.route(request_url + '**', route => {
     route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(response_body)
+      status: 201
     });
   });
 
@@ -406,24 +399,16 @@ test('upload file from the Jupyterlab file browser', async ({ page }) => {
 
   const response = await request.response();
 
-  const jsonResponse = await response?.json();
-  expect.soft(jsonResponse).toEqual(response_body);
+  expect.soft(response?.status()).toBe(201);
 });
 
 test('upload file from browser picker', async ({ page }) => {
   // page.on('console', msg => console.log(msg.text())); // For debugging console capture
-  const request_url =
-    'http://localhost:8888/jupyter_fsspec/files/contents?key=mymem&item_path=%2Fmymem%2Fmyfile2.txt';
-  const response_body = {
-    status: 'success',
-    description: 'uploaded file'
-  };
+  const request_url = 'http://localhost:8888/jupyter_fsspec/files/contents';
 
   await page.route(request_url + '**', route => {
     route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(response_body)
+      status: 201
     });
   });
 
@@ -482,9 +467,7 @@ test('upload file from browser picker', async ({ page }) => {
   expect.soft(request.url()).toContain(request_url);
 
   const response = await request.response();
-  expect.soft(response?.status()).toBe(200);
-  const jsonResponse = await response?.json();
-  expect.soft(jsonResponse).toEqual(response_body);
+  expect.soft(response?.status()).toBe(201);
 });
 
 test('upload file from helper', async ({ page }) => {
