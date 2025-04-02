@@ -42,7 +42,7 @@ def server(tmpdir):
             if count < 0:
                 raise
         count -= 1
-        time.sleep(0.1)
+        time.sleep(0.5)
     yield s
     P.terminate()
     P.wait()
