@@ -212,8 +212,8 @@ class FileTransferHandler(APIHandler):
             return
 
         key = transfer_request.key
-        local_path = transfer_request.local_path
-        remote_path = transfer_request.remote_path
+        local_path = transfer_request.local_path  # source
+        remote_path = transfer_request.remote_path  # destination
         dest_fs_key = transfer_request.destination_key
         dest_fs_info = self.fs_manager.get_filesystem(dest_fs_key)
         dest_path = dest_fs_info["canonical_path"]
@@ -225,8 +225,8 @@ class FileTransferHandler(APIHandler):
         try:
             if transfer_request.action == Direction.UPLOAD:
                 logger.debug("Upload file")
-                fs, dest_path = self.fs_manager.validate_fs(
-                    "post", dest_fs_key, dest_path
+                fs, remote_path = self.fs_manager.validate_fs(
+                    "post", dest_fs_key, remote_path
                 )
                 fs_instance = fs["instance"]
                 try:
@@ -242,7 +242,6 @@ class FileTransferHandler(APIHandler):
                         )
                 except JupyterFsspecException:
                     return
-
                 response["description"] = f"Uploaded {local_path} to {remote_path}."
             else:
                 logger.debug("Download file")
