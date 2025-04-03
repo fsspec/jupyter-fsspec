@@ -53,6 +53,13 @@ def handle_exception(
         raise JupyterFsspecException
 
 
+class JupyterFsspecHandler(APIHandler):
+    def check_xsrf_cookie(self):
+        if self.request.headers.get("X-JFS-Client") == "non-browser":
+            return  # Skip XSRF check for non-browser client
+        super().check_xsrf_cookie()
+
+
 class FsspecConfigHandler(APIHandler):
     """
 
@@ -105,7 +112,7 @@ class FsspecConfigHandler(APIHandler):
 # ====================================================================================
 # Handle Move and Copy Requests
 # ====================================================================================
-class FileActionHandler(APIHandler):
+class FileActionHandler(JupyterFsspecHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
@@ -183,7 +190,7 @@ class FileActionHandler(APIHandler):
 # ====================================================================================
 # Handle Move and Copy Requests Across filesystems
 # ====================================================================================
-class FileTransferHandler(APIHandler):
+class FileTransferHandler(JupyterFsspecHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
@@ -276,7 +283,7 @@ class FileTransferHandler(APIHandler):
 # ====================================================================================
 # Handle Rename requests (?seperate or not?)
 # ====================================================================================
-class RenameFileHandler(APIHandler):
+class RenameFileHandler(JupyterFsspecHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
@@ -325,12 +332,7 @@ class RenameFileHandler(APIHandler):
         await self.finish()
 
 
-class FileContentsHandler(APIHandler):
-    def check_xsrf_cookie(self):
-        if self.request.headers.get("X-JFS-Client") == "non-browser":
-            return  # Skip XSRF check for non-browser client
-        super().check_xsrf_cookie()
-
+class FileContentsHandler(JupyterFsspecHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
@@ -406,7 +408,7 @@ class FileContentsHandler(APIHandler):
 # ====================================================================================
 # CRUD for FileSystem
 # ====================================================================================
-class FileSystemHandler(APIHandler):
+class FileSystemHandler(JupyterFsspecHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
