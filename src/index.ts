@@ -54,7 +54,11 @@ except:
 `;
 
 const CODE_UPLOADUSERDATA = `
-from jupyter_fsspec import helper as _jupyter_fsshelper
+from jupyter_fsspec import helper as
+try:
+  _jupyter_fsshelper._get_user_data_string('FS_NAME', 'FILEPATH')
+except:
+  raise
 `;
 
 class FsspecWidget extends Widget {
@@ -418,10 +422,12 @@ class FsspecWidget extends Widget {
 
     this.logger.debug('File content retrieved', {
       format: fileData.format,
-      contentSize: fileData.content?.length || 0
+      contentSize: fileData?.content?.length
     });
 
-    this.queuedJupyterFileBrowserUploadInfo = { fileData: fileData };
+    this.queuedJupyterFileBrowserUploadInfo = {
+      fileData: Buffer.from(fileData.content, 'base64')
+    };
   }
 
   handleFilePickerChange() {
@@ -481,18 +487,16 @@ class FsspecWidget extends Widget {
       this.logger.debug('Processing Jupyter file browser upload', {
         contentFormat: this.queuedJupyterFileBrowserUploadInfo.fileData.format,
         contentSize:
-          this.queuedJupyterFileBrowserUploadInfo.fileData.content.length
+          this.queuedJupyterFileBrowserUploadInfo.fileData?.content?.length
       });
 
-      const base64String =
-        this.queuedJupyterFileBrowserUploadInfo.fileData.content;
+      const binaryData = this.queuedJupyterFileBrowserUploadInfo.fileData;
 
       try {
         await this.model.post(
           this.model.activeFilesystem,
           user_path,
-          base64String,
-          true
+          binaryData
         );
 
         this.logger.info('File upload completed successfully', {
@@ -560,14 +564,8 @@ class FsspecWidget extends Widget {
       try {
         const binRaw = await this.queuedPickerUploadInfo.fileData.arrayBuffer();
         const binData: any = new Uint8Array(binRaw);
-        const base64String = Buffer.from(binData).toString('base64');
 
-        await this.model.post(
-          this.model.activeFilesystem,
-          user_path,
-          base64String,
-          true
-        );
+        await this.model.post(this.model.activeFilesystem, user_path, binData);
 
         this.logger.info('File upload completed successfully', {
           path: user_path,
@@ -861,12 +859,10 @@ class FsspecWidget extends Widget {
       source_path
     );
 
-    if (response?.status !== 'success' || !response?.content) {
-      this.logger.error('Failed to fetch directory contents', {
-        path: source_path,
-        status: response?.status,
-        hasContent: !!response?.content
-      });
+    // TODO: Check for status/description?
+    if (!response?.content) {
+      // TODO refactor validation
+      this.logger.error('Error fetching files', { path: source_path }); // TODO jupyter info print
       return;
     }
 
@@ -1055,20 +1051,15 @@ class FsspecWidget extends Widget {
     );
 
     if (!response) {
-      this.logger.error('Failed to fetch files: null response');
+      this.logger.error('Invalid response fetching files', {
+        filesystem: fsname
+      });
       return;
     }
 
-    if (
-      !('status' in response) ||
-      !(response.status === 'success') ||
-      !('content' in response)
-    ) {
-      this.logger.error('Invalid response fetching files', {
-        filesystem: fsname,
-        hasStatus: 'status' in response,
-        status: response.status,
-        hasContent: 'content' in response
+    if (!response.content) {
+      this.logger.error('Error retrieving content from filesystem', {
+        filesystem: fsname
       });
       return;
     }

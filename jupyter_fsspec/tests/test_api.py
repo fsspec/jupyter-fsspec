@@ -1,7 +1,6 @@
 import json
 import pytest
 from tornado.httpclient import HTTPClientError
-from jupyter_fsspec.utils import load_image_as_base64
 # TODO: Testing: different file types, received expected errors
 
 
@@ -16,7 +15,7 @@ async def test_get_config(setup_config_file_fs, jp_fetch):
         body["description"]
         == "Retrieved available filesystems from configuration file."
     )
-    assert len(body["content"]) == 4
+    assert len(body["content"]) == 5
 
 
 @pytest.mark.no_setup_config_file_fs
@@ -53,7 +52,7 @@ async def test_empty_config(empty_config, jp_fetch):
 
 async def test_get_files_memory(fs_manager_instance, jp_fetch):
     fs_manager = await fs_manager_instance
-    mem_key = "TestMem Source"
+    mem_key = "TestsMemSource"
     mem_fs_info = fs_manager.get_filesystem(mem_key)
     mem_fs = mem_fs_info["instance"]
     mem_item_path = mem_fs_info["path"]
@@ -72,131 +71,109 @@ async def test_get_files_memory(fs_manager_instance, jp_fetch):
     assert dir_response.code == 200
     json_body = dir_response.body.decode("utf-8")
     body = json.loads(json_body)
-    assert body["status"] == "success"
     assert len(body["content"]) == 3
 
     # Read File
-    filepath = "/my_mem_dir/test_dir/file1.txt"
+    filepath = "test_dir/file1.txt"
     assert mem_fs.exists(filepath)
     file_res = await jp_fetch(
         "jupyter_fsspec",
         "files",
+        "contents",
         method="GET",
         params={"key": mem_key, "item_path": filepath},
     )
     assert file_res.code == 200
-
-    file_json_body = file_res.body.decode("utf-8")
-    file_body = json.loads(file_json_body)
-    assert file_body["status"] == "success"
-    assert file_body["content"] == "Test content"
+    assert file_res.body == b"Test content"
 
     # GET file byte range
-    range_filepath = "/my_mem_dir/test_dir/file1.txt"
+    range_filepath = "test_dir/file1.txt"
     # previously checked file exists
     range_file_res = await jp_fetch(
         "jupyter_fsspec",
         "files",
+        "contents",
         method="GET",
         headers={"Range": "0-8"},
         params={"key": mem_key, "type": "range", "item_path": range_filepath},
     )
     assert range_file_res.code == 200
+    assert range_file_res.body == b"Test con"
 
-    range_json_file_body = range_file_res.body.decode("utf-8")
-    range_file_body = json.loads(range_json_file_body)
-    assert range_file_body["status"] == "success"
-    assert range_file_body["content"] == ["Test con"]
+
+async def test_get_empty_memory(fs_manager_instance_empty_mem, jp_fetch):
+    fs_manager = await fs_manager_instance_empty_mem
+    mem_key = "empty_test_mem"
+    mem_fs_info = fs_manager.get_filesystem(mem_key)
+    mem_fs = mem_fs_info["instance"]
+    mem_item_path = mem_fs_info["path"]
+    assert mem_fs is not None
+
+    # Read empty directory
+    assert mem_fs.exists(mem_item_path)
+    dir_response = await jp_fetch(
+        "jupyter_fsspec",
+        "files",
+        method="GET",
+        params={"key": mem_key, "item_path": mem_item_path},
+        allow_nonstandard_methods=True,
+    )
+
+    assert dir_response.code == 200
+    json_body = dir_response.body.decode("utf-8")
+    body = json.loads(json_body)
+    assert len(body["content"]) == 0
 
 
 async def test_post_files(fs_manager_instance, jp_fetch):
     fs_manager = await fs_manager_instance
-    mem_key = "TestMem Source"
+    mem_key = "TestsMemSource"
     mem_fs_info = fs_manager.get_filesystem(mem_key)
     mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None
 
     # Post new file with content
-    filepath = "/my_mem_dir/test_dir/file2.txt"
+    filepath = "test_dir/file2.txt"
     # File does not already exist
     assert not mem_fs.exists(filepath)
-    content = "VGhpcyBpcyBzb21lIHNhbXBsZSBlbmNvZGVkIHRleHQu"
-    file_payload = {
-        "key": mem_key,
-        "item_path": filepath,
-        "content": content,
-        "base64": True,
-    }
+    content = "Héllo".encode()
+
     file_response = await jp_fetch(
         "jupyter_fsspec",
         "files",
+        "contents",
         method="POST",
-        params={"key": mem_key},
-        body=json.dumps(file_payload),
+        params={"key": mem_key, "item_path": filepath},
+        body=content,
     )
-    assert file_response.code == 200
-
-    file_json_body = file_response.body.decode("utf-8")
-    file_body = json.loads(file_json_body)
-    assert file_body["status"] == "success"
-    assert file_body["description"] == "Wrote /my_mem_dir/test_dir/file2.txt."
+    assert file_response.code == 201
     assert mem_fs.exists(filepath)
+    assert mem_fs.cat_file(filepath) == content
 
-    # Post new file with base64 encoded content
-    filepath = "/my_mem_dir/test_dir/test_end.png"
-    content = load_image_as_base64("jupyter_fsspec/tests/test_end.png")
-    # File does not already exist
-    assert not mem_fs.exists(filepath)
-    file_payload = {
-        "key": mem_key,
-        "item_path": filepath,
-        "content": content,
-        "base64": True,
-    }
+    content = b""
+
     file_response = await jp_fetch(
         "jupyter_fsspec",
         "files",
+        "contents",
         method="POST",
-        params={"key": mem_key},
-        body=json.dumps(file_payload),
+        params={"key": mem_key, "item_path": filepath},
+        body=content,
     )
-    assert file_response.code == 200
-
-    file_json_body = file_response.body.decode("utf-8")
-    file_body = json.loads(file_json_body)
-    assert file_body["status"] == "success"
-    assert file_body["description"] == "Wrote /my_mem_dir/test_dir/test_end.png."
+    assert file_response.code == 201
     assert mem_fs.exists(filepath)
-
-    # Post directory
-    newdirpath = "/my_mem_dir/test_dir/subdir/"
-    # Directory does not already exist
-    assert not mem_fs.exists(newdirpath)
-    dir_payload = {"key": mem_key, "item_path": newdirpath}
-    dir_response = await jp_fetch(
-        "jupyter_fsspec",
-        "files",
-        method="POST",
-        params={"key": mem_key},
-        body=json.dumps(dir_payload),
-    )
-    assert dir_response.code == 200
-    dir_body_json = dir_response.body.decode("utf-8")
-    dir_body = json.loads(dir_body_json)
-
-    assert dir_body["status"] == "success"
-    assert dir_body["description"] == "Wrote /my_mem_dir/test_dir/subdir/."
+    assert mem_fs.cat_file(filepath) == content
 
 
 async def test_delete_files(fs_manager_instance, jp_fetch):
     fs_manager = await fs_manager_instance
-    mem_key = "TestMem Source"
+    mem_key = "TestsMemSource"
     mem_fs_info = fs_manager.get_filesystem(mem_key)
     mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None
 
     # Delete file
-    filepath = "/my_mem_dir/test_dir/file1.txt"
+    filepath = "/test_dir/file1.txt"
     assert mem_fs.exists(filepath)
 
     file_payload = {"key": mem_key, "item_path": filepath}
@@ -217,7 +194,7 @@ async def test_delete_files(fs_manager_instance, jp_fetch):
     assert not mem_fs.exists(filepath)
 
     # delete directory
-    dirpath = "/my_mem_dir/test_dir"
+    dirpath = "/test_dir"
     assert mem_fs.exists(dirpath)
 
     dir_payload = {"key": mem_key, "item_path": dirpath}
@@ -241,13 +218,13 @@ async def test_delete_files(fs_manager_instance, jp_fetch):
 async def test_put_files(fs_manager_instance, jp_fetch):
     # PUT replace entire resource
     fs_manager = await fs_manager_instance
-    mem_key = "TestMem Source"
+    mem_key = "TestsMemSource"
     mem_fs_info = fs_manager.get_filesystem(mem_key)
     mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None
 
     # replace entire file content
-    filepath = "/my_mem_dir/test_dir/file1.txt"
+    filepath = "test_dir/file1.txt"
     file_payload = {
         "key": mem_key,
         "item_path": filepath,
@@ -265,10 +242,10 @@ async def test_put_files(fs_manager_instance, jp_fetch):
     file_body_json = file_response.body.decode("utf-8")
     file_body = json.loads(file_body_json)
     assert file_body["status"] == "success"
-    assert file_body["description"] == "Updated file /my_mem_dir/test_dir/file1.txt."
+    assert file_body["description"] == "Updated file test_dir/file1.txt."
 
     # replacing directory returns error
-    dirpath = "/my_mem_dir/test_dir"
+    dirpath = "test_dir"
     dir_payload = {"key": mem_key, "item_path": dirpath, "content": "new_test_dir"}
     with pytest.raises(HTTPClientError) as exc_info:
         await jp_fetch(
@@ -283,17 +260,17 @@ async def test_put_files(fs_manager_instance, jp_fetch):
 
 async def test_rename_files(fs_manager_instance, jp_fetch):
     fs_manager = await fs_manager_instance
-    mem_key = "TestMem Source"
+    mem_key = "TestsMemSource"
     mem_fs_info = fs_manager.get_filesystem(mem_key)
     mem_fs = mem_fs_info["instance"]
     assert mem_fs is not None
 
     # rename file
-    filepath = "/my_mem_dir/test_dir/file1.txt"
+    filepath = "test_dir/file1.txt"
     file_payload = {
         "key": mem_key,
         "item_path": filepath,
-        "content": "/my_mem_dir/test_dir/new_file.txt",
+        "content": "test_dir/new_file.txt",
     }
     file_response = await jp_fetch(
         "jupyter_fsspec",
@@ -310,17 +287,17 @@ async def test_rename_files(fs_manager_instance, jp_fetch):
     assert file_body["status"] == "success"
     assert (
         file_body["description"]
-        == "Renamed /my_mem_dir/test_dir/file1.txt to /my_mem_dir/test_dir/new_file.txt."
+        == "Renamed test_dir/file1.txt to test_dir/new_file.txt."
     )
     assert not mem_fs.exists(filepath)
-    assert mem_fs.exists("/my_mem_dir/test_dir/new_file.txt")
+    assert mem_fs.exists("test_dir/new_file.txt")
 
     # rename directory
-    dirpath = "/my_mem_dir/second_dir"
+    dirpath = "second_dir"
     dir_payload = {
         "key": mem_key,
         "item_path": dirpath,
-        "content": "/my_mem_dir/new_dir",
+        "content": "new_dir",
     }
     dir_response = await jp_fetch(
         "jupyter_fsspec",
@@ -335,12 +312,9 @@ async def test_rename_files(fs_manager_instance, jp_fetch):
     dir_body_json = dir_response.body.decode("utf-8")
     dir_body = json.loads(dir_body_json)
     assert dir_body["status"] == "success"
-    assert (
-        dir_body["description"]
-        == "Renamed /my_mem_dir/second_dir to /my_mem_dir/new_dir."
-    )
+    assert dir_body["description"] == "Renamed second_dir to new_dir."
     assert not mem_fs.exists(dirpath)
-    assert mem_fs.exists("/my_mem_dir/new_dir")
+    assert mem_fs.exists("new_dir")
 
 
 # TODO:
@@ -466,7 +440,9 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
 
     # upload file [local to remote]
     local_upload_filepath = f"{local_root_path}/file_loc.txt"
-    assert local_fs.exists(local_upload_filepath)
+    file_exists = await local_fs._exists(local_upload_filepath)
+    assert file_exists
+
     upload_file_payload = {
         "key": local_key,
         "local_path": local_upload_filepath,
@@ -492,7 +468,7 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
         == f"Uploaded {local_upload_filepath} to {remote_root_path}."
     )
 
-    uploaded_filepath = remote_root_path + "/file_loc.txt"
+    uploaded_filepath = remote_root_path + "file_loc.txt"
 
     remote_file_items = await remote_fs._ls(remote_root_path)
     assert uploaded_filepath in remote_file_items
@@ -530,11 +506,11 @@ async def test_upload_download(fs_manager_instance, jp_fetch):
 
     remote_file_items = await remote_fs._ls(remote_root_path)
     # TODO:  remote_root_path + "/nested"
-    assert f"{remote_root_path}/.keep" in remote_file_items
-    assert f"{remote_root_path}/.empty" in remote_file_items
+    assert f"{remote_root_path}.keep" in remote_file_items
+    assert f"{remote_root_path}.empty" in remote_file_items
 
     # download file [other to remote] #remote_root_path that we want to download.
-    download_filepath = f"{remote_root_path}/bucket-filename1.txt"
+    download_filepath = f"{remote_root_path}bucket-filename1.txt"
     file_present = await remote_fs._exists(download_filepath)
     assert file_present
     download_file_payload = {

@@ -18,21 +18,35 @@ pytest_plugins = [
 
 @pytest.fixture(scope="function")
 def setup_tmp_local(tmp_path: Path):
-    local_root = tmp_path / "test"
-    local_root.mkdir()
-    nested_dir = local_root / "nested"
+    real_tmp = tmp_path / "test"
+    real_tmp.mkdir()
+    nested_dir = real_tmp / "nested"
     nested_dir.mkdir()
     nested_file1 = nested_dir / ".empty"
     nested_file1.touch()
     nested_file2 = nested_dir / ".keep"
     nested_file2.touch()
-    local_file = local_root / "file_loc.txt"
+    local_file = real_tmp / "file_loc.txt"
     local_file.touch()
+
+    root_dir = Path(os.getcwd())
+
+    # Create symlink inside of root pointing to tmp
+    link_path = root_dir / "tmp_symlink"
+    if link_path.exists():
+        link_path.unlink()
+    link_path.symlink_to(real_tmp, target_is_directory=True)
 
     local_empty_root = tmp_path / "empty"
     local_empty_root.mkdir()
 
-    yield [local_root, local_empty_root]
+    yield [real_tmp, local_empty_root]
+
+    try:
+        if link_path.exists() or link_path.is_symlink():
+            link_path.unlink()
+    except Exception as e:
+        print(f"Warning: failed to remove symlink {link_path}: {e}")
 
 
 @pytest.fixture(scope="function")
@@ -132,14 +146,14 @@ def setup_config_file_fs(tmp_path: Path, setup_tmp_local):
       client_kwargs:
         endpoint_url: "{ENDPOINT_URI}"
   - name: "TestDir"
-    path: "{tmp_local}"
-    protocol: "local"
+    path: "file://{tmp_local}"
   - name: "TestEmptyLocalDir"
-    path: "{empty_tmp_local}"
-    protocol: "local"
-  - name: "TestMem Source"
-    path: "/my_mem_dir"
-    protocol: "memory"
+    path: "file://{empty_tmp_local}"
+  - name: "TestsMemSource"
+    path: "memory://"
+    protocol: "file"
+  - name: "empty_test_mem"
+    path: "memory://empty"
     """
     yaml_file = config_dir / "jupyter-fsspec.yaml"
     yaml_file.write_text(yaml_content)
@@ -154,28 +168,40 @@ def setup_config_file_fs(tmp_path: Path, setup_tmp_local):
 
 
 @pytest.fixture(scope="function")
+async def fs_manager_instance_empty_mem(setup_config_file_fs, s3_client):
+    fs_manager = setup_config_file_fs
+    fs_info = fs_manager.get_filesystem("empty_test_mem")
+    mem_fs = fs_info["instance"]
+    mem_fs_path = fs_info["path"]
+    if not mem_fs:
+        print("In memory filesystem not found")
+    if await mem_fs._exists(mem_fs_path):
+        await mem_fs._rm(mem_fs_path, recursive=True)
+
+    await mem_fs._mkdir(mem_fs_path)
+    return fs_manager
+
+
+@pytest.fixture(scope="function")
 async def fs_manager_instance(setup_config_file_fs, s3_client):
     fs_manager = setup_config_file_fs
-    fs_info = fs_manager.get_filesystem("TestMem Source")
-    print(f"fs_info: {fs_info}")
+    fs_info = fs_manager.get_filesystem("TestsMemSource")
     mem_fs = fs_info["instance"]
-    mem_root_path = fs_info["path"]
 
-    if mem_fs:
-        if await mem_fs._exists(f"{mem_root_path}/test_dir"):
-            await mem_fs._rm(f"{mem_root_path}/test_dir", recursive=True)
-        if await mem_fs._exists(f"{mem_root_path}/second_dir"):
-            await mem_fs._rm(f"{mem_root_path}/second_dir", recursive=True)
-
-        await mem_fs._pipe(f"{mem_root_path}/file_in_root.txt", b"Root file content")
-
-        await mem_fs._mkdir(f"{mem_root_path}/test_dir", exist_ok=True)
-        await mem_fs._mkdir(f"{mem_root_path}/second_dir", exist_ok=True)
-
-        await mem_fs._pipe(f"{mem_root_path}/test_dir/file1.txt", b"Test content")
+    if not mem_fs:
+        print("In memory filesystem not found")
     else:
-        print("In memory filesystem NOT FOUND")
+        if await mem_fs._exists("test_dir"):
+            await mem_fs._rm("test_dir", recursive=True)
+        if await mem_fs._exists("second_dir"):
+            await mem_fs._rm("second_dir", recursive=True)
 
+        await mem_fs._pipe("file_in_root.txt", b"Root file content")
+
+        await mem_fs._mkdir("test_dir", exist_ok=True)
+        await mem_fs._mkdir("second_dir", exist_ok=True)
+
+        await mem_fs._pipe("test_dir/file1.txt", b"Test content")
     return fs_manager
 
 
@@ -221,6 +247,8 @@ def s3_client(s3_base):
     client.put_object(
         Body=b"Hello, World3!", Bucket=bucket_name, Key="some/bucket-filename3.txt"
     )
+    for key in client.list_objects(Bucket=bucket_name)["Contents"]:
+        print(f"client objects: {key['Key']}")
 
     yield client
     client.close()

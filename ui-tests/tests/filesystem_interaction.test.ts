@@ -18,8 +18,11 @@ const config = {
       key: 'mymem',
       name: 'mymem',
       protocol: 'memory',
-      path: '/mymemoryfs',
-      canonical_path: 'memory:///mymemoryfs'
+      path: 'mymem',
+      prefix_path: '/mymemoryfs',
+      canonical_path: 'memory://mymem',
+      args: [],
+      kwargs: {}
     }
   ]
 };
@@ -32,15 +35,21 @@ const updateConfig = {
       key: 'secondMem',
       name: 'secondMem',
       protocol: 'memory',
-      path: '/second_memoryfs',
-      canonical_path: 'memory:///second_memoryfs'
+      path: 'secondMem',
+      prefix_path: '/second_memoryfs',
+      canonical_path: 'memory:///secondMem',
+      args: [],
+      kwargs: {}
     },
     {
       key: 'mymem',
       name: 'mymem',
       protocol: 'memory',
-      path: '/mymemoryfs',
-      canonical_path: 'memory:///mymemoryfs'
+      path: 'mymem',
+      prefix_path: '/mymemoryfs',
+      canonical_path: 'memory:///mymem',
+      args: [],
+      kwargs: {}
     }
   ]
 };
@@ -52,32 +61,30 @@ const emptyConfig = {
 };
 
 const rootMyMemFs = {
-  status: 'success',
-  description: 'Retrieved /mymemoryfs',
   content: [
     {
-      name: '/mymemoryfs/mydocs',
+      name: '/mymem/mydocs',
       type: 'directory',
       size: 128,
       ino: 49648960,
       mode: 16877
     },
     {
-      name: '/mymemoryfs/myfile.txt',
+      name: '/mymem/myfile.txt',
       type: 'file',
       size: 128,
       ino: 49648960,
       mode: 33188
     },
     {
-      name: '/mymemoryfs/myfile2.txt',
+      name: '/mymem/myfile2.txt',
       type: 'file',
       size: 128,
       ino: 49638760,
       mode: 33188
     },
     {
-      name: '/mymemoryfs/otherdocs',
+      name: '/mymem/otherdocs',
       type: 'directory',
       size: 2002,
       ino: 13894260,
@@ -87,18 +94,16 @@ const rootMyMemFs = {
 };
 
 const myMemFsDirectory = {
-  status: 'success',
-  description: 'Retrieved /mymemoryfs/mydocs',
   content: [
     {
-      name: '/mymemoryfs/mydocs/file1.csv',
+      name: '/mymem/mydocs/file1.csv',
       type: 'file',
       size: 7464,
       ino: 49648230,
       mode: 33204
     },
     {
-      name: '/mymemoryfs/mydocs/file2.csv',
+      name: '/mymem/mydocs/file2.csv',
       type: 'file',
       size: 3872,
       ino: 49429060,
@@ -203,7 +208,7 @@ test('test copy path', async ({ page }) => {
   await page.getByText('Copy Path to Clipboard').click();
 
   const copiedText = await page.evaluate(() => navigator.clipboard.readText());
-  expect(copiedText).toEqual('memory:///mymemoryfs/mydocs');
+  expect(copiedText).toEqual('mymem/mydocs');
 });
 
 test('test expanding directory', async ({ page }) => {
@@ -216,7 +221,7 @@ test('test expanding directory', async ({ page }) => {
 
   // intercept request for filesystem subdirectory files
   await page.route(
-    'http://localhost:8888/jupyter_fsspec/files?key=mymem&item_path=%2Fmymemoryfs%2Fmydocs&type=default&**',
+    'http://localhost:8888/jupyter_fsspec/files?key=mymem&item_path=%2Fmymem%2Fmydocs&type=default&**',
     route => {
       route.fulfill({
         status: 200,
@@ -278,7 +283,7 @@ test('insert open code snippet', async ({ page }) => {
 
   const copiedText = await page.evaluate(() => navigator.clipboard.readText());
   expect(copiedText).toEqual(
-    `with fsspec.open("memory:///mymemoryfs/myfile.txt", "rb") as f:\n   ...`
+    `with fsspec.open("mymem/myfile.txt", "rb") as f:\n   ...`
   );
 });
 
@@ -297,7 +302,7 @@ test('insert open with code snippet with active notebook cell', async ({
   const cellText = '# This is a code cell.';
   await page.notebook.addCell('code', cellText);
 
-  const copyCodeBlock = `with fsspec.open("memory:///mymemoryfs/myfile.txt", "rb") as f:\n   ...`;
+  const copyCodeBlock = `with fsspec.open("mymem/myfile.txt", "rb") as f:\n   ...`;
 
   await page
     .getByText('myfile.txt', { exact: true })
@@ -329,18 +334,11 @@ test('insert open with code snippet with active notebook cell', async ({
 
 test('upload file from the Jupyterlab file browser', async ({ page }) => {
   page.on('console', logMsg => console.log('[BROWSER OUTPUT] ', logMsg.text()));
-  const request_url =
-    'http://localhost:8888/jupyter_fsspec/files?action=write&key=mymem';
-  const response_body = {
-    status: 'success',
-    description: 'Uploaded file'
-  };
+  const request_url = 'http://localhost:8888/jupyter_fsspec/files/contents';
 
   await page.route(request_url + '**', route => {
     route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(response_body)
+      status: 201
     });
   });
 
@@ -401,24 +399,16 @@ test('upload file from the Jupyterlab file browser', async ({ page }) => {
 
   const response = await request.response();
 
-  const jsonResponse = await response?.json();
-  expect.soft(jsonResponse).toEqual(response_body);
+  expect.soft(response?.status()).toBe(201);
 });
 
 test('upload file from browser picker', async ({ page }) => {
   // page.on('console', msg => console.log(msg.text())); // For debugging console capture
-  const request_url =
-    'http://localhost:8888/jupyter_fsspec/files?action=write&key=mymem';
-  const response_body = {
-    status: 'success',
-    description: 'uploaded file'
-  };
+  const request_url = 'http://localhost:8888/jupyter_fsspec/files/contents';
 
   await page.route(request_url + '**', route => {
     route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(response_body)
+      status: 201
     });
   });
 
@@ -477,9 +467,7 @@ test('upload file from browser picker', async ({ page }) => {
   expect.soft(request.url()).toContain(request_url);
 
   const response = await request.response();
-  expect.soft(response?.status()).toBe(200);
-  const jsonResponse = await response?.json();
-  expect.soft(jsonResponse).toEqual(response_body);
+  expect.soft(response?.status()).toBe(201);
 });
 
 test('upload file from helper', async ({ page }) => {

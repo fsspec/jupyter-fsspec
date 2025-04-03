@@ -58,7 +58,7 @@ class FssFilesysItem {
 
     this.pathField = document.createElement('div');
     this.pathField.classList.add('jfss-fsitem-protocol');
-    this.pathField.innerText = 'Path: ' + fsInfo.path;
+    this.pathField.innerText = 'Path: ' + fsInfo.prefix_path;
     fsItem.appendChild(this.pathField);
 
     fsItem.addEventListener('click', this.handleClick.bind(this));

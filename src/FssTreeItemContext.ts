@@ -74,23 +74,7 @@ export class FssTreeItemContext {
   }
 
   copyPath() {
-    const info = this.model.getActiveFilesystemInfo();
-    const protocol = info?.canonical_path.slice(
-      0,
-      info.canonical_path.length - info.path.length
-    );
-    if (protocol) {
-      const canonical =
-        protocol + '/' + this.root.dataset.fss.replace(/^\/+/, () => '');
-      this.logger.debug('Path generated', { path: canonical });
-      return canonical;
-    } else {
-      this.logger.warn('Failed to generate path', {
-        reason: 'No protocol found',
-        info
-      });
-      return undefined;
-    }
+    return this.root.dataset.fss.replace(/^\/+/, () => '');
   }
 
   copyPathToClipboard() {

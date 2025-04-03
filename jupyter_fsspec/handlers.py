@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import binascii
 import traceback
@@ -10,10 +11,16 @@ from contextlib import contextmanager
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 
-from .file_manager import FileSystemManager
-from .models import GetRequest, PostRequest, DeleteRequest, TransferRequest, Direction
-from .utils import parse_range
-from .exceptions import JupyterFsspecException
+from jupyter_fsspec.file_manager import FileSystemManager
+from jupyter_fsspec.models import (
+    GetRequest,
+    PostRequest,
+    DeleteRequest,
+    TransferRequest,
+    Direction,
+)
+from jupyter_fsspec.utils import parse_range
+from jupyter_fsspec.exceptions import JupyterFsspecException
 
 
 logging.basicConfig(level=logging.INFO)
@@ -46,6 +53,13 @@ def handle_exception(
         raise JupyterFsspecException
 
 
+class JupyterFsspecHandler(APIHandler):
+    def check_xsrf_cookie(self):
+        if self.request.headers.get("X-JFS-Client") == "non-browser":
+            return  # Skip XSRF check for non-browser client
+        super().check_xsrf_cookie()
+
+
 class FsspecConfigHandler(APIHandler):
     """
 
@@ -57,7 +71,7 @@ class FsspecConfigHandler(APIHandler):
         self.fs_manager = fs_manager
 
     @tornado.web.authenticated
-    def get(self):
+    async def get(self):
         """Retrieve filesystems information from configuration file.
 
         :return: dict with filesystems key and list of filesystem information objects
@@ -74,11 +88,13 @@ class FsspecConfigHandler(APIHandler):
         for fs in self.fs_manager.filesystems:
             fs_info = self.fs_manager.filesystems[fs]
             instance = {
-                "key": fs,
+                "key": fs,  # name of filesystem
                 "name": fs_info["name"],
                 "protocol": fs_info["protocol"],
-                "path": fs_info["path"],
+                "path": fs_info["name"],
+                "prefix_path": fs_info["path"],
                 "canonical_path": fs_info["canonical_path"],
+                "kwargs": fs_info["instance"].storage_options,
             }
             file_systems.append(instance)
 
@@ -90,13 +106,13 @@ class FsspecConfigHandler(APIHandler):
                 "content": file_systems,
             }
         )
-        self.finish()
+        await self.finish()
 
 
 # ====================================================================================
 # Handle Move and Copy Requests
 # ====================================================================================
-class FileActionHandler(APIHandler):
+class FileActionHandler(JupyterFsspecHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
@@ -168,13 +184,13 @@ class FileActionHandler(APIHandler):
             self.set_status(500)
 
         self.write(response)
-        self.finish()
+        await self.finish()
 
 
 # ====================================================================================
 # Handle Move and Copy Requests Across filesystems
 # ====================================================================================
-class FileTransferHandler(APIHandler):
+class FileTransferHandler(JupyterFsspecHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
@@ -201,8 +217,8 @@ class FileTransferHandler(APIHandler):
             return
 
         key = transfer_request.key
-        local_path = transfer_request.local_path
-        remote_path = transfer_request.remote_path
+        local_path = transfer_request.local_path  # source
+        remote_path = transfer_request.remote_path  # destination
         dest_fs_key = transfer_request.destination_key
         dest_fs_info = self.fs_manager.get_filesystem(dest_fs_key)
         dest_path = dest_fs_info["canonical_path"]
@@ -214,10 +230,9 @@ class FileTransferHandler(APIHandler):
         try:
             if transfer_request.action == Direction.UPLOAD:
                 logger.debug("Upload file")
-                fs, dest_path = self.fs_manager.validate_fs(
-                    "post", dest_fs_key, dest_path
+                fs, remote_path = self.fs_manager.validate_fs(
+                    "post", dest_fs_key, remote_path
                 )
-
                 fs_instance = fs["instance"]
                 try:
                     with handle_exception(self):
@@ -232,7 +247,6 @@ class FileTransferHandler(APIHandler):
                         )
                 except JupyterFsspecException:
                     return
-
                 response["description"] = f"Uploaded {local_path} to {remote_path}."
             else:
                 logger.debug("Download file")
@@ -263,13 +277,13 @@ class FileTransferHandler(APIHandler):
             self.set_status(500)
 
         self.write(response)
-        self.finish()
+        await self.finish()
 
 
 # ====================================================================================
 # Handle Rename requests (?seperate or not?)
 # ====================================================================================
-class RenameFileHandler(APIHandler):
+class RenameFileHandler(JupyterFsspecHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
@@ -315,13 +329,86 @@ class RenameFileHandler(APIHandler):
             self.set_status(500)
 
         self.write(response)
-        self.finish()
+        await self.finish()
+
+
+class FileContentsHandler(JupyterFsspecHandler):
+    def initialize(self, fs_manager):
+        self.fs_manager = fs_manager
+
+    @tornado.web.authenticated
+    async def get(self):
+        request_data = {k: self.get_argument(k) for k in self.request.arguments}
+        try:
+            with handle_exception(
+                self, status_code=400, default_msg="Error processing request payload."
+            ):
+                get_request = GetRequest(**request_data)
+        except JupyterFsspecException:
+            return
+
+        key = get_request.key
+        req_item_path = get_request.item_path
+
+        try:
+            with handle_exception(self):
+                fs, item_path = self.fs_manager.validate_fs("get", key, req_item_path)
+        except JupyterFsspecException:
+            return
+
+        fs_instance = fs["instance"]
+        is_async = fs_instance.async_impl
+
+        if "Range" in self.request.headers:
+            # TODO: check size of read before executing
+            range_header = self.request.headers["Range"]
+            start, end = parse_range(range_header)
+            self.set_header("Content-Range", f"bytes {start}-{end}")
+        else:
+            # TODO: this reads whole file in one shot and can kill process
+            start = end = None
+
+        logger.debug("Get contents %s (%s %s)", item_path, start, end)
+        try:
+            with handle_exception(self):
+                result = (
+                    await fs_instance._cat_file(item_path, start, end)
+                    if is_async
+                    else fs_instance.cat_file(item_path, start, end)
+                )
+        except JupyterFsspecException:
+            return
+
+        self.set_header("Content-Length", str(len(result)))
+        self.set_header("Content-Type", "application/octet-stream")
+        self.set_status(200)
+        self.write(result)
+        await self.finish()
+
+    @tornado.web.authenticated
+    async def post(self):
+        body = self.request.body
+        request_data = {k: self.get_argument(k) for k in self.request.arguments}
+        key = request_data["key"]
+        item_path = request_data["item_path"]
+
+        fs, item_path = self.fs_manager.validate_fs("post", key, item_path)
+        fs_instance = fs["instance"]
+
+        try:
+            with handle_exception(self):
+                await fs_instance._pipe_file(item_path, body)
+        except JupyterFsspecException:
+            return
+
+        self.set_status(201)
+        await self.finish()
 
 
 # ====================================================================================
 # CRUD for FileSystem
 # ====================================================================================
-class FileSystemHandler(APIHandler):
+class FileSystemHandler(JupyterFsspecHandler):
     def initialize(self, fs_manager):
         self.fs_manager = fs_manager
 
@@ -340,7 +427,7 @@ class FileSystemHandler(APIHandler):
     # /files
     @tornado.web.authenticated
     async def get(self):
-        """Retrieve list of files for directories or contents for files.
+        """Retrieve list of files for directories
 
         :param [key]: [Query arg string corresponding to the appropriate filesystem instance]
         :param [item_path]: [Query arg string path to file or directory to be retrieved], defaults to [root path of the active filesystem]
@@ -377,166 +464,26 @@ class FileSystemHandler(APIHandler):
         is_async = fs_instance.async_impl
 
         try:
-            try:
-                with handle_exception(self):
-                    isdir = (
-                        await fs_instance._isdir(item_path)
-                        if is_async
-                        else fs_instance.isdir(item_path)
-                    )
-            except JupyterFsspecException:
-                return
-
-            if get_request.type == "range":
-                range_header = self.request.headers.get("Range")
-                start, end = parse_range(range_header)
-                try:
-                    with handle_exception(self):
-                        result = (
-                            await fs_instance._cat_ranges(
-                                [item_path], [int(start)], [int(end)]
-                            )
-                            if is_async
-                            else fs_instance.cat_ranges(
-                                [item_path], [int(start)], [int(end)]
-                            )
-                        )
-                except JupyterFsspecException:
-                    return
-
-                response["content"] = [
-                    r.decode("utf-8") if isinstance(r, bytes) else r for r in result
-                ]
-                self.set_header("Content-Range", f"bytes {start}-{end}")
-            elif isdir:
-                try:
-                    with handle_exception(self):
-                        result = (
-                            await fs_instance._ls(item_path, detail=True)
-                            if is_async
-                            else fs_instance.ls(item_path, detail=True)
-                        )
-                except JupyterFsspecException:
-                    return
-
-                detail_to_keep = ["name", "type", "size", "ino", "mode"]
-                filtered_result = [
-                    {
-                        info: item_dict[info]
-                        for info in detail_to_keep
-                        if info in item_dict
-                    }
-                    for item_dict in result
-                ]
-                response["content"] = filtered_result
-            else:
-                try:
-                    with handle_exception(self):
-                        result = (
-                            await fs_instance._cat(item_path)
-                            if is_async
-                            else fs_instance.cat(item_path)
-                        )
-                except JupyterFsspecException:
-                    return
-
-                response["content"] = (
-                    result.decode("utf-8") if isinstance(result, bytes) else result
+            with handle_exception(self):
+                result = (
+                    await fs_instance._ls(item_path, detail=True)
+                    if is_async
+                    else fs_instance.ls(item_path, detail=True)
                 )
-            self.set_status(200)
-            response["status"] = "success"
-            response["description"] = f"Retrieved {item_path}."
-        except Exception as e:
-            traceback.print_exc()
-            logger.error(f"Error calling get handler: {e}")
-            self.set_status(500)
-        self.write(response)
-        self.finish()
-
-    # POST /jupyter_fsspec/files?key=my-key
-    # JSON Payload
-    # item_path=/some_directory/file.txt
-    # content
-    @tornado.web.authenticated
-    async def post(self):
-        """Create directories/files or perform other directory/file operations like move and copy
-
-        :param [key]: [Query arg string used to retrieve the appropriate filesystem instance]
-        :param [item_path]: [Query arg string path to file or directory to be retrieved]
-        :param [content]: [Request body property file content, or directory name]
-
-        :return: dict with a status, description and (optionally) error
-        :rtype: dict
-        """
-        request_data = json.loads(self.request.body.decode("utf-8"))
-        try:
-            with handle_exception(
-                self, status_code=400, default_msg="Error processing request payload."
-            ):
-                post_request = PostRequest(**request_data)
         except JupyterFsspecException:
             return
 
-        key = post_request.key
-        req_item_path = post_request.item_path
-        content = post_request.content
-        is_base64 = post_request.base64
-        if is_base64:
-            content = await self.process_content(content)
-
-        fs, item_path = self.fs_manager.validate_fs("post", key, req_item_path)
-        fs_instance = fs["instance"]
-        is_async = fs_instance.async_impl
-        response = {}
-
-        try:
-            # directory expect item_path to end with `/`
-            if item_path.endswith("/"):
-                # content is then expected to be null
-                try:
-                    with handle_exception(self):
-                        (
-                            await fs_instance._mkdir(item_path, exists_ok=True)
-                            if is_async
-                            else fs_instance.mkdir(item_path, exists_ok=True)
-                        )
-                except JupyterFsspecException:
-                    return
-            else:
-                # file name expected in item_path
-                try:
-                    with handle_exception(self):
-                        (
-                            await fs_instance._touch(item_path)
-                            if is_async
-                            else await fs_instance.touch(item_path)
-                        )
-                except JupyterFsspecException:
-                    return
-
-                if content:
-                    if not isinstance(content, bytes):
-                        content = str.encode(content)
-
-                try:
-                    with handle_exception(self):
-                        (
-                            await fs_instance._pipe(item_path, content)
-                            if is_async
-                            else fs_instance.pipe(item_path, content)
-                        )
-                except JupyterFsspecException:
-                    return
-
-            self.set_status(200)
-            response["status"] = "success"
-            response["description"] = f"Wrote {item_path}."
-        except Exception as e:
-            traceback.print_exc()
-            logger.error(f"Error calling post handler: {e}")
-            self.set_status(500)
+        detail_to_keep = ["name", "type", "size", "ino", "mode"]
+        filtered_result = [
+            {info: item_dict[info] for info in detail_to_keep if info in item_dict}
+            for item_dict in result
+        ]
+        response["content"] = filtered_result
+        root_path = self.fs_manager.name_to_prefix[key]
+        mapped_result = self.fs_manager.map_paths(root_path, key, filtered_result)
+        response["content"] = mapped_result
         self.write(response)
-        self.finish()
+        await self.finish()
 
     # PUT /jupyter_fsspec/files?key=my-key&item_path=/some_directory/file.txt
     # JSON Payload
@@ -609,7 +556,7 @@ class FileSystemHandler(APIHandler):
             self.set_status(500)
 
         self.write(response)
-        self.finish()
+        await self.finish()
 
     # DELETE /jupyter_fsspec/files?key=my-key&item_path=/some_directory/file.txt
     @tornado.web.authenticated
@@ -659,7 +606,7 @@ class FileSystemHandler(APIHandler):
             self.set_status(500)
 
         self.write(response)
-        self.finish()
+        await self.finish()
 
 
 def setup_handlers(web_app):
@@ -676,6 +623,7 @@ def setup_handlers(web_app):
     route_fs_file_transfer = url_path_join(
         base_url, "jupyter_fsspec", "files", "transfer"
     )
+    contents = url_path_join(base_url, "jupyter_fsspec", "files", "contents")
 
     handlers = [
         (route_fsspec_config, FsspecConfigHandler, dict(fs_manager=fs_manager)),
@@ -683,6 +631,32 @@ def setup_handlers(web_app):
         (route_rename_files, RenameFileHandler, dict(fs_manager=fs_manager)),
         (route_file_actions, FileActionHandler, dict(fs_manager=fs_manager)),
         (route_fs_file_transfer, FileTransferHandler, dict(fs_manager=fs_manager)),
+        (contents, FileContentsHandler, dict(fs_manager=fs_manager)),
     ]
 
     web_app.add_handlers(host_pattern, handlers)
+
+
+async def main():
+    port = 9898  # or from CLI args
+    # mock login to bypass tornado auth
+    APIHandler.get_current_user = lambda *_, **__: "tester"
+    app = tornado.web.Application(base_url=".*")
+    setup_handlers(app)
+
+    app.listen(port)
+    shutdown = asyncio.Event()
+    try:
+        await shutdown.wait()
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        pass
+
+
+if __name__ == "__main__":
+    import fsspec
+
+    # make sure memFS contains something
+    m = fsspec.filesystem("memory")
+    m.pipe_file("mytests/afile", b"hello")
+    print("http://127.0.0.1:9898/")
+    asyncio.run(main())
