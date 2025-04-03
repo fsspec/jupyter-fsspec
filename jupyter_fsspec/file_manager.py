@@ -265,9 +265,7 @@ class FileSystemManager:
             item_path = item_path.replace(key, "")
 
         # check item_path includes prefix_path
-        if (prefix_path not in item_path) and (
-            fs["protocol"] == "file" or fs["protocol"] == "memory"
-        ):
+        if prefix_path not in item_path:
             item_path = prefix_path + "/" + item_path
 
         return fs, item_path
