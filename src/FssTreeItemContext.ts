@@ -129,9 +129,17 @@ export class FssTreeItemContext {
 
   copyOpenCodeBlock() {
     const path = this.copyPath();
+    const kwargs = this.model.getActiveFilesystemInfo().kwargs;
+    const [_, relative_path] = path.split(/\/(.+)/);
+    const fsInfo = this.model.getActiveFilesystemInfo();
+    const real_path =
+      fsInfo.protocol +
+      '://' +
+      (fsInfo.prefix_path ? fsInfo.prefix_path + '/' : '') +
+      relative_path;
 
     if (path) {
-      const openCodeBlock = `with fsspec.open("${path}", "rb") as f:\n   ...`;
+      const openCodeBlock = `import json\nfsspec_kwargs = json.loads(${JSON.stringify(JSON.stringify(kwargs))})\nwith fsspec.open("${real_path}", mode="rb", **fsspec_kwargs) as f:\n   ...`;
       navigator.clipboard.writeText(openCodeBlock).then(
         () => {
           this.logger.info('Code snippet copied and inserted', {

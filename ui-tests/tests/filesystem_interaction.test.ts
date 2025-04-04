@@ -278,13 +278,12 @@ test('insert open code snippet', async ({ page }) => {
     .getByText('myfile.txt', { exact: true })
     .click({ button: 'right' });
 
+  const copyCodeBlock = `import json\nfsspec_kwargs = json.loads("{}")\nwith fsspec.open("memory:///mymemoryfs/myfile.txt", mode="rb", **fsspec_kwargs) as f:\n   ...`;
   await expect.soft(page.getByText('Insert `open` Code Snippet')).toBeVisible();
   await page.getByText('Insert `open` Code Snippet').click();
 
   const copiedText = await page.evaluate(() => navigator.clipboard.readText());
-  expect(copiedText).toEqual(
-    `with fsspec.open("mymem/myfile.txt", "rb") as f:\n   ...`
-  );
+  expect(copiedText).toEqual(copyCodeBlock);
 });
 
 test('insert open with code snippet with active notebook cell', async ({
@@ -301,9 +300,7 @@ test('insert open with code snippet with active notebook cell', async ({
   // add a cell with some content
   const cellText = '# This is a code cell.';
   await page.notebook.addCell('code', cellText);
-
-  const copyCodeBlock = `with fsspec.open("mymem/myfile.txt", "rb") as f:\n   ...`;
-
+  const copyCodeBlock = `import json\nfsspec_kwargs = json.loads("{}")\nwith fsspec.open("memory:///mymemoryfs/myfile.txt", mode="rb", **fsspec_kwargs) as f:\n   ...`;
   await page
     .getByText('myfile.txt', { exact: true })
     .click({ button: 'right' });
@@ -317,6 +314,17 @@ test('insert open with code snippet with active notebook cell', async ({
   console.log('copiedText: ');
   console.log(copiedText);
   expect(copiedText).toEqual(copyCodeBlock);
+
+  // add a cell with some content
+  const testWriteCodeBlock = `import fsspec\nimport json\nfsspec_kwargs = json.loads("{}")\nwith fsspec.open("memory:///mymemoryfs/myfile.txt", mode="wb", **fsspec_kwargs) as f:\n   f.write("hêllo?".encode("utf-8"))`;
+  await page.notebook.addCell('code', testWriteCodeBlock);
+  const testOpenCodeBlock = `with fsspec.open("memory:///mymemoryfs/myfile.txt", mode="rb", **fsspec_kwargs) as f:\n   print(f.read())`;
+  await page.notebook.addCell('code', testOpenCodeBlock);
+
+  await page.notebook.runCell(2);
+  await page.notebook.runCell(3);
+  const output = await page.notebook.getCellTextOutput(3);
+  expect(output).toEqual(["b'h\\xc3\\xaallo?'\n"]);
 
   // // verify the cell contents # TODO: debug cell content grab
   // const fullText = cellText + '\n' + copyCodeBlock;
