@@ -18,6 +18,12 @@ declare global {
   }
 }
 
+// eslint-disable-next-line
+export interface FilesysInfo {
+  path: string;
+  protocol: string;
+}
+
 export class FsspecModel {
   private readonly logger = Logger.getLogger('FsspecModel');
 
@@ -85,7 +91,7 @@ export class FsspecModel {
     return this.activeFilesystem;
   }
 
-  getActiveFilesystemInfo(): string {
+  getActiveFilesystemInfo(): FilesysInfo {
     return this.userFilesystems[this.activeFilesystem];
   }
 
