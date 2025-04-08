@@ -74,23 +74,7 @@ export class FssTreeItemContext {
   }
 
   copyPath() {
-    const info = this.model.getActiveFilesystemInfo();
-    const protocol = info?.canonical_path.slice(
-      0,
-      info.canonical_path.length - info.path.length
-    );
-    if (protocol) {
-      const canonical =
-        protocol + '/' + this.root.dataset.fss.replace(/^\/+/, () => '');
-      this.logger.debug('Path generated', { path: canonical });
-      return canonical;
-    } else {
-      this.logger.warn('Failed to generate path', {
-        reason: 'No protocol found',
-        info
-      });
-      return undefined;
-    }
+    return this.root.dataset.fss.replace(/^\/+/, () => '');
   }
 
   copyPathToClipboard() {
@@ -145,9 +129,23 @@ export class FssTreeItemContext {
 
   copyOpenCodeBlock() {
     const path = this.copyPath();
+    const kwargs = this.model.getActiveFilesystemInfo().kwargs;
+    const [_, relative_path] = path.split(/\/(.+)/);
+    const fsInfo = this.model.getActiveFilesystemInfo();
+    const real_path =
+      fsInfo.protocol +
+      '://' +
+      (fsInfo.prefix_path ? fsInfo.prefix_path + '/' : '') +
+      relative_path;
+
+    let openCodeBlock = '';
+    if (kwargs) {
+      openCodeBlock = `import fsspec\nimport json\nfsspec_kwargs = json.loads(${JSON.stringify(JSON.stringify(kwargs))})\nwith fsspec.open("${real_path}", mode="rb", **fsspec_kwargs) as f:\n   ...`;
+    } else {
+      openCodeBlock = `import fsspec\nwith fsspec.open("${real_path}", mode="rb"q) as f:\n   ...`;
+    }
 
     if (path) {
-      const openCodeBlock = `with fsspec.open("${path}", "rb") as f:\n   ...`;
       navigator.clipboard.writeText(openCodeBlock).then(
         () => {
           this.logger.info('Code snippet copied and inserted', {

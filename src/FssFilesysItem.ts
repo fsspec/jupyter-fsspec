@@ -1,5 +1,7 @@
 // Element for displaying a single fsspec filesystem
 
+import { Signal } from '@lumino/signaling';
+
 import { FssFilesysContextMenu } from './FssFilesysContextMenu';
 import { Logger } from './logger';
 import { INotebookTracker } from '@jupyterlab/notebook';
@@ -14,32 +16,23 @@ class FssFilesysItem {
   filesysName: string;
   filesysProtocol: string;
   fsInfo: any;
-  clickSlots: any;
   nameField: any;
   pathField: any;
   _selected = false;
   _hovered = false;
   notebookTracker: INotebookTracker;
   private readonly logger: Logger;
+  filesysClicked: Signal<any, string>;
 
-  constructor(
-    model: any,
-    fsInfo: any,
-    userClickSlots: any,
-    notebookTracker: INotebookTracker
-  ) {
+  constructor(model: any, fsInfo: any, notebookTracker: INotebookTracker) {
     this.logger = Logger.getLogger('FssFilesysItem');
 
     this.model = model;
     this.filesysName = fsInfo.name;
     this.filesysProtocol = fsInfo.protocol;
     this.fsInfo = fsInfo;
-
-    this.clickSlots = [];
-    for (const slot of userClickSlots) {
-      this.clickSlots.push(slot);
-    }
     this.notebookTracker = notebookTracker;
+    this.filesysClicked = new Signal<this, any>(this);
 
     const fsItem = document.createElement('div');
     fsItem.classList.add('jfss-fsitem-root');
@@ -58,7 +51,7 @@ class FssFilesysItem {
 
     this.pathField = document.createElement('div');
     this.pathField.classList.add('jfss-fsitem-protocol');
-    this.pathField.innerText = 'Path: ' + fsInfo.path;
+    this.pathField.innerText = 'Path: ' + fsInfo.prefix_path;
     fsItem.appendChild(this.pathField);
 
     fsItem.addEventListener('click', this.handleClick.bind(this));
@@ -195,9 +188,7 @@ class FssFilesysItem {
     });
 
     this.selected = true;
-    for (const slot of this.clickSlots) {
-      slot(this.fsInfo);
-    }
+    this.filesysClicked.emit(this.fsInfo);
   }
 }
 
