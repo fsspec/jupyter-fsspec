@@ -300,7 +300,7 @@ test('insert open with code snippet with active notebook cell', async ({
   // add a cell with some content
   const cellText = '# This is a code cell.';
   await page.notebook.addCell('code', cellText);
-  const copyCodeBlock = `import json\nfsspec_kwargs = json.loads("{}")\nwith fsspec.open("memory:///mymemoryfs/myfile.txt", mode="rb", **fsspec_kwargs) as f:\n   ...`;
+  const copyCodeBlock = `import fsspec\nimport json\nfsspec_kwargs = json.loads("{}")\nwith fsspec.open("memory:///mymemoryfs/myfile.txt", mode="rb", **fsspec_kwargs) as f:\n   ...`;
   await page
     .getByText('myfile.txt', { exact: true })
     .click({ button: 'right' });
