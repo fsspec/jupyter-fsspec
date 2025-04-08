@@ -94,7 +94,7 @@ class FsspecConfigHandler(APIHandler):
                 "path": fs_info["name"],
                 "prefix_path": fs_info["path"],
                 "canonical_path": fs_info["canonical_path"],
-                "kwargs": fs_info["instance"].storage_options,
+                "kwargs": fs_info["kwargs"],
             }
             file_systems.append(instance)
 
