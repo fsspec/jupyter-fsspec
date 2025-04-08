@@ -278,7 +278,7 @@ test('insert open code snippet', async ({ page }) => {
     .getByText('myfile.txt', { exact: true })
     .click({ button: 'right' });
 
-  const copyCodeBlock = `import json\nfsspec_kwargs = json.loads("{}")\nwith fsspec.open("memory:///mymemoryfs/myfile.txt", mode="rb", **fsspec_kwargs) as f:\n   ...`;
+  const copyCodeBlock = `import fsspec\nimport json\nfsspec_kwargs = json.loads("{}")\nwith fsspec.open("memory:///mymemoryfs/myfile.txt", mode="rb", **fsspec_kwargs) as f:\n   ...`;
   await expect.soft(page.getByText('Insert `open` Code Snippet')).toBeVisible();
   await page.getByText('Insert `open` Code Snippet').click();
 
