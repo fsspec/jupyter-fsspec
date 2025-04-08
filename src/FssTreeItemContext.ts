@@ -130,6 +130,7 @@ export class FssTreeItemContext {
   copyOpenCodeBlock() {
     const path = this.copyPath();
     const kwargs = this.model.getActiveFilesystemInfo().kwargs;
+    // eslint-disable-next-line
     const [_, relative_path] = path.split(/\/(.+)/);
     const fsInfo = this.model.getActiveFilesystemInfo();
     const real_path =

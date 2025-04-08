@@ -62,27 +62,23 @@ except:
 `;
 
 class FsspecWidget extends Widget {
-  upperArea: any;
-  model: any;
-  selectedFsLabel: any;
-  fsDetails: any;
-  detailName: any;
-  detailPath: any;
+  upperArea: HTMLElement;
+  model: FsspecModel;
+  selectedFsLabel: HTMLElement;
   treeView: any;
   elementHeap: any = {}; // Holds FssTreeItem's keyed by path
   sourcesHeap: any = {}; // Holds FssFilesysItem's keyed by name
-  emptySourcesHint: any;
-  filesysContainer: any;
-  openInputHidden: any;
+  emptySourcesHint: HTMLElement;
+  filesysContainer: HTMLElement;
+  openInputHidden: HTMLInputElement;
   dirTree: any = {};
-  getCurrentWidget: any;
   currentTarget: any = null;
   notebookTracker: INotebookTracker;
-  uploadDialog: any = null;
-  jobQueueControls: any;
-  jobQueue: any;
-  jobQueueContainer: any;
-  jobQueueExpander: any;
+  uploadDialog: Dialog<null> | null = null;
+  jobQueueControls: HTMLElement;
+  jobQueue: HTMLElement;
+  jobQueueContainer: HTMLElement;
+  jobQueueExpander: HTMLElement;
   queuedPickerUploadInfo: any;
   queuedJupyterFileBrowserUploadInfo: any;
   fileBrowserFactory: any;
@@ -256,22 +252,6 @@ class FsspecWidget extends Widget {
     this.logger.debug('Widget initialization complete');
   }
 
-  // handleMainWidgetChanged() {
-  //   // Change the target notebook when the user switches widgets in the application
-  //   const currentWidget = this.getCurrentWidget();
-  //   if (currentWidget instanceof DocumentWidget) {
-  //     // TODO: !!!!!!!! Fix/make more specific, for notebooks
-  //     // Notebooks are the only valid target
-  //     // this.currentTargetLbl.innerText =
-  //     //   'Current Notebook: ' + currentWidget.title.label;
-  //     this.currentTarget = currentWidget;
-  //   } else {
-  //     // Set target to nothing if it's not valid
-  //     // this.currentTargetLbl.innerText = 'Current Notebook: <None>';
-  //     this.currentTarget = null;
-  //   }
-  // }
-
   handleJobQueueExpanderClick() {
     const currentHeight = this.jobQueueContainer.style.height;
     let newHeight: string;
@@ -431,7 +411,7 @@ class FsspecWidget extends Widget {
   }
 
   handleFilePickerChange() {
-    if (!this.openInputHidden.value) {
+    if (!this.openInputHidden.value || this.openInputHidden.files === null) {
       this.logger.debug('File picker cancelled or no file selected');
       this.queuedPickerUploadInfo = null;
       return;
@@ -453,11 +433,11 @@ class FsspecWidget extends Widget {
       );
 
       this.queuedPickerUploadInfo = null;
-      this.openInputHidden.value = null;
+      this.openInputHidden.value = '';
     } else {
       this.logger.warn('No file selected from browser picker');
       this.queuedPickerUploadInfo = null;
-      this.openInputHidden.value = null;
+      this.openInputHidden.value = '';
       return;
     }
   }
@@ -768,7 +748,8 @@ class FsspecWidget extends Widget {
       path: fsInfo.path
     });
 
-    for (const fsElem of this.filesysContainer.children) {
+    for (const child of this.filesysContainer.children) {
+      const fsElem: any = child;
       // Set clicked FS to selected state (+colorize), deselect others
       if (!(fsElem.dataset.fssname in this.sourcesHeap)) {
         // This should never happen

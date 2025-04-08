@@ -503,11 +503,9 @@ test('upload file from helper', async ({ page }) => {
   await page.notebook.createNew();
   await page.waitForTimeout(1000);
 
-  const quote_mark = '"';
-  const new_bytes = `${quote_mark}Hello there from playwright${quote_mark}.encode()`;
   await page.notebook.addCell(
     'code',
-    `from jupyter_fsspec import helper\nhelper.set_user_data(${new_bytes})`
+    `from jupyter_fsspec import helper\nhelper.set_user_data(b'some binary data')`
   );
   await page.notebook.runCell(1);
 
