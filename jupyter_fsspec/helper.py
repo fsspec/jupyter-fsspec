@@ -3,6 +3,7 @@
 
 import copy
 import datetime
+import re
 import tempfile
 import traceback
 from base64 import standard_b64encode
@@ -23,6 +24,7 @@ _EMPTY_RESULT = {
     "error": None,
 }
 out = None  # Set below
+_builtin_open = open  # The public API here shadows this name, save it here
 
 
 class HelperOutput:
@@ -147,12 +149,22 @@ def _request_bytes(fs_name, path):
     blank["path"] = path
     out = HelperOutput(blank)
 
-    filesys = filesystem(fs_name)
+    # filesys = filesystem(fs_name)
     try:
+        split_path = re.split("/+", path)
+        named_fs_key = split_path[0]
+        fs_info = _get_manager().get_filesystem(named_fs_key)
+        abspath = (
+            fs_info["path"] + "/" + "/".join(split_path[1:])
+        )  # todo fix index error
+        # named_fs_info = _get_manager().get_filesystem(named_fs_key)
+        # with _builtin_open(r'FOOBAR.out', 'wb') as fhandle:
+        #     fhandle.write(f'@@@@@@@SPAMEGGS*******\n{named_fs_info}'.encode('utf8'))
+        named_fs = _get_manager().construct_named_fs(named_fs_key)
         out = HelperOutput(
             {
                 "ok": True,
-                "value": filesys.open(path, mode="rb").read(),
+                "value": named_fs.open(abspath, mode="rb").read(),
                 "path": path,
                 "timestamp": now,
                 "error": None,
