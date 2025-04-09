@@ -169,12 +169,6 @@ export class FssTreeItem {
     this.root.dataset.fsize = size;
 
     const sizeDisplay = `(${size.toLocaleString()})`;
-    // if (parseInt(size) > 100) {
-    //     const sizeFormat = new Intl.NumberFormat(undefined, {
-    //         notation: 'scientific',
-    //     });
-    //     sizeDisplay = `(${sizeFormat.format(parseInt(size))})`;
-    // }
     this.sizeLbl.innerText = sizeDisplay;
   }
 
