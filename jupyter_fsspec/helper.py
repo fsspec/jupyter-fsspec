@@ -3,6 +3,7 @@
 
 import copy
 import datetime
+import json
 import re
 import tempfile
 import traceback
@@ -166,6 +167,14 @@ def _request_bytes(fs_name, path):
             path_components.extend(remainder)
         abspath = "/".join(path_components)
         named_fs = _get_manager().construct_named_fs(named_fs_key)
+        with _builtin_open(
+            "DBG_helper_"
+            + re.sub(r"[^A-Za-z0-9]", "_", datetime.datetime.now().isoformat())
+            + ".txt",
+            "wb",
+        ) as fhandle:
+            out = json.dumps({"path": path, "key": named_fs_key, "abspath": abspath})
+            fhandle.write(f"DEBUG SEND TO HELPER\n{out}".encode("utf8"))
         out = HelperOutput(
             {
                 "ok": True,
