@@ -149,17 +149,22 @@ def _request_bytes(fs_name, path):
     blank["path"] = path
     out = HelperOutput(blank)
 
-    # filesys = filesystem(fs_name)
     try:
-        split_path = re.split("/+", path)
+        # Get the fs key (the fs name from the config)
+        split_path = [p for p in re.split("/+", path) if p]
+        if not split_path:
+            raise JupyterFsspecException("Invalid path")
+        remainder = []
+        if len(split_path) > 1:
+            remainder = split_path[1:]
         named_fs_key = split_path[0]
+
+        # Get a non-magic (magic paths start with a fake/virtual named_fs_key component) absolute path
         fs_info = _get_manager().get_filesystem(named_fs_key)
-        abspath = (
-            fs_info["path"] + "/" + "/".join(split_path[1:])
-        )  # todo fix index error
-        # named_fs_info = _get_manager().get_filesystem(named_fs_key)
-        # with _builtin_open(r'FOOBAR.out', 'wb') as fhandle:
-        #     fhandle.write(f'@@@@@@@SPAMEGGS*******\n{named_fs_info}'.encode('utf8'))
+        path_components = [fs_info["path"]]
+        if remainder:
+            path_components.extend(remainder)
+        abspath = "/".join(path_components)
         named_fs = _get_manager().construct_named_fs(named_fs_key)
         out = HelperOutput(
             {
