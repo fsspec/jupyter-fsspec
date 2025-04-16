@@ -612,7 +612,8 @@ class FileSystemHandler(JupyterFsspecHandler):
 def setup_handlers(web_app):
     host_pattern = ".*$"
 
-    fs_manager = FileSystemManager.create_default()
+    allow_abs_path = web_app.settings["jupyter_fsspec_allow_abs"]
+    fs_manager = FileSystemManager.create_default(allow_absolute_paths=allow_abs_path)
 
     base_url = web_app.settings["base_url"]
     route_fsspec_config = url_path_join(base_url, "jupyter_fsspec", "config")

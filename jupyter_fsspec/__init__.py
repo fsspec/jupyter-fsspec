@@ -12,6 +12,18 @@ from . import helper as helper
 from .handlers import setup_handlers
 
 
+from traitlets import Bool
+from traitlets.config import Configurable
+
+
+class JupyterFsspec(Configurable):
+    allow_absolute_paths = Bool(
+        True,
+        help="If True, accepts absolute paths via jupyter_fsspec.yaml config. "
+        "Only intended for trusted environments.",
+    ).tag(config=True)
+
+
 def _jupyter_labextension_paths():
     return [{"src": "labextension", "dest": "jupyterFsspec"}]
 
@@ -28,6 +40,8 @@ def _load_jupyter_server_extension(server_app):
     server_app: jupyterlab.labapp.LabApp
         JupyterLab application instance
     """
+    cfg = JupyterFsspec(parent=server_app)
+    server_app.web_app.settings["jupyter_fsspec_allow_abs"] = cfg.allow_absolute_paths
     setup_handlers(server_app.web_app)
     name = "jupyter_fsspec"
     server_app.log.info(f"Registered {name} server extension")

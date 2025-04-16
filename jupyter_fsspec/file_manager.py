@@ -17,7 +17,8 @@ logger.setLevel(logging.INFO)
 
 
 class FileSystemManager:
-    def __init__(self, config_file):
+    def __init__(self, config_file, allow_absolute_paths=True):
+        self.allow_absolute_paths = allow_absolute_paths
         self.filesystems = {}
         self.name_to_prefix = {}
         self.base_dir = jupyter_config_dir()
@@ -25,6 +26,13 @@ class FileSystemManager:
         self.config_path = os.path.join(self.base_dir, config_file)
         self.config = self.load_config(handle_errors=True)
         self.initialize_filesystems()
+
+    def _safe_join(self, base, path):
+        final_path = os.path.abspath(os.path.join(base, path))
+        base_path = os.path.abspath(base)
+        if not final_path.startswith(base_path):
+            raise ValueError("Resolved path escapes the root directory")
+        return final_path
 
     def _encode_key(self, fs_config):
         # fs_path = fs_config['path'].strip('/')
@@ -42,8 +50,10 @@ class FileSystemManager:
         return fs_name
 
     @staticmethod
-    def create_default():
-        return FileSystemManager(config_file="jupyter-fsspec.yaml")
+    def create_default(allow_absolute_paths=True):
+        return FileSystemManager(
+            config_file="jupyter-fsspec.yaml", allow_absolute_paths=allow_absolute_paths
+        )
 
     @staticmethod
     def validate_config(config_loaded):
@@ -146,15 +156,41 @@ class FileSystemManager:
 
             fs_protocol = self._get_protocol_from_path(fs_path)
             split_path_list = fs_path.split("://", 1)
-            protocol_path = split_path_list[0] + "://"
+            protocol_path = fs_protocol + "://"
             prefix_path = "" if len(split_path_list) <= 1 else split_path_list[1]
+            if len(split_path_list) == 1 and split_path_list[0] != fs_protocol:
+                prefix_path = split_path_list[0]
             name_to_prefix[fs_name] = prefix_path
             key = self._encode_key(fs_config)
+
+            absolute_path = None
+            if fs_protocol == "file" and not self.allow_absolute_paths:
+                if os.path.isabs(prefix_path):
+                    logger.error(
+                        f"Failed to initialized filesystem '{fs_name}' at path '{fs_path}', relative path is required."
+                    )
+                    continue
+                try:
+                    root_dir = os.getcwd() if not self.allow_absolute_paths else ""
+                    absolute_path = self._safe_join(root_dir, prefix_path)
+                except ValueError:
+                    logger.error(
+                        f"Failed to initialize filesystem '{fs_name}' at path '{fs_path}'. Path escapes the root directory."
+                    )
+                    continue
+            if absolute_path:
+                self.absolute_path = absolute_path
 
             canonical_path = protocol_path + key
             logger.debug("fs_protocol: %s", fs_protocol)
             logger.debug("prefix_path: %s", prefix_path)
             logger.debug("canonical_path: %s", canonical_path)
+
+            if fs_protocol == "file" and not os.path.exists(prefix_path):
+                logger.error(
+                    f"Failed to initialize filesystem '{fs_name}' at path '{fs_path}'. Local filepath not found."
+                )
+                continue
 
             fs_class = fsspec.get_filesystem_class(fs_protocol)
             if fs_class.async_impl:
