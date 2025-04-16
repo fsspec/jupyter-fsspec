@@ -254,6 +254,11 @@ def s3_client(s3_base):
     client.close()
 
 
-@pytest.fixture
+@pytest.fixture(params=[True, False])
 def jp_server_config(jp_server_config):
-    return {"ServerApp": {"jpserver_extensions": {"jupyter_fsspec": True}}}
+    return {
+        "ServerApp": {"jpserver_extensions": {"jupyter_fsspec": True}},
+        "JupyterFsspec": {
+            "jupyter_fsspec_allow_abs": True  # TODO: update to request.param for tests
+        },
+    }
