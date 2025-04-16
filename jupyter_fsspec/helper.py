@@ -3,6 +3,9 @@
 
 import copy
 import datetime
+import json
+import os
+import re
 import tempfile
 import traceback
 from base64 import standard_b64encode
@@ -23,6 +26,7 @@ _EMPTY_RESULT = {
     "error": None,
 }
 out = None  # Set below
+_builtin_open = open  # The public API here shadows this name, save it here
 
 
 class HelperOutput:
@@ -109,7 +113,11 @@ def _get_manager(cached=True):
     # The manager is cached to avoid hitting the disk/config file multiple times.
     global _manager
     if not cached or _manager is None:
-        _manager = FileSystemManager.create_default()
+        allow_abs = (
+            os.environ.get("JUPYTER_FSSPEC_ALLOW_ABSOLUTE_PATHS", "true").lower()
+            == "true"
+        )
+        _manager = FileSystemManager.create_default(allow_absolute_paths=allow_abs)
     return _manager
 
 
@@ -147,12 +155,35 @@ def _request_bytes(fs_name, path):
     blank["path"] = path
     out = HelperOutput(blank)
 
-    filesys = filesystem(fs_name)
     try:
+        # Get the fs key (the fs name from the config)
+        split_path = [p for p in re.split("/+", path) if p]
+        if not split_path:
+            raise JupyterFsspecException("Invalid path")
+        remainder = []
+        if len(split_path) > 1:
+            remainder = split_path[1:]
+        named_fs_key = split_path[0]
+
+        # Get a non-magic (magic paths start with a fake/virtual named_fs_key component) absolute path
+        fs_info = _get_manager().get_filesystem(named_fs_key)
+        path_components = [fs_info["path"]]
+        if remainder:
+            path_components.extend(remainder)
+        abspath = "/".join(path_components)
+        named_fs = _get_manager().construct_named_fs(named_fs_key)
+        with _builtin_open(
+            "DBG_helper_"
+            + re.sub(r"[^A-Za-z0-9]", "_", datetime.datetime.now().isoformat())
+            + ".txt",
+            "wb",
+        ) as fhandle:
+            out = json.dumps({"path": path, "key": named_fs_key, "abspath": abspath})
+            fhandle.write(f"DEBUG SEND TO HELPER\n{out}".encode("utf8"))
         out = HelperOutput(
             {
                 "ok": True,
-                "value": filesys.open(path, mode="rb").read(),
+                "value": named_fs.open(abspath, mode="rb").read(),
                 "path": path,
                 "timestamp": now,
                 "error": None,
