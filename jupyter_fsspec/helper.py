@@ -4,6 +4,7 @@
 import copy
 import datetime
 import json
+import os
 import re
 import tempfile
 import traceback
@@ -112,7 +113,11 @@ def _get_manager(cached=True):
     # The manager is cached to avoid hitting the disk/config file multiple times.
     global _manager
     if not cached or _manager is None:
-        _manager = FileSystemManager.create_default()
+        allow_abs = (
+            os.environ.get("JUPYTER_FSSPEC_ALLOW_ABSOLUTE_PATHS", "true").lower()
+            == "true"
+        )
+        _manager = FileSystemManager.create_default(allow_absolute_paths=allow_abs)
     return _manager
 
 
