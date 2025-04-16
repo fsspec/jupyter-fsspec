@@ -82,7 +82,7 @@ sources:
     path: "file://Users/finnmertens/cfilter/jupyterlab"
   - name: "Averager project"
     path: "file://Users/finnmertens/averager"
-  - name: "Remote MyBucket
+  - name: "Remote MyBucket"
     path: "s3://mybucket"
     args: []
     kwargs:
