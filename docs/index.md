@@ -98,7 +98,7 @@ sources:
 The config file has a list of sources, where each item needs a name and a path URL. The name
 is a unique identifier, so it should not be duplicated. The type of filesystem `fsspec` should
 construct is required in the path URL as the protocol `file://` etc. For local filesystems,
-when the path is provided with no prefix in the protocol URL e.g. with no `memory://` or `file://`,
+when the path is provided with no prefix in the protocol URL e.g. `file://`,
 the filesystem will be instantiated at the root of the corresponding filesystem.
 See the [fsspec documentation](https://filesystem-spec.readthedocs.io/en/latest/usage.html#instantiate-a-file-system)
 for more information about available protocols and filesystem instantiation.
@@ -108,6 +108,17 @@ option accepts directory paths but does not support specifying specific files pa
 Lastly, you can pass additional arguments to the `fsspec` filesystem contructor by using the
 `args` and/or `kwargs` keys. You can check the `fsspec` docs for the available options that
 each filesystem implementation offers.
+
+.. warning::
+By default, the file browser in jupyter_fsspec does not enforce Jupyter Server’s root
+directory restriction and will allow access to paths outside of it. To restrict access:
+
+- Set the CLI flag `--JupyterFsspec.allow_absolute_paths=False ` when instantiating the server
+- Set the corresponding environment variable in the kernel environment environment (see `helper` module section)
+
+This will ensure that `jupyter_fsspec` will only instantiate filesystems rooted within
+the server's working directory in both the browser UI and in the kernel side.
+Since the kernel is usually a fully privileged process, this restriction only applies to the automatic behavior of jupyter_fsspec.
 
 ## The `helper` module
 
@@ -122,10 +133,19 @@ from jupyter_fsspec import helper
 # (and use it as you would any fsspec filesystem)
 fs = helper.filesystem('Averager project')
 
-with fs.open('/My/file/path', 'rb') as fhandle:
+with fsspec.open('file://my/file/path', 'rb') as fhandle:
     filebytes = fhandle.read()
 filebytes[:256]
 ```
+
+.. note::
+In disctrubuted environments, (for e.g. remote kernels) the paths in the code
+that the helper uses may not be valid unless the kernel and server share a filesystem.
+
+.. warning::
+The environment variable "JUPYTER_FSSPEC_ALLOW_ABSOLUTE_PATHS" defaults to true, and
+should be set to false in the kernel environment to ensure that the the helper does not
+instantiate filesystems with absolute paths.
 
 <!--
 TODO populate this
