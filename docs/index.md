@@ -74,14 +74,14 @@ currently supported through the UI.
 
 To define your `fsspec` filesystems, you will need to list them in the Jupyter config folder,
 inside a file named `~/.jupyter/jupyter-fsspec.yaml`. Here's a sample file where for the local
-filesystem instances, `file://Users/finnmertens` is the server root path:
+filesystem instances, `file:///Users/finnmertens` is the server root path:
 
 ```
 sources:
   - name: "Cell filter repo"
-    path: "file://Users/finnmertens/cfilter/jupyterlab"
+    path: "file:///Users/finnmertens/cfilter/jupyterlab"
   - name: "Averager project"
-    path: "file://Users/finnmertens/averager"
+    path: "file:///Users/finnmertens/averager"
   - name: "Remote MyBucket"
     path: "s3://mybucket"
     args: []
@@ -100,6 +100,8 @@ is a unique identifier, so it should not be duplicated. The type of filesystem `
 construct is required in the path URL as the protocol `file://` etc. For local filesystems,
 when the path is provided with no prefix in the protocol URL e.g. with no `memory://` or `file://`,
 the filesystem will be instantiated at the root of the corresponding filesystem.
+See the [fsspec documentation](https://filesystem-spec.readthedocs.io/en/latest/usage.html#instantiate-a-file-system)
+for more information about available protocols and filesystem instantiation.
 If you provide the `protocol` argument it will be ignored. The config file path URL
 option accepts directory paths but does not support specifying specific files paths.
 
