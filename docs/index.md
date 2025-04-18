@@ -66,7 +66,7 @@ You can upload files from multiple sources:
     storage systems_
 
 :::{note}
-**Note:** To transfer files between different remote filesystems (e.g., from S3
+To transfer files between different remote filesystems (e.g., from S3
 to GCS), you'll need to use the `helper` module in your notebook to download
 from one source and upload to another. Direct remote-to-remote transfers are not
 currently supported through the UI.
