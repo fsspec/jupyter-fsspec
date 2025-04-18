@@ -65,10 +65,12 @@ You can upload files from multiple sources:
   - _Useful for: Moving files between your JupyterLab workspace and remote
     storage systems_
 
-**Note:** To transfer files between different remote filesystems (e.g., from S3
+:::{note}
+To transfer files between different remote filesystems (e.g., from S3
 to GCS), you'll need to use the `helper` module in your notebook to download
 from one source and upload to another. Direct remote-to-remote transfers are not
 currently supported through the UI.
+:::
 
 ## Config File
 
@@ -109,7 +111,7 @@ Lastly, you can pass additional arguments to the `fsspec` filesystem contructor 
 `args` and/or `kwargs` keys. You can check the `fsspec` docs for the available options that
 each filesystem implementation offers.
 
-.. warning::
+:::{warning}
 By default, the file browser in jupyter_fsspec does not enforce Jupyter Server’s root
 directory restriction and will allow access to paths outside of it. To restrict access:
 
@@ -119,6 +121,7 @@ directory restriction and will allow access to paths outside of it. To restrict 
 This will ensure that `jupyter_fsspec` will only instantiate filesystems rooted within
 the server's working directory in both the browser UI and in the kernel side.
 Since the kernel is usually a fully privileged process, this restriction only applies to the automatic behavior of jupyter_fsspec.
+:::
 
 ## The `helper` module
 
@@ -138,14 +141,16 @@ with fsspec.open('file://my/file/path', 'rb') as fhandle:
 filebytes[:256]
 ```
 
-.. note::
+:::{note}
 In disctrubuted environments, (for e.g. remote kernels) the paths in the code
 that the helper uses may not be valid unless the kernel and server share a filesystem.
+:::
 
-.. warning::
+:::{warning}
 The environment variable "JUPYTER_FSSPEC_ALLOW_ABSOLUTE_PATHS" defaults to true, and
 should be set to false in the kernel environment to ensure that the the helper does not
 instantiate filesystems with absolute paths.
+:::
 
 <!--
 TODO populate this
