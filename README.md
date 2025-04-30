@@ -6,7 +6,7 @@ Welcome to the `jupyter_fsspec` repo, a Jupyter extension for the `fsspec` Pytho
 Browse your fsspec filesystems in Jupyter, copy files and paths and otherwise interact with
 your data in the Jupyter interface and inside your notebooks.
 
-[![jupyter-fsspec preview](docs/_static/jupyter-fsspec.png)](jupyter-fsspec-preview)
+![jupyter-fsspec preview](docs/_static/jupyter-fsspec.png)
 
 ## Documentation
 
