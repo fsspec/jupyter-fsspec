@@ -192,14 +192,6 @@ class FileSystemManager:
                 )
                 continue
 
-            fs_class = fsspec.get_filesystem_class(fs_protocol)
-            if fs_class.async_impl:
-                fs = fsspec.filesystem(fs_protocol, asynchronous=True, *args, **kwargs)
-            else:
-                sync_fs = fsspec.filesystem(fs_protocol, *args, **kwargs)
-                fs = AsyncFileSystemWrapper(sync_fs)
-            logger.debug("fs_path: %s", fs_path)
-
             # Store the filesystem instance
             fs_info = {
                 "instance": None,
@@ -211,21 +203,46 @@ class FileSystemManager:
                 "args": args,
                 "kwargs": kwargs,
             }
-            new_filesystems[key] = fs_info
-            fs_class = fsspec.get_filesystem_class(fs_protocol)
-            if fs_class.async_impl:
-                fs = FileSystemManager.construct_fs(fs_protocol, True, *args, **kwargs)
-                fs_info["instance"] = fs
-            else:
-                sync_fs = FileSystemManager.construct_fs(
-                    fs_protocol, False, *args, **kwargs
-                )
-                fs = AsyncFileSystemWrapper(sync_fs)
-                fs_info["instance"] = fs
+            try:
+                fs_class = fsspec.get_filesystem_class(fs_protocol)
 
-            logger.debug(
-                f"Initialized filesystem '{fs_name}' with protocol '{fs_protocol}' at path '{fs_path}'"
-            )
+                if fs_class.async_impl:
+                    fs = FileSystemManager.construct_fs(
+                        fs_protocol, True, *args, **kwargs
+                    )
+                    fs_info["instance"] = fs
+                else:
+                    sync_fs = FileSystemManager.construct_fs(
+                        fs_protocol, False, *args, **kwargs
+                    )
+                    fs = AsyncFileSystemWrapper(sync_fs)
+                    fs_info["instance"] = fs
+
+                logger.debug(
+                    f"Initialized filesystem '{fs_name}' with protocol '{fs_protocol}' at path '{fs_path}'"
+                )
+            except Exception:
+                fs_info["instance"] = None
+                logger.error(
+                    f"Failed to initialize filesystem '{fs_name}' at path '{fs_path}'."
+                )
+
+                import traceback
+
+                traceback.print_exc()
+
+                exc_type, exc_value, exc_tb = sys.exc_info()
+                error_info = {
+                    "type": exc_type.__name__,
+                    "message": str(exc_value),
+                    "short_traceback": traceback.format_exception_only(
+                        exc_type, exc_value
+                    )[-1].strip(),
+                    "traceback_list": traceback.format_tb(exc_tb),
+                }
+                fs_info["error"] = error_info
+
+            new_filesystems[key] = fs_info
 
         self.filesystems = new_filesystems
         self.name_to_prefix = name_to_prefix
