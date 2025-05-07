@@ -190,7 +190,11 @@ class FssFilesysItem {
       protocol: this.filesysProtocol,
       path: this.fsInfo.path
     });
-
+    if (this.fsInfo.error) {
+      this.logger.error('Inactive filesystem', {
+        ...this.fsInfo.error
+      });
+    }
     this.selected = true;
     this.filesysClicked.emit(this.fsInfo);
   }
