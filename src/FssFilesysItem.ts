@@ -36,6 +36,10 @@ class FssFilesysItem {
 
     const fsItem = document.createElement('div');
     fsItem.classList.add('jfss-fsitem-root');
+
+    if ('error' in fsInfo) {
+      fsItem.classList.add('jfss-fsitem-error');
+    }
     fsItem.addEventListener('mouseenter', this.handleFsysHover.bind(this));
     fsItem.addEventListener('mouseleave', this.handleFsysHover.bind(this));
     fsItem.dataset.fssname = fsInfo.name;
