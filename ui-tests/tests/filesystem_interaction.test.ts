@@ -60,6 +60,23 @@ const emptyConfig = {
   content: []
 };
 
+const hdfsConfig = {
+  status: 'success',
+  description: 'Retrieved available filesystems from configuration file.',
+  content: [
+    {
+      key: 'myhdfs',
+      name: 'myhdfs',
+      path: 'hdfs://namenode.example.com:9000',
+      prefix_path: 'myhdfs',
+      canonical_path: 'hdfs://namenode.example.com:9000',
+      args: [],
+      kwargs: {},
+      error: { name: 'ImportError' }
+    }
+  ]
+};
+
 const rootMyMemFs = {
   content: [
     {
@@ -149,6 +166,30 @@ test('test open jupyterFsspec with empty config', async ({ page }) => {
     .soft(page.getByRole('link', { name: '⚠ No configured filesystems' }))
     .toBeVisible();
   await expect.soft(page.locator('.jfss-resultarea')).toBeVisible();
+});
+
+test('test open jupyterFsspec with hdfs config', async ({ page }) => {
+  await page.route('http://localhost:8888/jupyter_fsspec/config?**', route => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(hdfsConfig)
+    });
+  });
+
+  await page.goto();
+  await page.getByText('FSSpec', { exact: true }).click();
+
+  // verify filesystem item was created
+  await expect.soft(page.locator('.jfss-fsitem-root')).toBeVisible();
+
+  // filesystem details should match as expected
+  await expect.soft(page.locator('.jfss-fsitem-error')).toBeVisible();
+  await expect.soft(page.locator('.jfss-fsitem-name')).toBeVisible();
+  await expect.soft(page.locator('.jfss-fsitem-name')).toHaveText('myhdfs');
+  await expect
+    .soft(page.locator('.jfss-fsitem-protocol'))
+    .toHaveText('Path: myhdfs');
 });
 
 test('test memory filesystem with mock config data', async ({ page }) => {
