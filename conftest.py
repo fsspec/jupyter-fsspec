@@ -90,6 +90,24 @@ def malformed_config(tmp_path: Path):
 
 
 @pytest.fixture(scope="function")
+def hdfs_config(tmp_path: Path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir(exist_ok=True)
+
+    yaml_content = """sources:
+  - name: "TestSourceHDF"
+    path: "hdfs://namenode.example.com:9000"
+    """
+    yaml_file = config_dir / "jupyter-fsspec.yaml"
+    yaml_file.write_text(yaml_content)
+
+    with patch(
+        "jupyter_fsspec.file_manager.jupyter_config_dir", return_value=str(config_dir)
+    ):
+        print(f"Patching jupyter_config_dir to: {config_dir}")
+
+
+@pytest.fixture(scope="function")
 def bad_info_config(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir(exist_ok=True)
