@@ -159,6 +159,10 @@
   background-color: var(--jp-layout-color2);
 }
 
+.jfss-fsitem-error {
+  color: darkgrey;
+}
+
 .jfss-browseAreaLabel {
   width: 100%;
   margin: 0 0.5rem 0.5rem 0;

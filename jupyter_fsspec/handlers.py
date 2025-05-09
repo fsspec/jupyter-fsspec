@@ -96,6 +96,8 @@ class FsspecConfigHandler(APIHandler):
                 "canonical_path": fs_info["canonical_path"],
                 "kwargs": fs_info["kwargs"],
             }
+            if fs_info.get("error", None):
+                instance["error"] = fs_info["error"]
             file_systems.append(instance)
 
         self.set_status(200)

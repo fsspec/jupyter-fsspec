@@ -36,6 +36,10 @@ class FssFilesysItem {
 
     const fsItem = document.createElement('div');
     fsItem.classList.add('jfss-fsitem-root');
+
+    if ('error' in fsInfo) {
+      fsItem.classList.add('jfss-fsitem-error');
+    }
     fsItem.addEventListener('mouseenter', this.handleFsysHover.bind(this));
     fsItem.addEventListener('mouseleave', this.handleFsysHover.bind(this));
     fsItem.dataset.fssname = fsInfo.name;
@@ -186,7 +190,11 @@ class FssFilesysItem {
       protocol: this.filesysProtocol,
       path: this.fsInfo.path
     });
-
+    if (this.fsInfo.error) {
+      this.logger.error('Inactive filesystem', {
+        ...this.fsInfo.error
+      });
+    }
     this.selected = true;
     this.filesysClicked.emit(this.fsInfo);
   }
