@@ -36,17 +36,22 @@ class FssFilesysItem {
 
     const fsItem = document.createElement('div');
     fsItem.classList.add('jfss-fsitem-root');
+    this.root = fsItem;
 
     if ('error' in fsInfo) {
       fsItem.classList.add('jfss-fsitem-error');
+      fsItem.dataset.errorMessage = fsInfo.error.short_traceback;
+      fsItem.addEventListener(
+        'mouseenter',
+        this.handleDisplayFSError.bind(this)
+      );
+    } else {
+      fsItem.addEventListener('mouseenter', this.handleFsysHover.bind(this));
+      fsItem.addEventListener('mouseleave', this.handleFsysHover.bind(this));
+      fsItem.dataset.fssname = fsInfo.name;
+      // Set the tooltip
+      this.root.title = `Root Path: ${fsInfo.path}`;
     }
-    fsItem.addEventListener('mouseenter', this.handleFsysHover.bind(this));
-    fsItem.addEventListener('mouseleave', this.handleFsysHover.bind(this));
-    fsItem.dataset.fssname = fsInfo.name;
-    this.root = fsItem;
-
-    // Set the tooltip
-    this.root.title = `Root Path: ${fsInfo.path}`;
 
     this.nameField = document.createElement('div');
     this.nameField.classList.add('jfss-fsitem-name');
@@ -174,6 +179,48 @@ class FssFilesysItem {
         this.root.style.backgroundColor = UNHOVER;
       }
     }
+  }
+
+  handleDisplayFSError(event: MouseEvent): void {
+    const fsItem = event.currentTarget as HTMLElement;
+    const errorMessage = fsItem.dataset.errorMessage;
+
+    const tooltip = document.createElement('div');
+    tooltip.className = 'jfss-fsitem-tooltip';
+    tooltip.textContent = `[Inactive] ${errorMessage}`;
+
+    Object.assign(tooltip.style, {
+      position: 'fixed',
+      backgroundColor: 'rgba(242, 159, 159, 0.85)',
+      color: 'rgb(77, 16, 16)',
+      padding: '4px 8px',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+      zIndex: '9999',
+      fontSize: '12px',
+      visibility: 'hidden'
+    });
+
+    document.body.appendChild(tooltip);
+
+    // Measure and position tooltip
+    const offset = 10;
+    const { clientX: x, clientY: y } = event;
+    const { width, height } = tooltip.getBoundingClientRect();
+    const maxX = window.innerWidth - width - offset;
+    const maxY = window.innerHeight - height - offset;
+
+    const left = Math.min(x + offset, maxX);
+    const top = Math.min(y + offset, maxY);
+
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+    tooltip.style.visibility = 'visible';
+
+    const removeTooltip = () => {
+      tooltip.remove();
+      fsItem.removeEventListener('mouseleave', removeTooltip);
+    };
+    fsItem.addEventListener('mouseleave', removeTooltip);
   }
 
   handleFsysHover(event: any) {
