@@ -424,6 +424,22 @@ async def xtest_action_same_fs_files(fs_manager_instance, jp_fetch):
     )
 
 
+@pytest.mark.no_setup_config_file_fs
+async def test_hdfs_config(hdfs_config, jp_fetch):
+    fetch_config = await jp_fetch("jupyter_fsspec", "config", method="GET")
+    assert fetch_config.code == 200
+    config_json = fetch_config.body.decode("utf-8")
+    config = json.loads(config_json)
+    content = config["content"]
+    assert len(content) == 1
+    item = content[0]
+    assert item["error"]
+    assert (
+        item["error"]["short_traceback"]
+        == "ModuleNotFoundError: No module named 'pyarrow'"
+    )
+
+
 async def test_upload_download(fs_manager_instance, jp_fetch):
     fs_manager = await fs_manager_instance
     remote_key = "TestSourceAWS"
