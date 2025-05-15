@@ -48,10 +48,12 @@ class FssFilesysItem {
     } else {
       fsItem.addEventListener('mouseenter', this.handleFsysHover.bind(this));
       fsItem.addEventListener('mouseleave', this.handleFsysHover.bind(this));
-      fsItem.dataset.fssname = fsInfo.name;
+
       // Set the tooltip
       this.root.title = `Root Path: ${fsInfo.path}`;
     }
+
+    fsItem.dataset.fssname = fsInfo.name;
 
     this.nameField = document.createElement('div');
     this.nameField.classList.add('jfss-fsitem-name');
