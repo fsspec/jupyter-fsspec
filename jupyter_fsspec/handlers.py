@@ -463,10 +463,10 @@ class FileSystemHandler(JupyterFsspecHandler):
 
         fs_instance = fs["instance"]
         response = {}
-        is_async = fs_instance.async_impl
 
         try:
             with handle_exception(self):
+                is_async = fs_instance.async_impl
                 result = (
                     await fs_instance._ls(item_path, detail=True)
                     if is_async
