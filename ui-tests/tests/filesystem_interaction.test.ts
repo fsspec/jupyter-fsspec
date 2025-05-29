@@ -192,6 +192,33 @@ test('test open jupyterFsspec with hdfs config', async ({ page }) => {
     .toHaveText('Path: myhdfs');
 });
 
+test('test filesystem error on hover', async ({ page }) => {
+  await page.route('http://localhost:8888/jupyter_fsspec/config?**', route => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(hdfsConfig)
+    });
+  });
+
+  await page.goto();
+  await page.getByText('FSSpec', { exact: true }).click();
+
+  // verify filesystem item was created
+  await expect.soft(page.locator('.jfss-fsitem-root')).toBeVisible();
+
+  // filesystem details should match as expected
+  await expect.soft(page.locator('.jfss-fsitem-error')).toBeVisible();
+  await expect.soft(page.locator('.jfss-fsitem-name')).toBeVisible();
+  page.locator('.jfss-fsitem-error').hover();
+  await expect.soft(page.locator('.jfss-fsitem-tooltip')).toBeVisible();
+  await expect
+    .soft(page.locator('.jfss-fsitem-tooltip'))
+    .toContainText('[Inactive]');
+  page.mouse.move(0, 0);
+  await expect.soft(page.locator('.jfss-fsitem-tooltip')).toBeHidden();
+});
+
 test('test memory filesystem with mock config data', async ({ page }) => {
   await page.goto();
   await page.getByText('FSSpec', { exact: true }).click();

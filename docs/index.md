@@ -123,6 +123,13 @@ the server's working directory in both the browser UI and in the kernel side.
 Since the kernel is usually a fully privileged process, this restriction only applies to the automatic behavior of jupyter_fsspec.
 :::
 
+### Inactive Filesystems
+
+Filesystems that are not instantiated due to an error will appear grayed out and will display an error message on hover.
+On click, there will be more information logged to the browser console.
+
+![Jupyter FSSpec Inactive Filesystem](_static/s3fs_inactive.png 'Jupyter FSSpec Inactive Filesystem')
+
 ## The `helper` module
 
 You can import the `jupyter_fsspec.helper` module into your notebooks to interact with
