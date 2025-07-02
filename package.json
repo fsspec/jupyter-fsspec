@@ -1,6 +1,6 @@
 {
     "name": "jupyterFsspec",
-    "version": "0.4.0",
+    "version": "0.4.1",
     "description": "A Jupyter interface for fsspec.",
     "keywords": [
         "jupyter",
