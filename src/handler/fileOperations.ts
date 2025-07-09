@@ -732,14 +732,21 @@ export class FsspecModel {
   async listDirectory(
     key: string,
     item_path: string = '',
-    type: string = 'default'
+    type: string = 'default',
+    refresh: boolean = false
   ): Promise<any> {
-    const query = new URLSearchParams({ key, item_path, type }).toString();
+    const query = new URLSearchParams({
+      key,
+      item_path,
+      type,
+      refresh: refresh.toString()
+    }).toString();
 
     this.logger.debug('Listing directory', {
       key,
       path: item_path,
-      type
+      type,
+      refresh
     });
 
     try {

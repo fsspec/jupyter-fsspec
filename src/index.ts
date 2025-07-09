@@ -815,7 +815,7 @@ class FsspecWidget extends Widget {
       path: fsInfo.path
     });
 
-    await this.fetchAndDisplayFileInfo(fsInfo.name);
+    await this.fetchAndDisplayFileInfo(fsInfo.name, true);
   }
 
   getNodeForPath(source_path: string) {
@@ -878,7 +878,9 @@ class FsspecWidget extends Widget {
 
     const response = await this.model.listDirectory(
       this.model.userFilesystems[this.model.activeFilesystem].key,
-      source_path
+      source_path,
+      'default',
+      false
     );
 
     // TODO: Check for status/description?
@@ -1063,13 +1065,16 @@ class FsspecWidget extends Widget {
     });
   }
 
-  async fetchAndDisplayFileInfo(fsname: string) {
+  async fetchAndDisplayFileInfo(fsname: string, refresh: boolean = false) {
     this.logger.info('Fetch/refresh file information display', {
       filesystem: fsname
     });
     // Fetch files for this filesystem
     const response = await this.model.listDirectory(
-      this.model.userFilesystems[this.model.activeFilesystem].key
+      this.model.userFilesystems[this.model.activeFilesystem].key,
+      '',
+      'default',
+      refresh
     );
 
     if (!response) {

@@ -458,6 +458,7 @@ class FileSystemHandler(JupyterFsspecHandler):
 
         key = get_request.key
         req_item_path = get_request.item_path
+        refresh = get_request.refresh
 
         fs, item_path = self.fs_manager.validate_fs("get", key, req_item_path)
 
@@ -468,9 +469,9 @@ class FileSystemHandler(JupyterFsspecHandler):
             with handle_exception(self):
                 is_async = fs_instance.async_impl
                 result = (
-                    await fs_instance._ls(item_path, detail=True)
+                    await fs_instance._ls(item_path, detail=True, refresh=refresh)
                     if is_async
-                    else fs_instance.ls(item_path, detail=True)
+                    else fs_instance.ls(item_path, detail=True, refresh=refresh)
                 )
         except JupyterFsspecException:
             return
