@@ -328,7 +328,7 @@ test('test refresh for updated config', async ({ page }) => {
     });
   });
 
-  await page.getByText('↻').click();
+  await page.getByTitle('Re-read and refresh sources').click();
 
   // verify updated config has two filesystem items
   const updatedFilesystems = page.locator('.jfss-fsitem-root');
