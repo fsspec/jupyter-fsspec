@@ -217,30 +217,8 @@ class FsspecWidget extends Widget {
     this.jobQueue = document.createElement('div');
     this.jobQueue.classList.add('jfss-job-queue');
     this.jobQueueContainer.appendChild(this.jobQueue);
-    lowerArea.appendChild(this.jobQueueContainer);
+    // lowerArea.appendChild(this.jobQueueContainer);
     // ....
-    for (let i = 0; i < 3; i++) {
-      const exampleJobItem = document.createElement('div');
-      exampleJobItem.classList.add('jfss-job-queue-item');
-      const statusIndicator = document.createElement('div');
-      statusIndicator.classList.add('jfss-job-item-status');
-      statusIndicator.innerText = '\u{00D7}';
-      exampleJobItem.appendChild(statusIndicator);
-      const jobItemLabel = document.createElement('span');
-      jobItemLabel.classList.add('jfss-job-item-label');
-      exampleJobItem.appendChild(jobItemLabel);
-      if (i === 0) {
-        jobItemLabel.innerText = '\u{2B61}OK: file:///Users/spam/eggs.txt';
-        statusIndicator.style.backgroundColor = '#34cf00';
-      } else if (i === 1) {
-        jobItemLabel.innerText = '\u{2B63}FAIL: file:///Users/wik/rak.txt';
-        statusIndicator.style.backgroundColor = 'red';
-      } else if (i === 2) {
-        jobItemLabel.innerText = '\u{2B61}OK: file:///etc/fstab';
-        statusIndicator.style.backgroundColor = '#34cf00';
-      }
-      this.jobQueue.appendChild(exampleJobItem);
-    }
 
     primaryDivider.appendChild(this.upperArea);
     primaryDivider.appendChild(hsep);
