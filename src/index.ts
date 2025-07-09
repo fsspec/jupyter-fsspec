@@ -64,7 +64,9 @@ except:
 class FsspecWidget extends Widget {
   upperArea: HTMLElement;
   model: FsspecModel;
+  lowerAreaHeader: HTMLElement;
   selectedFsLabel: HTMLElement;
+  refreshFileList: HTMLElement;
   treeView: any;
   elementHeap: any = {}; // Holds FssTreeItem's keyed by path
   sourcesHeap: any = {}; // Holds FssFilesysItem's keyed by name
@@ -172,11 +174,30 @@ class FsspecWidget extends Widget {
     // browserAreaLabel.classList.add('jfss-browseAreaLabel');
     // browserAreaLabel.innerText = 'Browse Filesystem';
     // lowerArea.appendChild(browserAreaLabel);
+    this.lowerAreaHeader = document.createElement('div');
+    this.lowerAreaHeader.classList.add('jfss-lowerAreaHeader');
+    lowerArea.appendChild(this.lowerAreaHeader);
 
     this.selectedFsLabel = document.createElement('div');
     this.selectedFsLabel.classList.add('jfss-selectedFsLabel');
     this.selectedFsLabel.innerText = '<Select a filesystem>';
-    lowerArea.appendChild(this.selectedFsLabel);
+    this.lowerAreaHeader.appendChild(this.selectedFsLabel);
+
+    const spacer = document.createElement('div');
+    spacer.style.flexGrow = '10';
+    spacer.style.width = '1.5rem';
+    spacer.style.height = '1.5rem';
+    this.lowerAreaHeader.appendChild(spacer);
+
+    this.refreshFileList = document.createElement('div');
+    this.refreshFileList.classList.add('jfss-refreshFileList');
+    this.refreshFileList.innerText = '\u{21bb}';
+    this.refreshFileList.title = 'Refresh current filesystem contents';
+    this.refreshFileList.addEventListener('click', () => {
+      this.handleRefreshFilesystem();
+    });
+
+    this.lowerAreaHeader.appendChild(this.refreshFileList);
 
     const resultArea = document.createElement('div');
     resultArea.classList.add('jfss-resultarea');
@@ -770,6 +791,30 @@ class FsspecWidget extends Widget {
     }
 
     this.model.setActiveFilesystem(fsInfo.name);
+    await this.fetchAndDisplayFileInfo(fsInfo.name);
+  }
+
+  async handleRefreshFilesystem() {
+    // Check if there's an active filesystem
+    if (!this.model.activeFilesystem) {
+      this.logger.warn('No active filesystem to refresh');
+      return;
+    }
+
+    const fsInfo = this.model.userFilesystems[this.model.activeFilesystem];
+    if (!fsInfo) {
+      this.logger.error('Active filesystem not found in user filesystems', {
+        activeFilesystem: this.model.activeFilesystem
+      });
+      return;
+    }
+
+    this.logger.debug('Refreshing filesystem', {
+      name: fsInfo.name,
+      protocol: fsInfo.protocol,
+      path: fsInfo.path
+    });
+
     await this.fetchAndDisplayFileInfo(fsInfo.name);
   }
 
