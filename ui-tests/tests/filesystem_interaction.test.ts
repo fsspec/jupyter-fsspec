@@ -409,6 +409,7 @@ test('test refresh for updated files list', async ({ page }) => {
   await page.route(
     'http://localhost:8888/jupyter_fsspec/files?key=mymem&item_path=&type=default&refresh=true&**',
     route => {
+      console.log('Intercepting refresh request');
       route.fulfill({
         status: 200,
         contentType: 'application/json',
