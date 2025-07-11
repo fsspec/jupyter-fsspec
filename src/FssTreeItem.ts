@@ -172,7 +172,7 @@ export class FssTreeItem {
 
     if (childrenCount !== undefined) {
       // For directories, show children count
-      const childrenDisplay = `(${childrenCount} items)`;
+      const childrenDisplay = `(${childrenCount} item${childrenCount === 1 ? '' : 's'})`;
       this.sizeLbl.innerText = childrenDisplay;
       this.sizeLbl.style.display = 'block';
     } else if (this.isDir) {
