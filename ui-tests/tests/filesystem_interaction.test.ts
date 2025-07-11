@@ -129,6 +129,53 @@ const myMemFsDirectory = {
   ]
 };
 
+const newMemFsDirectory = {
+  content: [
+    {
+      name: '/mymem/mydocs',
+      type: 'directory',
+      size: 128,
+      ino: 49648960,
+      mode: 16877
+    },
+    {
+      name: '/mymem/myfile.txt',
+      type: 'file',
+      size: 128,
+      ino: 49648960,
+      mode: 33188
+    },
+    {
+      name: '/mymem/myfile2.txt',
+      type: 'file',
+      size: 128,
+      ino: 49638760,
+      mode: 33188
+    },
+    {
+      name: '/mymem/otherdocs',
+      type: 'directory',
+      size: 2002,
+      ino: 13894260,
+      mode: 16877
+    },
+    {
+      name: '/mymem/newfile.txt',
+      type: 'file',
+      size: 256,
+      ino: 49648961,
+      mode: 33188
+    },
+    {
+      name: '/mymem/anotherfile.txt',
+      type: 'file',
+      size: 512,
+      ino: 49648962,
+      mode: 33188
+    }
+  ]
+};
+
 test.beforeEach(async ({ page }) => {
   await page.route('http://localhost:8888/jupyter_fsspec/config?**', route => {
     route.fulfill({
@@ -328,12 +375,64 @@ test('test refresh for updated config', async ({ page }) => {
     });
   });
 
-  await page.getByText('↻').click();
+  await page.getByTitle('Re-read and refresh sources').click();
 
   // verify updated config has two filesystem items
   const updatedFilesystems = page.locator('.jfss-fsitem-root');
   const updatedFilesystemsCount = await updatedFilesystems.count();
   expect(updatedFilesystemsCount).toEqual(2);
+});
+
+test('test refresh for updated files list', async ({ page }) => {
+  await page.goto();
+  await page.getByText('FSSpec', { exact: true }).click();
+
+  // click on filesystem
+  await page.locator('.jfss-fsitem-root').click();
+
+  // Verify the filesystem name is updated in lower area
+  await expect.soft(page.locator('.jfss-selectedFsLabel')).toHaveText('mymem');
+
+  const treeItems = await page
+    .locator('jp-tree-view')
+    .locator('jp-tree-item')
+    .filter({
+      has: page.locator(':visible')
+    });
+
+  const oldTreeItemsCount = await treeItems.count();
+
+  const filesystem_locator = page.locator('.jfss-fsitem-root');
+  await filesystem_locator.highlight();
+
+  // modified the filesystem listing
+  await page.route(
+    'http://localhost:8888/jupyter_fsspec/files?key=mymem&item_path=&type=default&refresh=true&**',
+    route => {
+      console.log('Intercepting refresh request');
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(newMemFsDirectory)
+      });
+    }
+  );
+
+  await page.getByTitle('Refresh current filesystem').click();
+
+  // verify the filesystem listing has been updated
+  const newTreeItems = page
+    .locator('jp-tree-view')
+    .locator('jp-tree-item')
+    .filter({
+      has: page.locator(':visible')
+    });
+  const newTreeItemsCount = await newTreeItems.count();
+  const elements = await newTreeItems.elementHandles();
+  for (const element of elements) {
+    console.log(await element.evaluate(el => el.textContent));
+  }
+  expect(newTreeItemsCount).toBeGreaterThan(oldTreeItemsCount);
 });
 
 test('insert open code snippet', async ({ page }) => {

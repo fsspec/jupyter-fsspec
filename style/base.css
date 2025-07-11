@@ -171,6 +171,16 @@
   font-size: var(--jp-ui-font-size2);
 }
 
+.jfss-lowerAreaHeader {
+  display: flex;
+  align-items: center;
+  margin: 0 0 0.5rem;
+  padding: 0 0 0 0.5rem;
+  border: 1px solid var(--jp-layout-color2);
+  border-radius: 0 2px 2px 0;
+  background-color: var(--jp-layout-color1);
+}
+
 .jfss-selectedFsLabel {
   /* width: 100%; */
   margin: 0 0 0.5rem;
@@ -181,6 +191,18 @@
 
   /* background-color: var(--jp-layout-color2); */
 
+  font-weight: bold;
+}
+
+.jfss-refreshFileList {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  margin: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 2px;
+  background-color: var(--jp-layout-color2);
   font-weight: bold;
 }
 

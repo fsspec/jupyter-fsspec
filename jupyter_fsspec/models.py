@@ -56,6 +56,11 @@ class GetRequest(BaseRequest):
         title="Type of GET request",
         description="Either a 'range' GET request for file or 'default' for normal GET",
     )
+    refresh: Optional[bool] = Field(
+        default=False,
+        title="Refresh filesystem listing",
+        description="Whether to refresh the filesystem contents",
+    )
 
 
 class PostRequest(BaseRequest):
