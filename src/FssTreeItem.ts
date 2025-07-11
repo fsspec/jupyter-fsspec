@@ -12,6 +12,7 @@ import { INotebookTracker } from '@jupyterlab/notebook';
 import { fileIcon, folderIcon } from '@jupyterlab/ui-components';
 
 import { FssTreeItemContext } from './FssTreeItemContext';
+import { formatBytes } from './utils';
 import { Logger } from './logger';
 
 export class FssTreeItem {
@@ -168,7 +169,17 @@ export class FssTreeItem {
     this.root.dataset.fss = user_path;
     this.root.dataset.fsize = size;
 
-    const sizeDisplay = `(${size.toLocaleString()})`;
+    // cast size to number
+    const sizeNumber = Number(size);
+    if (isNaN(sizeNumber)) {
+      this.logger.error('Invalid size', { size });
+      return;
+    }
+    const formattedSize = formatBytes(sizeNumber);
+    // cast formattedSize to string
+    const formattedSizeString = formattedSize.toString();
+
+    const sizeDisplay = `(${formattedSizeString})`;
     this.sizeLbl.innerText = sizeDisplay;
   }
 
