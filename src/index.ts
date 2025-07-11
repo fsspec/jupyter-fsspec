@@ -903,13 +903,21 @@ class FsspecWidget extends Widget {
     // Update the TreeView in the UI
     await this.updateFileBrowserView(nodeForPath);
 
+    // Update the children count for the expanded directory
     if (nodeForPath.id.toString() in this.elementHeap) {
       const uiElement = this.elementHeap[nodeForPath.id.toString()];
+      const actualChildrenCount = Object.keys(nodeForPath.children).length;
+      uiElement.setMetadata(
+        nodeForPath.path,
+        nodeForPath.metadata.size,
+        actualChildrenCount
+      );
       uiElement.expandItem();
 
       this.logger.debug('Auto-expanded directory node', {
         path: source_path,
-        nodeId: nodeForPath.id
+        nodeId: nodeForPath.id,
+        childrenCount: actualChildrenCount
       });
     }
   }
@@ -991,10 +999,28 @@ class FsspecWidget extends Widget {
             true,
             this.notebookTracker
           );
-          item.setMetadata(
-            (pathInfo as any).path,
-            (pathInfo as any).metadata.size
-          );
+          const isDirectory =
+            Object.keys((pathInfo as any).children).length > 0 ||
+            ('type' in (pathInfo as any).metadata &&
+              (pathInfo as any).metadata.type === 'directory');
+
+          if (isDirectory) {
+            // Since directroy children are lazy-loaded: set children count to undefined
+            // The count will be updated once the directory is expanded
+            item.setMetadata(
+              (pathInfo as any).path,
+              (pathInfo as any).metadata.size,
+              undefined
+            );
+            item.setType('dir');
+          } else {
+            item.setMetadata(
+              (pathInfo as any).path,
+              (pathInfo as any).metadata.size
+            );
+            item.setType('file');
+          }
+
           item.setText(pathSegment);
           item.treeItemClicked.connect(this.handleTreeItemClicked.bind(this));
           item.getBytesRequested.connect(
@@ -1007,18 +1033,6 @@ class FsspecWidget extends Widget {
           const item_id = UniqueId.get_id();
           (pathInfo as any).id = item_id;
           this.elementHeap[item_id.toString()] = item;
-
-          // Set the item type (file or directory)
-          const isDirectory =
-            Object.keys((pathInfo as any).children).length > 0 ||
-            ('type' in (pathInfo as any).metadata &&
-              (pathInfo as any).metadata.type === 'directory');
-
-          if (isDirectory) {
-            item.setType('dir');
-          } else {
-            item.setType('file');
-          }
 
           // Add children to build targets if needed
           if (Object.keys((pathInfo as any).children).length > 0) {
