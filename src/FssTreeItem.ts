@@ -12,6 +12,7 @@ import { INotebookTracker } from '@jupyterlab/notebook';
 import { fileIcon, folderIcon } from '@jupyterlab/ui-components';
 
 import { FssTreeItemContext } from './FssTreeItemContext';
+import { formatBytes } from './utils';
 import { Logger } from './logger';
 
 export class FssTreeItem {
@@ -159,17 +160,38 @@ export class FssTreeItem {
     });
   }
 
-  setMetadata(user_path: string, size: string) {
+  setMetadata(user_path: string, size: string, childrenCount?: number) {
     this.logger.debug('Setting item metadata', {
       path: user_path,
-      size
+      size,
+      childrenCount
     });
 
     this.root.dataset.fss = user_path;
     this.root.dataset.fsize = size;
 
-    const sizeDisplay = `(${size.toLocaleString()})`;
-    this.sizeLbl.innerText = sizeDisplay;
+    if (childrenCount !== undefined) {
+      // For directories, show children count
+      const childrenDisplay = `(${childrenCount} item${childrenCount === 1 ? '' : 's'})`;
+      this.sizeLbl.innerText = childrenDisplay;
+      this.sizeLbl.style.display = 'block';
+    } else if (this.isDir) {
+      // For directories without known count, hide the size label
+      this.sizeLbl.style.display = 'none';
+      return;
+    } else {
+      // For files, show size
+      const sizeNumber = Number(size);
+      if (isNaN(sizeNumber)) {
+        this.logger.error('Invalid size', { size });
+        return;
+      }
+      const formattedSize = formatBytes(sizeNumber);
+      const formattedSizeString = formattedSize.toString();
+
+      const sizeDisplay = `(${formattedSizeString})`;
+      this.sizeLbl.innerText = sizeDisplay;
+    }
   }
 
   setText(value: string) {
@@ -191,6 +213,7 @@ export class FssTreeItem {
     if (symbol === 'file') {
       fileIcon.element({ container: this.dirSymbol });
       this.isDir = false;
+      this.sizeLbl.style.display = 'block';
     }
   }
 
