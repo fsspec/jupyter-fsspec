@@ -14,10 +14,13 @@ import { addJupyterLabThemeChangeListener } from '@jupyter/web-components';
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ICommandPalette, Dialog } from '@jupyterlab/apputils';
+import { LabIcon } from '@jupyterlab/ui-components';
 
 import { IFileBrowserFactory } from '@jupyterlab/filebrowser';
 
 import { INotebookTracker } from '@jupyterlab/notebook';
+
+import fsspecSvg from '../src/fsspec-logo.svg';
 
 import { FsspecModel } from './handler/fileOperations';
 import { FssFilesysItem } from './FssFilesysItem';
@@ -28,6 +31,12 @@ import { Widget } from '@lumino/widgets';
 
 import { Logger, LogConfig } from './logger';
 import { initializeLogger } from './loggerSettings';
+
+// Create FSSpec icon from SVG
+const fsspecIcon = new LabIcon({
+  name: 'jupyterFsspec:fsspec-icon',
+  svgstr: fsspecSvg
+});
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -106,7 +115,7 @@ class FsspecWidget extends Widget {
     this.fileBrowserFactory = fileBrowserFactory;
     this.app = app;
 
-    this.title.label = 'FSSpec';
+    this.title.icon = fsspecIcon;
     this.node.classList.add('jfss-root');
 
     const primaryDivider = document.createElement('div');
