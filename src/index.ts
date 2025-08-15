@@ -116,6 +116,7 @@ class FsspecWidget extends Widget {
     this.app = app;
 
     this.title.icon = fsspecIcon;
+    this.title.caption = 'FSSpec';
     this.node.classList.add('jfss-root');
 
     const primaryDivider = document.createElement('div');
