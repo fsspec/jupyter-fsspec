@@ -102,7 +102,10 @@ export class FssFilesysContextMenu {
       const activeCell = notebookPanel.content.activeCell;
       if (activeCell) {
         const cellContent = activeCell.model.sharedModel.getSource();
-        const newCellContent = cellContent + '\n' + codeBlock;
+        const newCellContent =
+          cellContent.trim() === ''
+            ? codeBlock
+            : cellContent + '\n' + codeBlock;
         activeCell.model.sharedModel.setSource(newCellContent);
         this.logger.debug('Updated cell content', {
           oldLength: cellContent.length,
@@ -123,18 +126,33 @@ export class FssFilesysContextMenu {
     const path = this.copyPath();
 
     if (path) {
-      const openCodeBlock = `with fsspec.open("${path}", "rb") as f:\n   ...`;
+      const kwargs = this.model.getActiveFilesystemInfo().kwargs;
+      // eslint-disable-next-line
+      const [_, relative_path] = path.split(/\/(.+)/);
+      const fsInfo = this.model.getActiveFilesystemInfo();
+      const real_path =
+        fsInfo.protocol +
+        '://' +
+        (fsInfo.prefix_path ? fsInfo.prefix_path + '/' : '') +
+        relative_path;
+
+      let openCodeBlock = '';
+      if (kwargs) {
+        openCodeBlock = `import fsspec\nimport json\nfsspec_kwargs = json.loads(${JSON.stringify(JSON.stringify(kwargs))})\nwith fsspec.open("${real_path}", mode="rb", **fsspec_kwargs) as f:\n   ...`;
+      } else {
+        openCodeBlock = `import fsspec\nwith fsspec.open("${real_path}", mode="rb") as f:\n   ...`;
+      }
       navigator.clipboard.writeText(openCodeBlock).then(
         () => {
-          this.logger.info('Copied code snippet to clipboard', {
+          this.logger.info('Code snippet copied and inserted', {
             operation: 'open',
             path
           });
-          this.logger.debug('Code block content', { content: openCodeBlock });
+          this.logger.debug('Code snippet content', { content: openCodeBlock });
           this.root.remove();
         },
         error => {
-          this.logger.error('Failed to copy code snippet to clipboard', {
+          this.logger.error('Failed to copy code snippet', {
             operation: 'open',
             path,
             error
