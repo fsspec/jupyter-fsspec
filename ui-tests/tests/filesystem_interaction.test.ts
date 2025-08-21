@@ -208,7 +208,7 @@ test('test open jupyterFsspec with empty config', async ({ page }) => {
   });
 
   await page.goto('');
-  await page.getByText('FSSpec', { exact: true }).click();
+  await page.getByRole('tab', { name: 'FSSpec' }).click();
   await expect
     .soft(page.getByRole('link', { name: '⚠ No configured filesystems' }))
     .toBeVisible();
@@ -225,7 +225,7 @@ test('test open jupyterFsspec with hdfs config', async ({ page }) => {
   });
 
   await page.goto();
-  await page.getByText('FSSpec', { exact: true }).click();
+  await page.getByRole('tab', { name: 'FSSpec' }).click();
 
   // verify filesystem item was created
   await expect.soft(page.locator('.jfss-fsitem-root')).toBeVisible();
@@ -249,7 +249,7 @@ test('test filesystem error on hover', async ({ page }) => {
   });
 
   await page.goto();
-  await page.getByText('FSSpec', { exact: true }).click();
+  await page.getByRole('tab', { name: 'FSSpec' }).click();
 
   // verify filesystem item was created
   await expect.soft(page.locator('.jfss-fsitem-root')).toBeVisible();
@@ -268,7 +268,7 @@ test('test filesystem error on hover', async ({ page }) => {
 
 test('test memory filesystem with mock config data', async ({ page }) => {
   await page.goto();
-  await page.getByText('FSSpec', { exact: true }).click();
+  await page.getByRole('tab', { name: 'FSSpec' }).click();
 
   // verify filesystem item was created
   await expect.soft(page.locator('.jfss-fsitem-root')).toBeVisible();
@@ -284,7 +284,7 @@ test('test memory filesystem with mock config data', async ({ page }) => {
 test('test interacting with a filesystem', async ({ page }) => {
   page.on('console', logMsg => console.log('[BROWSER OUTPUT] ', logMsg.text()));
   await page.goto();
-  await page.getByText('FSSpec', { exact: true }).click();
+  await page.getByRole('tab', { name: 'FSSpec' }).click();
   await expect.soft(page.locator('.jfss-fsitem-root')).toBeVisible();
 
   // Select the filesystem
@@ -309,7 +309,7 @@ test('test interacting with a filesystem', async ({ page }) => {
 
 test('test copy path', async ({ page }) => {
   await page.goto();
-  await page.getByText('FSSpec', { exact: true }).click();
+  await page.getByRole('tab', { name: 'FSSpec' }).click();
   await expect.soft(page.locator('.jfss-fsitem-root')).toBeVisible();
 
   // Click on filesystem
@@ -328,7 +328,7 @@ test('test copy path', async ({ page }) => {
 
 test('test expanding directory', async ({ page }) => {
   await page.goto();
-  await page.getByText('FSSpec', { exact: true }).click();
+  await page.getByRole('tab', { name: 'FSSpec' }).click();
   await expect.soft(page.locator('.jfss-fsitem-root')).toBeVisible();
 
   // select the filesystem
@@ -360,7 +360,7 @@ test('test expanding directory', async ({ page }) => {
 
 test('test refresh for updated config', async ({ page }) => {
   await page.goto();
-  await page.getByText('FSSpec', { exact: true }).click();
+  await page.getByRole('tab', { name: 'FSSpec' }).click();
 
   // verify original config is present
   const originalFilesystems = page.locator('.jfss-fsitem-root');
@@ -385,7 +385,7 @@ test('test refresh for updated config', async ({ page }) => {
 
 test('test refresh for updated files list', async ({ page }) => {
   await page.goto();
-  await page.getByText('FSSpec', { exact: true }).click();
+  await page.getByRole('tab', { name: 'FSSpec' }).click();
 
   // click on filesystem
   await page.locator('.jfss-fsitem-root').click();
@@ -438,7 +438,7 @@ test('test refresh for updated files list', async ({ page }) => {
 test('insert open code snippet', async ({ page }) => {
   // activate extension from launcher page
   await page.goto();
-  await page.getByText('FSSpec', { exact: true }).click();
+  await page.getByRole('tab', { name: 'FSSpec' }).click();
 
   await page.locator('.jfss-fsitem-root').click();
   await page
@@ -457,7 +457,7 @@ test('insert open with code snippet with active notebook cell', async ({
   page
 }) => {
   await page.goto();
-  await page.getByText('FSSpec', { exact: true }).click();
+  await page.getByRole('tab', { name: 'FSSpec' }).click();
   await page.locator('.jfss-fsitem-root').click();
 
   // open a notebook
@@ -518,7 +518,7 @@ test('upload file from the Jupyterlab file browser', async ({ page }) => {
   });
 
   await page.goto();
-  await page.getByText('FSSpec', { exact: true }).click();
+  await page.getByRole('tab', { name: 'FSSpec' }).click();
   await page.locator('.jfss-fsitem-root').click();
 
   // open a notebook
@@ -588,7 +588,7 @@ test('upload file from browser picker', async ({ page }) => {
   });
 
   await page.goto();
-  await page.getByText('FSSpec', { exact: true }).click();
+  await page.getByRole('tab', { name: 'FSSpec' }).click();
   await page.locator('.jfss-fsitem-root').click();
 
   // open a notebook
@@ -663,7 +663,7 @@ test('upload file from helper', async ({ page }) => {
   });
 
   await page.goto();
-  await page.getByText('FSSpec', { exact: true }).click();
+  await page.getByRole('tab', { name: 'FSSpec' }).click();
   await page.locator('.jfss-fsitem-root').click();
 
   // open a notebook
@@ -725,7 +725,7 @@ test('verify option `Send to Helper Module` is present', async ({ page }) => {
   page.on('console', logMsg => console.log('[BROWSER OUTPUT] ', logMsg.text()));
 
   await page.goto();
-  await page.getByText('FSSpec', { exact: true }).click();
+  await page.getByRole('tab', { name: 'FSSpec' }).click();
   await page.locator('.jfss-fsitem-root').click();
 
   // select file to send to helper
