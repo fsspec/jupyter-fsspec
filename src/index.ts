@@ -465,8 +465,8 @@ class FsspecWidget extends Widget {
       });
 
       this.handleBrowserPickerUpload(
-        this.queuedPickerUploadInfo!.user_path!,
-        this.queuedPickerUploadInfo!.is_dir!
+        this.queuedPickerUploadInfo!.user_path || '',
+        this.queuedPickerUploadInfo!.is_dir || false
       );
 
       this.queuedPickerUploadInfo = null;
@@ -967,7 +967,11 @@ class FsspecWidget extends Widget {
     await this.updateFileBrowserView(nodeForPath);
 
     // Update the children count for the expanded directory
-    if (nodeForPath.id && nodeForPath.id.toString() in this.elementHeap) {
+    if (
+      nodeForPath.id !== null &&
+      nodeForPath.id !== undefined &&
+      nodeForPath.id.toString() in this.elementHeap
+    ) {
       const uiElement = this.elementHeap[nodeForPath.id.toString()];
       const actualChildrenCount = Object.keys(nodeForPath.children).length;
       uiElement.setMetadata(
@@ -1044,10 +1048,19 @@ class FsspecWidget extends Widget {
       dirTree = startNode;
       const startPath = startNode.path;
       buildTargets = {};
-      const elementForNode = this.getElementForNode(
-        startNode.id!
-      ) as FssTreeItem;
-      buildTargets[startPath] = [elementForNode.root, startNode.children];
+      if (startNode.id !== null && startNode.id !== undefined) {
+        buildTargets[startPath] = [
+          this.getElementForNode(startNode.id),
+          startNode.children
+        ];
+      } else {
+        // Fallback if node doesn't have an ID yet
+        this.logger.warn('StartNode missing ID for partial update', {
+          path: startPath
+        });
+        this.treeView.replaceChildren();
+        buildTargets = { '/': [this.treeView, this.dirTree.children] };
+      }
     } else {
       this.treeView.replaceChildren();
     }
@@ -1110,10 +1123,7 @@ class FsspecWidget extends Widget {
 
           // Add children to build targets if needed
           if (Object.keys(pathInfoTyped.children || {}).length > 0) {
-            buildTargets[pathInfoTyped.path] = [
-              item.root,
-              pathInfoTyped.children
-            ];
+            buildTargets[pathInfoTyped.path] = [item, pathInfoTyped.children];
           }
         }
 

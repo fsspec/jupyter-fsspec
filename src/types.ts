@@ -93,7 +93,10 @@ export interface ITreeNode {
 }
 
 export interface IBuildTargets {
-  [path: string]: [TreeViewElement, { [key: string]: ITreeNode }];
+  [path: string]: [
+    TreeViewElement | ITreeItemElement,
+    { [key: string]: ITreeNode }
+  ];
 }
 
 // =============================================================================
@@ -283,6 +286,7 @@ export interface ITreeItemElement {
     childrenCount?: number
   ): void;
   expandItem(): void;
+  appendChild(element: HTMLElement): void;
 }
 
 export interface IFilesysItemElement {
