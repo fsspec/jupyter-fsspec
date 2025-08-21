@@ -159,9 +159,12 @@ should be set to false in the kernel environment to ensure that the the helper d
 instantiate filesystems with absolute paths.
 :::
 
-<!--
-TODO populate this
+## Examples
+
+Practical examples demonstrating how to use Jupyter fsspec with different storage systems:
+
 ```{toctree}
-examples/content_child1.md
-examples/content_child2.md
-``` -->
+:maxdepth: 1
+
+examples/minio-quickstart.md
+```
