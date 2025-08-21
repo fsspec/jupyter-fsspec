@@ -792,20 +792,14 @@ class FsspecWidget extends Widget {
       fsInfo as any,
       this.notebookTracker
     );
-    fsItem.filesysClicked.connect((sender: FssFilesysItem, fsName: string) => {
-      this.handleFilesystemClicked(sender, {
-        name: fsName,
-        path: '',
-        protocol: fsInfo.protocol || ''
-      });
-    }, this);
+    fsItem.filesysClicked.connect(this.handleFilesystemClicked, this);
 
     this.sourcesHeap[fsInfo.name] = fsItem;
     fsItem.setMetadata(fsInfo.path);
     this.filesysContainer.appendChild(fsItem.root);
   }
 
-  async handleFilesystemClicked(sender: unknown, fsInfo: IPathInfo) {
+  async handleFilesystemClicked(sender: unknown, fsInfo: any) {
     this.logger.debug('Filesystem clicked', {
       name: fsInfo.name,
       protocol: fsInfo.protocol,
