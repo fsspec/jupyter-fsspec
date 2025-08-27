@@ -31,6 +31,17 @@ import { Widget } from '@lumino/widgets';
 
 import { Logger, LogConfig } from './logger';
 import { initializeLogger } from './loggerSettings';
+import {
+  IElementHeap,
+  ISourcesHeap,
+  ITreeNode,
+  IBuildTargets,
+  IUploadInfo,
+  IPathInfo,
+  IFileBrowserModel,
+  IJupyterFileData,
+  TreeViewElement
+} from './types';
 
 // Create FSSpec icon from SVG
 const fsspecIcon = new LabIcon({
@@ -38,6 +49,7 @@ const fsspecIcon = new LabIcon({
   svgstr: fsspecSvg
 });
 
+// Window.fsspecModel type is declared in fileOperations.ts
 declare global {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   interface Window {
@@ -76,31 +88,31 @@ class FsspecWidget extends Widget {
   lowerAreaHeader: HTMLElement;
   selectedFsLabel: HTMLElement;
   refreshFileList: HTMLElement;
-  treeView: any;
-  elementHeap: any = {}; // Holds FssTreeItem's keyed by path
-  sourcesHeap: any = {}; // Holds FssFilesysItem's keyed by name
+  treeView: TreeViewElement;
+  elementHeap: IElementHeap = {}; // Holds FssTreeItem's keyed by path
+  sourcesHeap: ISourcesHeap = {}; // Holds FssFilesysItem's keyed by name
   emptySourcesHint: HTMLElement;
   filesysContainer: HTMLElement;
   openInputHidden: HTMLInputElement;
-  dirTree: any = {};
-  currentTarget: any = null;
+  dirTree: ITreeNode = { path: '', children: {} };
+  currentTarget: HTMLElement | null = null;
   notebookTracker: INotebookTracker;
   uploadDialog: Dialog<null> | null = null;
   jobQueueControls: HTMLElement;
   jobQueue: HTMLElement;
   jobQueueContainer: HTMLElement;
   jobQueueExpander: HTMLElement;
-  queuedPickerUploadInfo: any;
-  queuedJupyterFileBrowserUploadInfo: any;
-  fileBrowserFactory: any;
-  app: any;
+  queuedPickerUploadInfo: IUploadInfo | null = null;
+  queuedJupyterFileBrowserUploadInfo: IUploadInfo | null = null;
+  fileBrowserFactory: IFileBrowserFactory;
+  app: JupyterFrontEnd;
   private readonly logger: Logger;
 
   constructor(
-    model: any,
+    model: FsspecModel,
     notebookTracker: INotebookTracker,
-    app: any,
-    fileBrowserFactory: any
+    app: JupyterFrontEnd,
+    fileBrowserFactory: IFileBrowserFactory
   ) {
     super();
 
@@ -290,7 +302,7 @@ class FsspecWidget extends Widget {
   //   // let currentNode = this.dirTree;
   //   for (const segment of userPath
   //     .split('/')
-  //     .filter((c: any) => c.length > 0)) {
+  //     .filter((c: string) => c.length > 0)) {
   //       this.logger.debug(`  segment: ${segment}`);
   //   }
 
@@ -358,19 +370,33 @@ class FsspecWidget extends Widget {
       });
 
       try {
-        const reply: any = await shellFuture.done;
+        const reply = await shellFuture.done;
         this.logger.debug('Kernel execution reply received', {
-          status: reply.content.status,
-          hasUserExpressions: !!reply.content.user_expressions
+          status: (reply.content as any).status
         });
 
-        let tempfilePath =
-          reply.content.user_expressions.jfss_data.data['text/plain'];
+        let tempfilePath = '';
+        if (
+          (reply.content as any).user_expressions?.jfss_data?.data?.[
+            'text/plain'
+          ]
+        ) {
+          tempfilePath = (reply.content as any).user_expressions.jfss_data.data[
+            'text/plain'
+          ];
+        }
 
         // Strip out the quotes
         tempfilePath = tempfilePath.replace(
           /[\x27\x22]/g, // replace single/double quote chars, add the g flag for replace-all
-          (match: any, p1: any, p2: any, p3: any, offset: any, string: any) => {
+          (
+            match: string,
+            _p1: unknown,
+            _p2: unknown,
+            _p3: unknown,
+            _offset: number,
+            _string: string
+          ) => {
             return ''; // Removes matching chars
           }
         );
@@ -394,8 +420,8 @@ class FsspecWidget extends Widget {
   }
 
   async handleJupyterFileBrowserSetBytesTarget(
-    userFile: any,
-    fileBrowser: any
+    userFile: IFileBrowserModel,
+    fileBrowser: IFileBrowserFactory
   ) {
     this.logger.debug('Setting bytes target from JupyterLab file browser', {
       path: userFile.value.path,
@@ -404,10 +430,10 @@ class FsspecWidget extends Widget {
       mimeType: userFile.value.mimetype
     });
 
-    const fileData = await this.app.serviceManager.contents.get(
+    const fileData = (await this.app.serviceManager.contents.get(
       userFile.value.path,
       { content: true, format: 'base64', type: 'base64' }
-    );
+    )) as IJupyterFileData;
 
     this.logger.debug('File content retrieved', {
       format: fileData.format,
@@ -428,7 +454,9 @@ class FsspecWidget extends Widget {
 
     if (this.openInputHidden.files.length > 0) {
       const fileData = this.openInputHidden.files[0];
-      this.queuedPickerUploadInfo['fileData'] = fileData;
+      if (this.queuedPickerUploadInfo) {
+        this.queuedPickerUploadInfo.fileData = fileData;
+      }
 
       this.logger.debug('File selected from browser picker', {
         fileName: fileData.name,
@@ -437,8 +465,8 @@ class FsspecWidget extends Widget {
       });
 
       this.handleBrowserPickerUpload(
-        this.queuedPickerUploadInfo.user_path,
-        this.queuedPickerUploadInfo.is_dir
+        this.queuedPickerUploadInfo!.user_path || '',
+        this.queuedPickerUploadInfo!.is_dir || false
       );
 
       this.queuedPickerUploadInfo = null;
@@ -460,7 +488,7 @@ class FsspecWidget extends Widget {
     // Get the desired path for this upload from a dialog box
     if (is_dir) {
       // Get filename when uploading to folder
-      const result: any = await this.promptForFilename();
+      const result = await this.promptForFilename();
 
       if (result?.value) {
         user_path += '/' + result.value;
@@ -471,12 +499,19 @@ class FsspecWidget extends Widget {
       }
     }
 
-    if (this.queuedJupyterFileBrowserUploadInfo) {
+    if (this.queuedJupyterFileBrowserUploadInfo?.fileData) {
       // We have file information from the Lab file browser
       this.logger.debug('Processing Jupyter file browser upload', {
-        contentFormat: this.queuedJupyterFileBrowserUploadInfo.fileData.format,
-        contentSize:
-          this.queuedJupyterFileBrowserUploadInfo.fileData?.content?.length
+        contentFormat: Buffer.isBuffer(
+          this.queuedJupyterFileBrowserUploadInfo.fileData
+        )
+          ? 'buffer'
+          : 'unknown',
+        contentSize: Buffer.isBuffer(
+          this.queuedJupyterFileBrowserUploadInfo.fileData
+        )
+          ? this.queuedJupyterFileBrowserUploadInfo.fileData.length
+          : undefined
       });
 
       const binaryData = this.queuedJupyterFileBrowserUploadInfo.fileData;
@@ -485,7 +520,7 @@ class FsspecWidget extends Widget {
         await this.model.post(
           this.model.activeFilesystem,
           user_path,
-          binaryData
+          binaryData as ArrayBuffer
         );
 
         this.logger.info('File upload completed successfully', {
@@ -515,7 +550,7 @@ class FsspecWidget extends Widget {
 
     // Get the desired path for this upload from a dialog box
     if (is_dir) {
-      const result: any = await this.promptForFilename();
+      const result = await this.promptForFilename();
 
       if (result?.value) {
         user_path += '/' + result.value;
@@ -542,17 +577,21 @@ class FsspecWidget extends Widget {
 
       this.openInputHidden.click();
       return;
-    } else if (this.queuedPickerUploadInfo) {
+    } else if (
+      this.queuedPickerUploadInfo?.fileData &&
+      this.queuedPickerUploadInfo.fileData instanceof File
+    ) {
       // We have obtained file info from the user's selection (our call above)
+      const fileData = this.queuedPickerUploadInfo.fileData;
       this.logger.debug('Processing selected file', {
-        fileName: this.queuedPickerUploadInfo.fileData.name,
-        fileSize: this.queuedPickerUploadInfo.fileData.size,
-        fileType: this.queuedPickerUploadInfo.fileData.type
+        fileName: fileData.name,
+        fileSize: fileData.size,
+        fileType: fileData.type
       });
 
       try {
-        const binRaw = await this.queuedPickerUploadInfo.fileData.arrayBuffer();
-        const binData: any = new Uint8Array(binRaw);
+        const binRaw = await fileData.arrayBuffer();
+        const binData: Uint8Array = new Uint8Array(binRaw);
 
         await this.model.post(this.model.activeFilesystem, user_path, binData);
 
@@ -590,7 +629,7 @@ class FsspecWidget extends Widget {
     // Get the desired path for this upload from a dialog box
     if (is_dir) {
       // Get filename when uploading to folder
-      const result: any = await this.promptForFilename();
+      const result = await this.promptForFilename();
 
       if (result?.value) {
         user_path += '/' + result.value;
@@ -611,12 +650,14 @@ class FsspecWidget extends Widget {
     }
 
     try {
-      await this.model.upload(
-        this.model.activeFilesystem,
-        tempfilePath,
-        user_path,
-        'upload'
-      );
+      if (this.model.upload) {
+        await this.model.upload(
+          this.model.activeFilesystem,
+          tempfilePath,
+          user_path,
+          'upload'
+        );
+      }
     } catch (error) {
       this.logger.error('Error during kernel upload', {
         path: user_path,
@@ -681,12 +722,16 @@ class FsspecWidget extends Widget {
             jfss_data: 'repr(_jupyter_fsshelper.out)'
           }
         })
-        .done.then((message: any) => {
-          this.logger.debug('Get bytes execution complete', {
-            status: message.content.status,
-            hasUserExpressions: !!message.content.user_expressions
-          });
-        })
+        .done.then(
+          (message: {
+            content: { status: string; user_expressions?: unknown };
+          }) => {
+            this.logger.debug('Get bytes execution complete', {
+              status: message.content.status,
+              hasUserExpressions: !!message.content.user_expressions
+            });
+          }
+        )
         .catch(error => {
           this.logger.error('Error executing get bytes code', { error });
         });
@@ -735,14 +780,18 @@ class FsspecWidget extends Widget {
     }
   }
 
-  addFilesystemItem(fsInfo: any) {
+  addFilesystemItem(fsInfo: IPathInfo) {
     this.logger.debug('Adding filesystem item', {
       name: fsInfo.name,
       protocol: fsInfo.protocol,
       path: fsInfo.path
     });
 
-    const fsItem = new FssFilesysItem(this.model, fsInfo, this.notebookTracker);
+    const fsItem = new FssFilesysItem(
+      this.model,
+      fsInfo as any,
+      this.notebookTracker
+    );
     fsItem.filesysClicked.connect(this.handleFilesystemClicked, this);
 
     this.sourcesHeap[fsInfo.name] = fsItem;
@@ -750,7 +799,7 @@ class FsspecWidget extends Widget {
     this.filesysContainer.appendChild(fsItem.root);
   }
 
-  async handleFilesystemClicked(sender: any, fsInfo: any) {
+  async handleFilesystemClicked(sender: unknown, fsInfo: any) {
     this.logger.debug('Filesystem clicked', {
       name: fsInfo.name,
       protocol: fsInfo.protocol,
@@ -758,9 +807,12 @@ class FsspecWidget extends Widget {
     });
 
     for (const child of this.filesysContainer.children) {
-      const fsElem: any = child;
+      const fsElem = child as HTMLElement;
       // Set clicked FS to selected state (+colorize), deselect others
-      if (!(fsElem.dataset.fssname in this.sourcesHeap)) {
+      if (
+        !fsElem.dataset.fssname ||
+        !(fsElem.dataset.fssname in this.sourcesHeap)
+      ) {
         // This should never happen
         this.logger.error('Error selecting filesystem', {
           name: fsElem.dataset.fssname,
@@ -769,7 +821,7 @@ class FsspecWidget extends Widget {
         break;
       }
 
-      const wrapper = this.sourcesHeap[fsElem.dataset.fssname];
+      const wrapper = this.sourcesHeap[fsElem.dataset.fssname!];
 
       if (fsElem.dataset.fssname === fsInfo.name) {
         wrapper.selected = true;
@@ -810,7 +862,7 @@ class FsspecWidget extends Widget {
     // Traverse the dir tree and get the node for the supplied path
     this.logger.debug('Getting node for path', { path: source_path });
 
-    let nodeForPath: any = null;
+    let nodeForPath: ITreeNode | null = null;
     // Dir tree nodes store a path relative to the fs root directly on the node (with
     // an absolute path stored elsewhere, in the metadata attribute). Children of nodes
     // are keyed by path segment from their parent (so at the node for a folder "my_data",
@@ -834,7 +886,7 @@ class FsspecWidget extends Widget {
     let currentNode = this.dirTree;
     for (const segment of relPathFromFsRoot
       .split('/')
-      .filter((c: any) => c.length > 0)) {
+      .filter((c: string) => c.length > 0)) {
       if (segment in currentNode['children']) {
         currentNode = currentNode['children'][segment];
       } else {
@@ -844,7 +896,7 @@ class FsspecWidget extends Widget {
     }
 
     // Check if the desired node was found, set result if so
-    if (currentNode.metadata.name === source_path) {
+    if (currentNode.metadata?.name === source_path) {
       nodeForPath = currentNode;
       this.logger.debug('Node found for path', {
         found: true,
@@ -853,7 +905,7 @@ class FsspecWidget extends Widget {
     } else {
       this.logger.debug('Node not found for path', {
         found: false,
-        currentNodePath: currentNode.metadata.name
+        currentNodePath: currentNode.metadata?.name
       });
     }
 
@@ -865,7 +917,8 @@ class FsspecWidget extends Widget {
     this.logger.info('Lazy loading directory contents', { path: source_path });
 
     const response = await this.model.listDirectory(
-      this.model.userFilesystems[this.model.activeFilesystem].key,
+      this.model.userFilesystems[this.model.activeFilesystem]?.key ||
+        this.model.activeFilesystem,
       source_path,
       'default',
       false
@@ -914,12 +967,16 @@ class FsspecWidget extends Widget {
     await this.updateFileBrowserView(nodeForPath);
 
     // Update the children count for the expanded directory
-    if (nodeForPath.id.toString() in this.elementHeap) {
+    if (
+      nodeForPath.id !== null &&
+      nodeForPath.id !== undefined &&
+      nodeForPath.id.toString() in this.elementHeap
+    ) {
       const uiElement = this.elementHeap[nodeForPath.id.toString()];
       const actualChildrenCount = Object.keys(nodeForPath.children).length;
       uiElement.setMetadata(
         nodeForPath.path,
-        nodeForPath.metadata.size,
+        nodeForPath.metadata?.size?.toString() || '0',
         actualChildrenCount
       );
       uiElement.expandItem();
@@ -932,20 +989,20 @@ class FsspecWidget extends Widget {
     }
   }
 
-  getElementForNode(ident: any) {
+  getElementForNode(ident: string | number) {
     return this.elementHeap[ident.toString()];
   }
 
-  async handleTreeItemClicked(sender: any, userPath: string) {
+  async handleTreeItemClicked(sender: unknown, userPath: string) {
     this.logger.debug('Trigger lazy load', { userPath });
     await this.lazyLoad(userPath);
   }
 
-  handleUserGetBytesRequest(_sender: any, userPath: string) {
+  handleUserGetBytesRequest(_sender: unknown, userPath: string) {
     this.handleContextGetBytes(userPath);
   }
 
-  async handleUploadRequest(sender: any, args: any) {
+  async handleUploadRequest(sender: unknown, args: IUploadInfo) {
     // Routes all upload requests (kernel user_data, browser picker, etc.)
     if (args.is_browser_file_picker && args.is_jup_browser_file) {
       this.logger.error('Bad upload request (conflicting source values)', {
@@ -956,23 +1013,34 @@ class FsspecWidget extends Widget {
     }
 
     if (args.is_browser_file_picker) {
-      await this.handleBrowserPickerUpload(args.user_path, args.is_dir);
+      await this.handleBrowserPickerUpload(
+        args.user_path || '',
+        args.is_dir || false
+      );
     } else if (args.is_jup_browser_file) {
-      await this.handleJupyterFileBrowserUpload(args.user_path, args.is_dir);
+      await this.handleJupyterFileBrowserUpload(
+        args.user_path || '',
+        args.is_dir || false
+      );
     } else {
-      await this.handleKernelHelperUpload(args.user_path, args.is_dir);
+      await this.handleKernelHelperUpload(
+        args.user_path || '',
+        args.is_dir || false
+      );
     }
   }
 
-  async updateFileBrowserView(startNode: any = null) {
+  async updateFileBrowserView(startNode: ITreeNode | null = null) {
     // Update/sync the tree view with the file data for this filesys
     this.logger.info('Updating file browser view', {
       fullRefresh: startNode === null,
       startNodePath: startNode?.path
     });
 
-    let dirTree: any = this.dirTree;
-    let buildTargets: any = { '/': [this.treeView, dirTree.children] };
+    let dirTree: ITreeNode = this.dirTree;
+    let buildTargets: IBuildTargets = {
+      '/': [this.treeView, dirTree.children]
+    };
 
     // Set up either a partial update (from a given start node), or
     // a complete tear down and repopulate from scratch (for new data)
@@ -980,10 +1048,19 @@ class FsspecWidget extends Widget {
       dirTree = startNode;
       const startPath = startNode.path;
       buildTargets = {};
-      buildTargets[startPath] = [
-        this.getElementForNode(startNode.id),
-        startNode.children
-      ];
+      if (startNode.id !== null && startNode.id !== undefined) {
+        buildTargets[startPath] = [
+          this.getElementForNode(startNode.id),
+          startNode.children
+        ];
+      } else {
+        // Fallback if node doesn't have an ID yet
+        this.logger.warn('StartNode missing ID for partial update', {
+          path: startPath
+        });
+        this.treeView.replaceChildren();
+        buildTargets = { '/': [this.treeView, this.dirTree.children] };
+      }
     } else {
       this.treeView.replaceChildren();
     }
@@ -991,7 +1068,7 @@ class FsspecWidget extends Widget {
     // Traverse iteratively
     while (Object.keys(buildTargets).length > 0) {
       // Start with root, add children
-      const deleteQueue: any = [];
+      const deleteQueue: string[] = [];
       for (const absPath of Object.keys(buildTargets)) {
         const elemParent = buildTargets[absPath][0];
         const childPaths = buildTargets[absPath][1];
@@ -1009,24 +1086,24 @@ class FsspecWidget extends Widget {
             true,
             this.notebookTracker
           );
+          const pathInfoTyped = pathInfo as ITreeNode;
           const isDirectory =
-            Object.keys((pathInfo as any).children).length > 0 ||
-            ('type' in (pathInfo as any).metadata &&
-              (pathInfo as any).metadata.type === 'directory');
+            Object.keys(pathInfoTyped.children || {}).length > 0 ||
+            pathInfoTyped.metadata?.type === 'directory';
 
           if (isDirectory) {
             // Since directroy children are lazy-loaded: set children count to undefined
             // The count will be updated once the directory is expanded
             item.setMetadata(
-              (pathInfo as any).path,
-              (pathInfo as any).metadata.size,
+              pathInfoTyped.path,
+              pathInfoTyped.metadata?.size?.toString() || '0',
               undefined
             );
             item.setType('dir');
           } else {
             item.setMetadata(
-              (pathInfo as any).path,
-              (pathInfo as any).metadata.size
+              pathInfoTyped.path,
+              pathInfoTyped.metadata?.size?.toString() || '0'
             );
             item.setType('file');
           }
@@ -1041,15 +1118,12 @@ class FsspecWidget extends Widget {
 
           // Store ID and element in the element heap
           const item_id = UniqueId.get_id();
-          (pathInfo as any).id = item_id;
+          pathInfoTyped.id = item_id;
           this.elementHeap[item_id.toString()] = item;
 
           // Add children to build targets if needed
-          if (Object.keys((pathInfo as any).children).length > 0) {
-            buildTargets[(pathInfo as any).path] = [
-              item,
-              (pathInfo as any).children
-            ];
+          if (Object.keys(pathInfoTyped.children || {}).length > 0) {
+            buildTargets[pathInfoTyped.path] = [item, pathInfoTyped.children];
           }
         }
 
@@ -1057,8 +1131,8 @@ class FsspecWidget extends Widget {
       }
 
       // Remove processed items from build targets
-      for (const item of deleteQueue) {
-        delete buildTargets[item];
+      for (const pathKey of deleteQueue) {
+        delete buildTargets[pathKey];
       }
     }
 
@@ -1073,7 +1147,8 @@ class FsspecWidget extends Widget {
     });
     // Fetch files for this filesystem
     const response = await this.model.listDirectory(
-      this.model.userFilesystems[this.model.activeFilesystem].key,
+      this.model.userFilesystems[this.model.activeFilesystem]?.key ||
+        this.model.activeFilesystem,
       '',
       'default',
       refresh
@@ -1093,7 +1168,7 @@ class FsspecWidget extends Widget {
       return;
     }
 
-    const pathInfos = response['content'].sort((a: any, b: any) => {
+    const pathInfos = response['content'].sort((a: IPathInfo, b: IPathInfo) => {
       return a.name.localeCompare(b.name);
     });
 
@@ -1113,7 +1188,7 @@ class FsspecWidget extends Widget {
     await this.updateFileBrowserView();
   }
 
-  updateTree(tree: any, pathInfoList: any, rootPath: string) {
+  updateTree(tree: ITreeNode, pathInfoList: IPathInfo[], rootPath: string) {
     // Update a given tree or subtree by building/populating
     // a nested tree structure based on the provided pathInfos
     this.logger.debug('Updating tree', {
@@ -1127,8 +1202,8 @@ class FsspecWidget extends Widget {
 
       // TODO: path sep normalization
       // Go segment by segment, building the nested path tree
-      const segments = name.split('/').filter((c: any) => c.length > 0);
-      let parentLocation: any = dirTree['children'];
+      const segments = name.split('/').filter((c: string) => c.length > 0);
+      let parentLocation: { [key: string]: ITreeNode } = dirTree['children'];
 
       for (let i = 0; i < segments.length; i++) {
         // Get path components and a key for this subpath
@@ -1137,7 +1212,7 @@ class FsspecWidget extends Widget {
           subpath.push(segments[j]);
         }
 
-        const segment: any = segments[i];
+        const segment: string = segments[i];
         if (segment in parentLocation) {
           parentLocation = parentLocation[segment]['children'];
         } else {
@@ -1165,11 +1240,11 @@ class FsspecWidget extends Widget {
 
   clearFileData() {
     this.logger.debug('Clearing file data');
-    this.dirTree = {};
+    this.dirTree = { path: '', children: {} };
     this.elementHeap = {};
   }
 
-  buildTree(pathInfoList: any, rootPath: string) {
+  buildTree(pathInfoList: IPathInfo[], rootPath: string) {
     // Start building a new directory tree structure from scratch,
     // update/populate it using a list of pathInfos ([path + metadata] items)
     this.logger.debug('Building directory tree', {
@@ -1217,7 +1292,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     // Expose the log config to the debug console
     if (typeof window !== 'undefined') {
-      (window as any).jupyterFsspecLogConfig = LogConfig;
+      (
+        window as typeof window & { jupyterFsspecLogConfig: typeof LogConfig }
+      ).jupyterFsspecLogConfig = LogConfig;
     }
 
     logger.info('JupyterLab extension jupyterFsspec is activated!');
@@ -1246,10 +1323,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
         caption:
           'Handles upload requests to configured fsspec filesystems from the FileBrowser',
         execute: async () => {
-          const fileModel: any = fileBrowserFactory.tracker.currentWidget
+          const fileModel = fileBrowserFactory.tracker.currentWidget
             ?.selectedItems()
             .next();
-          const file = fileModel.value;
+          const file = fileModel?.value;
 
           if (file) {
             logger.debug('File browser upload source selected', {
@@ -1259,8 +1336,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
             });
 
             await fsspec_widget.handleJupyterFileBrowserSetBytesTarget(
-              fileModel,
-              fileBrowserFactory.tracker?.currentWidget
+              fileModel as IFileBrowserModel,
+              fileBrowserFactory
             );
           } else {
             logger.warn('No file selected for upload source');

@@ -118,7 +118,7 @@ export class FssTreeItem {
     });
   }
 
-  appendChild(elem: any) {
+  appendChild(elem: HTMLElement) {
     this.logger.debug('Appending child element to tree item', {
       childTagName: elem.tagName,
       childId: elem.id || 'none'
